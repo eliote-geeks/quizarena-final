@@ -49,6 +49,16 @@
 - **Banque de questions étoffée** : 50 questions par catégorie (300 au total) dans `/app/frontend/src/data/questions.js`. Chaque session pioche 10 au hasard.
 - Question affichée dans une **dialogue box** style RPG avec triangle en bas, sous la scène animée.
 
+## Update 2026-02-14 — Major gameplay change v2 (no more QCM)
+- **QCM supprimé** : remplacé par un **typing arcade**. Le joueur **tape la réponse** avec un clavier pixel AZERTY (à l'écran ou physique).
+- Helper `extractKey()` dans `/app/frontend/src/lib/answerKey.js` : extrait un mot-clé court depuis la bonne réponse (mot le plus distinctif, sans accents, max 12 chars).
+- Composant `PixelKeyboard` : clavier on-screen pixel-art AZERTY (10 colonnes, 4 lignes + back).
+- Composant `CoinShower` : pluie de **28 pièces pixel-art ambre** qui tombent + tournent + s'estompent à chaque bonne réponse, avec flash radial central.
+- **Boss mid-round** : à partir de la question 5/10, un **boss pixel-art** (crâne couronné, yeux qui clignotent, aura pulsante) apparaît dans chaque scène. HUD affiche "BOSS.STAGE ⚠".
+- Mécanique de pénalité : mauvaise lettre = -2s + shake (pas de vie perdue). Timeout = -1 vie. Vies = 3.
+- Slot blink : le slot courant clignote pour indiquer où taper.
+- Hit flash : chaque bonne lettre déclenche un flash ambre sur la scène (renforce la connexion question ↔ jeu).
+
 ## Next Action Items
 - P1: Brancher un vrai backend (FastAPI + MongoDB) avec auth + matchmaking
 - P1: Vrai engine duel temps réel (WebSocket)

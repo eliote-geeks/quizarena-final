@@ -182,6 +182,17 @@ code {
 }
 .blink { animation: blink 1s steps(1) infinite; }
 
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes blink-slot {
+    0%, 49% { background: rgba(229, 168, 0, 0.18); }
+    50%, 100% { background: rgba(229, 168, 0, 0.06); }
+}
+.blink-slot { animation: blink-slot 0.8s steps(1) infinite; }
+
 @keyframes float-y {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }

@@ -13,18 +13,18 @@ const BONE = "#E8E2D0";
 const SHADOW = "#0B0B14";
 const GHOST = "#3a3a44";
 
-export default function PixelScene({ category, idx = 0 }) {
+export default function PixelScene({ category, idx = 0, boss = false, hitFlash = 0 }) {
   const scenes = {
-    histoire: <KnightVsCastle key={idx} />,
-    geographie: <GlobeRadar key={idx} />,
-    sciences: <AtomLab key={idx} />,
-    cinema: <FilmReel key={idx} />,
-    sport: <BoxerArena key={idx} />,
-    musique: <Equalizer key={idx} />,
+    histoire: <KnightVsCastle key={idx} boss={boss} hitFlash={hitFlash} />,
+    geographie: <GlobeRadar key={idx} boss={boss} hitFlash={hitFlash} />,
+    sciences: <AtomLab key={idx} boss={boss} hitFlash={hitFlash} />,
+    cinema: <FilmReel key={idx} boss={boss} hitFlash={hitFlash} />,
+    sport: <BoxerArena key={idx} boss={boss} hitFlash={hitFlash} />,
+    musique: <Equalizer key={idx} boss={boss} hitFlash={hitFlash} />,
   };
 
   return (
-    <div className="relative w-full h-[180px] sm:h-[200px] rounded-xl overflow-hidden border border-white/10 bg-[#0B0B14]">
+    <div className="relative w-full h-[180px] sm:h-[220px] rounded-xl overflow-hidden border border-white/10 bg-[#0B0B14]">
       {/* CRT scanlines overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-30 scanlines z-20" />
       {/* Grid floor */}
@@ -35,24 +35,98 @@ export default function PixelScene({ category, idx = 0 }) {
           backgroundSize: "24px 24px",
         }}
       />
-      {/* Vignette */}
       <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 60px rgba(0,0,0,0.7)" }} />
       <div className="relative w-full h-full">{scenes[category] || <KnightVsCastle />}</div>
-      {/* HUD label */}
       <div className="absolute top-2 left-3 z-30 font-arcade text-base tracking-widest" style={{ color: AMBER }}>
-        &gt;_ SCENE.LOAD
+        &gt;_ {boss ? "BOSS.STAGE" : "SCENE.LOAD"}
       </div>
       <div className="absolute top-2 right-3 z-30 font-arcade text-base text-white/40">
-        STAGE {String(idx + 1).padStart(2, "0")}
+        STAGE {String(idx + 1).padStart(2, "0")}{boss ? " ⚠" : ""}
       </div>
+      {/* Hit flash overlay */}
+      {hitFlash > 0 && (
+        <div
+          key={`hit-${hitFlash}`}
+          className="absolute inset-0 pointer-events-none z-25"
+          style={{
+            background: "rgba(229,168,0,0.25)",
+            animation: "fadeOut 0.35s ease-out forwards",
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/* ============================================================
+   BOSS SPRITE — common pixel boss that pulses & glares.
+   Used in all scenes when `boss` prop is true (mid-round milestone).
+   ============================================================ */
+function BossSprite({ x = 260, y = 70 }) {
+  return (
+    <motion.g
+      initial={{ opacity: 0, y: y - 30 }}
+      animate={{ opacity: 1, y, x: [0, -6, 0] }}
+      transition={{
+        opacity: { duration: 0.5 },
+        y: { duration: 0.5 },
+        x: { duration: 1.2, repeat: Infinity, ease: "easeInOut" },
+      }}
+    >
+      {/* Aura */}
+      <motion.circle
+        cx={x + 22} cy={y + 24} r={32}
+        fill={AMBER} opacity={0.18}
+        animate={{ scale: [1, 1.25, 1] }}
+        transition={{ duration: 1.2, repeat: Infinity }}
+      />
+      {/* Body */}
+      <rect x={x} y={y + 8} width={44} height={36} fill={BONE} />
+      {/* Horns */}
+      <polygon points={`${x + 4},${y + 8} ${x + 10},${y - 4} ${x + 14},${y + 8}`} fill={BONE} />
+      <polygon points={`${x + 30},${y + 8} ${x + 34},${y - 4} ${x + 40},${y + 8}`} fill={BONE} />
+      {/* Glowing eyes */}
+      <motion.rect
+        x={x + 10} y={y + 20} width={6} height={5}
+        fill={AMBER}
+        animate={{ opacity: [1, 0.4, 1] }}
+        transition={{ duration: 0.8, repeat: Infinity }}
+      />
+      <motion.rect
+        x={x + 28} y={y + 20} width={6} height={5}
+        fill={AMBER}
+        animate={{ opacity: [1, 0.4, 1] }}
+        transition={{ duration: 0.8, repeat: Infinity, delay: 0.15 }}
+      />
+      {/* Mouth */}
+      <rect x={x + 12} y={y + 32} width={20} height={4} fill={SHADOW} />
+      <rect x={x + 14} y={y + 32} width={3} height={3} fill={BONE} />
+      <rect x={x + 22} y={y + 32} width={3} height={3} fill={BONE} />
+      <rect x={x + 28} y={y + 32} width={3} height={3} fill={BONE} />
+      {/* Crown */}
+      <rect x={x + 16} y={y - 2} width={12} height={4} fill={AMBER} />
+      <rect x={x + 18} y={y - 6} width={2} height={4} fill={AMBER} />
+      <rect x={x + 21} y={y - 6} width={2} height={4} fill={AMBER} />
+      <rect x={x + 24} y={y - 6} width={2} height={4} fill={AMBER} />
+      {/* Label */}
+      <text
+        x={x + 22}
+        y={y + 56}
+        textAnchor="middle"
+        fontFamily="VT323"
+        fontSize="14"
+        fill={AMBER}
+      >
+        ! BOSS !
+      </text>
+    </motion.g>
   );
 }
 
 /* ============================================================
    HISTOIRE — Pixel knight charging toward a castle, swinging sword
    ============================================================ */
-function KnightVsCastle() {
+function KnightVsCastle({ boss }) {
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
       {/* Sky */}
@@ -124,6 +198,7 @@ function KnightVsCastle() {
           transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.3 }}
         />
       ))}
+      {boss && <BossSprite x={150} y={50} />}
     </svg>
   );
 }
@@ -131,7 +206,7 @@ function KnightVsCastle() {
 /* ============================================================
    GEOGRAPHIE — Rotating wireframe globe with radar sweep
    ============================================================ */
-function GlobeRadar() {
+function GlobeRadar({ boss }) {
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
       <rect width="320" height="180" fill={SHADOW} />
@@ -199,6 +274,7 @@ function GlobeRadar() {
           />
         ))}
       </g>
+      {boss && <BossSprite x={40} y={40} />}
     </svg>
   );
 }
@@ -206,7 +282,7 @@ function GlobeRadar() {
 /* ============================================================
    SCIENCES — Atom with orbiting electrons in a lab dish
    ============================================================ */
-function AtomLab() {
+function AtomLab({ boss }) {
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
       <rect width="320" height="180" fill={SHADOW} />
@@ -273,6 +349,7 @@ function AtomLab() {
           <circle cx="50" cy="0" r="3" fill={BONE} transform="rotate(120)" />
         </motion.g>
       </g>
+      {boss && <BossSprite x={140} y={30} />}
     </svg>
   );
 }
@@ -280,7 +357,7 @@ function AtomLab() {
 /* ============================================================
    CINEMA — Rolling film reel + spotlight beam
    ============================================================ */
-function FilmReel() {
+function FilmReel({ boss }) {
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
       <rect width="320" height="180" fill={SHADOW} />
@@ -310,8 +387,8 @@ function FilmReel() {
       </motion.g>
       {/* Reel left */}
       <ReelWheel cx={48} cy={130} />
-      {/* Reel right */}
       <ReelWheel cx={272} cy={130} reverse />
+      {boss && <BossSprite x={140} y={30} />}
     </svg>
   );
 }
@@ -343,7 +420,7 @@ function ReelWheel({ cx, cy, reverse }) {
 /* ============================================================
    SPORT — Pixel boxer punching a heavy bag
    ============================================================ */
-function BoxerArena() {
+function BoxerArena({ boss }) {
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
       <rect width="320" height="180" fill={SHADOW} />
@@ -406,6 +483,7 @@ function BoxerArena() {
         <polygon points="220,98 224,105 220,112 216,105" fill={AMBER} />
         <polygon points="213,105 220,109 227,105 220,101" fill={AMBER} />
       </motion.g>
+      {boss && <BossSprite x={140} y={35} />}
     </svg>
   );
 }
@@ -413,7 +491,7 @@ function BoxerArena() {
 /* ============================================================
    MUSIQUE — Pixel equalizer + waveform
    ============================================================ */
-function Equalizer() {
+function Equalizer({ boss }) {
   const bars = 20;
   return (
     <svg viewBox="0 0 320 180" className="absolute inset-0 w-full h-full pixel-block" preserveAspectRatio="xMidYMid slice">
@@ -462,6 +540,7 @@ function Equalizer() {
         <circle cx="280" cy="90" r="6" fill={AMBER} />
         <rect x="278" y="65" width="4" height="4" fill={SHADOW} />
       </motion.g>
+      {boss && <BossSprite x={130} y={20} />}
     </svg>
   );
 }
