@@ -6,10 +6,10 @@ import ArenaBackground from "../components/ArenaBackground";
 import { toast } from "sonner";
 
 const typeMeta = {
-  win: { icon: TrendingUp, color: "#39FF14" },
-  loss: { icon: TrendingDown, color: "#FF3333" },
-  deposit: { icon: ArrowDownToLine, color: "#00FFFF" },
-  entry: { icon: Trophy, color: "#FFD700" },
+  win: { icon: TrendingUp, color: "#5DD66E" },
+  loss: { icon: TrendingDown, color: "#E67373" },
+  deposit: { icon: ArrowDownToLine, color: "#E5A800" },
+  entry: { icon: Trophy, color: "#E5A800" },
 };
 
 export default function Wallet() {
@@ -20,7 +20,7 @@ export default function Wallet() {
       <ArenaBackground />
       <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-12">
         <div className="mb-10">
-          <div className="text-xs uppercase tracking-widest text-[#39FF14] mb-2">// VAULT</div>
+          <div className="text-xs uppercase tracking-widest text-white/40 mb-2">// VAULT</div>
           <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl">
             {t.wallet.title}
           </h1>
@@ -30,19 +30,19 @@ export default function Wallet() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl p-8 lg:p-12 mb-10 border-2 border-[#FFD700]/40 relative overflow-hidden"
-          style={{ background: "linear-gradient(135deg, #1a1303 0%, #05050A 60%)" }}
+          className="rounded-3xl p-8 lg:p-12 mb-10 border-2 relative overflow-hidden"
+          style={{ borderColor: "rgba(229,168,0,0.35)", background: "linear-gradient(135deg, #161108 0%, #05050A 60%)" }}
         >
-          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-[#FFD700]/20 blur-[100px]" />
-          <div className="scanline-bar opacity-60" />
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-[#E5A800]/12 blur-[100px]" />
+          <div className="scanline-bar opacity-40" />
           <div className="relative grid lg:grid-cols-[1fr_auto] gap-8 items-center">
             <div>
-              <div className="text-xs uppercase tracking-widest text-[#FFD700] mb-2">{t.wallet.balance}</div>
+              <div className="text-xs uppercase tracking-widest mb-2" style={{ color: "#E5A800" }}>{t.wallet.balance}</div>
               <div className="flex items-baseline gap-3">
-                <span className="font-arcade text-7xl lg:text-8xl text-[#FFD700] text-glow-yellow leading-none">
+                <span className="font-arcade text-7xl lg:text-8xl leading-none" style={{ color: "#E5A800", textShadow: "0 0 30px rgba(229,168,0,0.5)" }}>
                   {coins.toLocaleString()}
                 </span>
-                <Coins className="w-10 h-10 text-[#FFD700]" />
+                <Coins className="w-10 h-10" style={{ color: "#E5A800" }} />
               </div>
               <div className="mt-2 text-sm text-slate-400">≈ {(coins * 0.01).toFixed(2)} USD (demo)</div>
             </div>
@@ -53,14 +53,16 @@ export default function Wallet() {
                   toast.success("+1000 jetons crédités (demo)");
                 }}
                 data-testid="wallet-deposit-btn"
-                className="px-6 py-4 bg-[#39FF14] text-black font-bold uppercase tracking-widest rounded-md hover:shadow-[0_0_24px_rgba(57,255,20,0.6)] transition flex items-center gap-2"
+                className="px-6 py-4 text-black font-bold uppercase tracking-widest rounded-md hover:shadow-[0_0_24px_rgba(229,168,0,0.5)] transition flex items-center gap-2"
+                style={{ background: "#E5A800" }}
               >
                 <ArrowDownToLine className="w-5 h-5" /> {t.wallet.deposit}
               </button>
               <button
                 onClick={() => toast.info("Démo — retrait simulé")}
                 data-testid="wallet-withdraw-btn"
-                className="px-6 py-4 border border-[#FFD700]/50 text-[#FFD700] font-bold uppercase tracking-widest rounded-md hover:bg-[#FFD700]/10 transition flex items-center gap-2"
+                className="px-6 py-4 border text-white font-bold uppercase tracking-widest rounded-md hover:bg-white/5 transition flex items-center gap-2"
+                style={{ borderColor: "rgba(229,168,0,0.5)" }}
               >
                 <ArrowUpFromLine className="w-5 h-5" /> {t.wallet.withdraw}
               </button>
@@ -71,9 +73,9 @@ export default function Wallet() {
         {/* Quick stats */}
         <div className="grid sm:grid-cols-3 gap-4 mb-10">
           {[
-            { icon: TrendingUp, label: "Gains 30j", value: "+18,450", color: "#39FF14" },
-            { icon: TrendingDown, label: "Pertes 30j", value: "-4,200", color: "#FF3333" },
-            { icon: WalletIcon, label: "ROI", value: "+76%", color: "#FFD700" },
+            { icon: TrendingUp, label: "Gains 30j", value: "+18,450", color: "#5DD66E" },
+            { icon: TrendingDown, label: "Pertes 30j", value: "-4,200", color: "#E67373" },
+            { icon: WalletIcon, label: "ROI", value: "+76%", color: "#E5A800" },
           ].map((s) => {
             const Icon = s.icon;
             return (
@@ -119,7 +121,7 @@ export default function Wallet() {
                 <div className="text-right text-xs text-slate-400 font-arcade text-sm">{tx.date}</div>
                 <div
                   className="text-right font-arcade text-xl"
-                  style={{ color: tx.amount > 0 ? "#39FF14" : "#FF3333" }}
+                  style={{ color: tx.amount > 0 ? "#5DD66E" : "#E67373" }}
                 >
                   {tx.amount > 0 ? "+" : ""}{tx.amount.toLocaleString()}
                 </div>

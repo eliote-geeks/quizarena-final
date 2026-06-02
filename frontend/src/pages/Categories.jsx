@@ -4,6 +4,9 @@ import { useApp } from "../context/AppContext";
 import { CATEGORIES } from "../data/mockData";
 import { ArrowRight } from "lucide-react";
 import ArenaBackground from "../components/ArenaBackground";
+import PixelScene from "../components/PixelScene";
+
+const AMBER = "#E5A800";
 
 export default function Categories() {
   const { t, lang } = useApp();
@@ -13,7 +16,7 @@ export default function Categories() {
       <ArenaBackground />
       <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-14">
         <div className="mb-12 text-center">
-          <div className="text-xs uppercase tracking-widest text-[#FF007F] mb-3">// SELECT</div>
+          <div className="text-xs uppercase tracking-widest text-white/40 mb-3">// SELECT_STAGE</div>
           <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl">
             {t.categories.title}
           </h1>
@@ -26,77 +29,50 @@ export default function Categories() {
             return (
               <motion.div
                 key={c.id}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.08 }}
+                transition={{ delay: i * 0.06 }}
               >
                 <Link
                   to={`/play/${c.id}`}
                   data-testid={`category-${c.id}`}
-                  className="group block relative overflow-hidden rounded-2xl border border-white/10 hover:border-white/40 transition-all bg-[#0B0B14] h-[280px]"
-                  style={{ boxShadow: `inset 0 0 0 1px ${c.accent}20` }}
+                  className="group block relative overflow-hidden rounded-2xl border border-white/10 hover:border-[#E5A800]/50 transition-all bg-[#0B0B14]"
                 >
-                  {/* Gradient background per category */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${c.bgClass}`} />
-                  {/* grid overlay */}
-                  <div
-                    className="absolute inset-0 opacity-30"
-                    style={{
-                      backgroundImage: `linear-gradient(to right, ${c.accent}22 1px, transparent 1px), linear-gradient(to bottom, ${c.accent}22 1px, transparent 1px)`,
-                      backgroundSize: "44px 44px",
-                    }}
-                  />
-                  {/* scanlines for retro categories */}
-                  {(c.id === "histoire" || c.id === "musique") && (
-                    <div className="absolute inset-0 scanlines opacity-50" />
-                  )}
-                  {/* glow blob */}
-                  <div
-                    className="absolute -right-20 -bottom-20 w-60 h-60 rounded-full blur-3xl opacity-40 group-hover:opacity-70 transition-opacity"
-                    style={{ background: c.accent }}
-                  />
+                  {/* Pixel scene preview */}
+                  <div className="relative">
+                    <PixelScene category={c.id} idx={i} />
+                  </div>
 
-                  <div className="relative h-full p-6 flex flex-col justify-between">
-                    <div className="flex items-start justify-between">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3">
                       <div
-                        className="w-14 h-14 rounded-xl flex items-center justify-center group-hover:rotate-6 transition-transform"
-                        style={{
-                          background: `${c.accent}15`,
-                          border: `1px solid ${c.accent}55`,
-                          color: c.accent,
-                        }}
+                        className="w-11 h-11 rounded-lg flex items-center justify-center border"
+                        style={{ background: `${AMBER}10`, borderColor: `${AMBER}40`, color: AMBER }}
                       >
-                        <Icon className="w-7 h-7" />
+                        <Icon className="w-5 h-5" />
                       </div>
-                      <div
-                        className="font-arcade text-xl"
-                        style={{ color: c.accent }}
-                      >
+                      <div className="font-arcade text-lg" style={{ color: AMBER }}>
                         {String(i + 1).padStart(2, "0")}
                       </div>
                     </div>
 
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">
-                        {c.style}
+                    <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">
+                      {c.style[lang]}
+                    </div>
+                    <h3 className="font-display font-black uppercase text-2xl tracking-tighter mb-2 text-white">
+                      {c.name[lang]}
+                    </h3>
+                    <p className="text-sm text-slate-400 mb-4">{c.description[lang]}</p>
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <div className="text-xs uppercase tracking-widest text-slate-500">
+                        {c.questions} {t.categories.questions}
                       </div>
-                      <h3
-                        className="font-display font-black uppercase text-3xl tracking-tighter mb-2"
-                        style={{ color: c.accent }}
+                      <div
+                        className="inline-flex items-center gap-1 text-xs uppercase tracking-widest font-bold"
+                        style={{ color: AMBER }}
                       >
-                        {c.name[lang]}
-                      </h3>
-                      <p className="text-sm text-slate-300/80 mb-4">{c.description[lang]}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs uppercase tracking-widest text-slate-500">
-                          {c.questions} {t.categories.questions}
-                        </div>
-                        <div
-                          className="inline-flex items-center gap-1 text-xs uppercase tracking-widest font-bold"
-                          style={{ color: c.accent }}
-                        >
-                          {t.categories.pick} <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                        </div>
+                        {t.categories.pick}
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
                   </div>

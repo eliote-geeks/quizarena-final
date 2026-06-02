@@ -19,7 +19,7 @@ export default function Leaderboard() {
       <ArenaBackground />
       <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-12">
         <div className="mb-10">
-          <div className="text-xs uppercase tracking-widest text-[#FFD700] mb-2">// HALL OF FAME</div>
+          <div className="text-xs uppercase tracking-widest text-white/40 mb-2">// HALL_OF_FAME</div>
           <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl">
             {t.leaderboard.title}
           </h1>
@@ -35,9 +35,10 @@ export default function Leaderboard() {
               data-testid={`lb-tab-${tb.id}`}
               className={`px-4 py-2 text-xs uppercase tracking-widest font-bold rounded-md transition ${
                 tab === tb.id
-                  ? "bg-[#FFD700] text-black"
+                  ? "text-black"
                   : "bg-[#0B0B14] border border-white/10 text-slate-300 hover:border-white/30"
               }`}
+              style={tab === tb.id ? { background: "#E5A800" } : {}}
             >
               {t.leaderboard[tb.labelKey]}
             </button>
@@ -49,7 +50,8 @@ export default function Leaderboard() {
           {[1, 0, 2].map((idx) => {
             const p = TOP_PLAYERS[idx];
             const rank = idx + 1;
-            const colors = { 0: "#FFD700", 1: "#C0C0C0", 2: "#CD7F32" };
+            // Subtle gold/silver/bronze - kept since semantic for podium
+            const colors = { 0: "#E5A800", 1: "#9aa0a6", 2: "#a37247" };
             const heights = { 0: "h-44", 1: "h-32", 2: "h-24" };
             return (
               <motion.div
@@ -61,7 +63,7 @@ export default function Leaderboard() {
               >
                 <div className="relative mb-3">
                   {rank === 1 && (
-                    <Crown className="absolute -top-7 left-1/2 -translate-x-1/2 w-7 h-7 text-[#FFD700]" />
+                    <Crown className="absolute -top-7 left-1/2 -translate-x-1/2 w-7 h-7" style={{ color: "#E5A800" }} />
                   )}
                   <div
                     className="w-20 h-20 rounded-2xl flex items-center justify-center font-display font-black text-2xl border-2"
@@ -76,7 +78,7 @@ export default function Leaderboard() {
                 </div>
                 <div
                   className={`w-full ${heights[idx]} rounded-t-xl flex items-center justify-center font-display font-black text-4xl`}
-                  style={{ background: `${colors[idx]}22`, borderTop: `4px solid ${colors[idx]}`, color: colors[idx] }}
+                  style={{ background: `${colors[idx]}1a`, borderTop: `4px solid ${colors[idx]}`, color: colors[idx] }}
                 >
                   #{rank}
                 </div>
@@ -101,7 +103,7 @@ export default function Leaderboard() {
               data-testid={`lb-row-${i + 1}`}
               className="grid grid-cols-[60px_1fr_100px_100px_140px_80px] gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/[0.02] transition items-center"
             >
-              <div className="font-arcade text-2xl" style={{ color: i < 3 ? "#FFD700" : "#606070" }}>
+              <div className="font-arcade text-2xl" style={{ color: i < 3 ? "#E5A800" : "#606070" }}>
                 {i + 1}
               </div>
               <div className="flex items-center gap-3 min-w-0">
@@ -117,14 +119,14 @@ export default function Leaderboard() {
               </div>
               <div className="text-right font-arcade text-xl text-white">{p.wins}</div>
               <div className="text-right">
-                <span className="font-medium" style={{ color: p.winRate >= 70 ? "#39FF14" : p.winRate >= 60 ? "#FFD700" : "#FF3333" }}>
+                <span className="font-medium text-white/80">
                   {p.winRate}%
                 </span>
               </div>
-              <div className="text-right font-arcade text-xl text-[#FFD700]">{p.earnings.toLocaleString()}</div>
+              <div className="text-right font-arcade text-xl" style={{ color: "#E5A800" }}>{p.earnings.toLocaleString()}</div>
               <div className="text-right">
-                <span className="inline-flex items-center gap-1 text-[#FF3333]">
-                  <Flame className="w-3.5 h-3.5" /> {p.streak}
+                <span className="inline-flex items-center gap-1 text-white/60">
+                  <Flame className="w-3.5 h-3.5" style={{ color: "#E5A800" }} /> {p.streak}
                 </span>
               </div>
             </div>

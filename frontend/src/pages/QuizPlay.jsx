@@ -4,9 +4,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { QUESTIONS, getCategory } from "../data/mockData";
 import { toast } from "sonner";
+import PixelScene from "../components/PixelScene";
 import { Heart, Timer, Zap, Trophy, X, Check, ArrowRight, Coins } from "lucide-react";
 
 const TIME_PER_Q = 15;
+const ROUND_SIZE = 10;
+const AMBER = "#E5A800";
+
+function pickRandom(arr, n) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy.slice(0, n);
+}
 
 export default function QuizPlay() {
   const { categoryId } = useParams();
@@ -14,19 +26,21 @@ export default function QuizPlay() {
   const { t, lang, addCoins } = useApp();
 
   const cat = getCategory(categoryId);
-  const list = useMemo(() => QUESTIONS[categoryId] || [], [categoryId]);
+  const list = useMemo(
+    () => pickRandom(QUESTIONS[categoryId] || [], ROUND_SIZE),
+    [categoryId]
+  );
 
-  const [phase, setPhase] = useState("ready"); // ready -> playing -> done
+  const [phase, setPhase] = useState("ready");
   const [countdown, setCountdown] = useState(3);
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [time, setTime] = useState(TIME_PER_Q);
   const [pickedIdx, setPickedIdx] = useState(null);
-  const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong' | null
+  const [feedback, setFeedback] = useState(null);
   const [lives, setLives] = useState(3);
   const intervalRef = useRef(null);
 
-  // Ready countdown
   useEffect(() => {
     if (phase !== "ready") return;
     if (countdown <= 0) {
@@ -37,7 +51,6 @@ export default function QuizPlay() {
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
-  // Question timer
   useEffect(() => {
     if (phase !== "playing") return;
     setTime(TIME_PER_Q);
@@ -80,11 +93,8 @@ export default function QuizPlay() {
     setFeedback("wrong");
     setLives((l) => Math.max(0, l - 1));
     setTimeout(() => {
-      if (lives - 1 <= 0) {
-        finalize();
-      } else {
-        goNext();
-      }
+      if (lives - 1 <= 0) finalize();
+      else goNext();
     }, 1100);
   };
 
@@ -101,11 +111,8 @@ export default function QuizPlay() {
       setLives((l) => Math.max(0, l - 1));
     }
     setTimeout(() => {
-      if (!correct && lives - 1 <= 0) {
-        finalize();
-      } else {
-        goNext();
-      }
+      if (!correct && lives - 1 <= 0) finalize();
+      else goNext();
     }, 1200);
   };
 
@@ -114,47 +121,33 @@ export default function QuizPlay() {
       <div className="min-h-screen flex items-center justify-center text-center">
         <div>
           <p>Catégorie introuvable.</p>
-          <Link to="/categories" className="text-[#00FFFF] underline">Retour</Link>
+          <Link to="/categories" className="text-amber-400 underline">Retour</Link>
         </div>
       </div>
     );
   }
 
-  const accent = cat.accent;
   const q = list[idx];
-
   const timePct = (time / TIME_PER_Q) * 100;
 
   return (
-    <div
-      className={`relative min-h-screen overflow-hidden ${feedback === "wrong" ? "shake" : ""}`}
-      style={{ background: `radial-gradient(ellipse at center, ${accent}10, #05050A 60%)` }}
-    >
-      {/* Arena Grid backdrop */}
+    <div className={`relative min-h-screen overflow-hidden bg-[#05050A] ${feedback === "wrong" ? "shake" : ""}`}>
+      {/* Subtle amber glow ambience */}
       <div
-        className="absolute inset-0 opacity-50"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${accent}18 1px, transparent 1px), linear-gradient(to bottom, ${accent}18 1px, transparent 1px)`,
-          backgroundSize: "70px 70px",
-        }}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[160px] opacity-10 pointer-events-none"
+        style={{ background: AMBER }}
       />
-      <div className="absolute inset-0 scanlines opacity-40 pointer-events-none" />
-      {/* Animated horizon line */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none"
+        className="absolute inset-0 opacity-20 pointer-events-none"
         style={{
-          background: `linear-gradient(to top, ${accent}30, transparent)`,
+          backgroundImage: `linear-gradient(to right, ${AMBER}11 1px, transparent 1px), linear-gradient(to bottom, ${AMBER}11 1px, transparent 1px)`,
+          backgroundSize: "80px 80px",
         }}
-      />
-      {/* Big accent blob */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[150px] opacity-20 pointer-events-none"
-        style={{ background: accent }}
       />
 
       <div className="relative z-10 max-w-5xl mx-auto px-6 py-8">
         {/* HUD top */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigate("/lobby")}
             data-testid="quit-quiz-btn"
@@ -163,39 +156,35 @@ export default function QuizPlay() {
             <X className="w-4 h-4" /> {t.common.quit}
           </button>
 
-          {/* Lives */}
           <div className="flex items-center gap-1.5">
             {[0, 1, 2].map((i) => (
               <Heart
                 key={i}
-                className={`w-6 h-6 ${i < lives ? "text-[#FF3333] fill-[#FF3333]" : "text-white/15"}`}
-                style={{ filter: i < lives ? "drop-shadow(0 0 8px #FF3333)" : "none" }}
+                className={`w-6 h-6 ${i < lives ? "text-white fill-white" : "text-white/15"}`}
               />
             ))}
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">{t.quiz.score}</div>
-              <div
-                data-testid="quiz-score-display"
-                className="font-arcade text-3xl text-glow-yellow"
-                style={{ color: "#FFD700" }}
-              >
-                {String(score).padStart(2, "0")}
-              </div>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-widest text-slate-500">{t.quiz.score}</div>
+            <div
+              data-testid="quiz-score-display"
+              className="font-arcade text-3xl"
+              style={{ color: AMBER }}
+            >
+              {String(score).padStart(2, "0")}
             </div>
           </div>
         </div>
 
         {/* Category label */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border" style={{ borderColor: `${accent}66`, background: `${accent}10` }}>
-            <cat.icon className="w-4 h-4" style={{ color: accent }} />
-            <span className="font-display font-bold uppercase tracking-tight text-sm" style={{ color: accent }}>
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-white/10">
+            <cat.icon className="w-4 h-4" style={{ color: AMBER }} />
+            <span className="font-display font-bold uppercase tracking-tight text-sm text-white">
               {cat.name[lang]}
             </span>
-            <span className="text-xs text-slate-500">— {cat.style}</span>
+            <span className="text-xs text-slate-500">— {cat.style[lang]}</span>
           </div>
         </div>
 
@@ -210,8 +199,8 @@ export default function QuizPlay() {
             >
               <div className="text-xs uppercase tracking-widest text-slate-400 mb-4">{t.quiz.ready}</div>
               <div
-                className="font-arcade text-[180px] leading-none text-glow-yellow"
-                style={{ color: countdown > 0 ? accent : "#FFD700" }}
+                className="font-arcade text-[180px] leading-none"
+                style={{ color: AMBER, textShadow: `0 0 30px ${AMBER}80` }}
               >
                 {countdown > 0 ? countdown : t.quiz.go}
               </div>
@@ -226,8 +215,13 @@ export default function QuizPlay() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.35 }}
             >
-              {/* Timer bar (HUD) */}
-              <div className="mb-6">
+              {/* PIXEL ART GAME SCENE */}
+              <div className="mb-5">
+                <PixelScene category={categoryId} idx={idx} />
+              </div>
+
+              {/* Timer bar */}
+              <div className="mb-5">
                 <div className="flex items-center justify-between mb-2 text-xs uppercase tracking-widest text-slate-400">
                   <div className="flex items-center gap-2">
                     <Timer className="w-3.5 h-3.5" />
@@ -236,66 +230,59 @@ export default function QuizPlay() {
                   <div>
                     {t.quiz.question} {idx + 1}/{list.length}
                   </div>
+                  <div
+                    data-testid="quiz-timer-display"
+                    className="font-arcade text-2xl"
+                    style={{ color: time < 5 ? "#FF5555" : AMBER }}
+                  >
+                    {String(time).padStart(2, "0")}
+                  </div>
                 </div>
-                <div className="h-3 rounded-sm bg-white/5 border border-white/10 overflow-hidden">
+                <div className="h-2 rounded-sm bg-white/5 border border-white/10 overflow-hidden">
                   <motion.div
                     className="h-full"
                     style={{
                       width: `${timePct}%`,
-                      background: time < 5 ? "#FF3333" : accent,
-                      boxShadow: `0 0 12px ${time < 5 ? "#FF3333" : accent}`,
+                      background: time < 5 ? "#FF5555" : AMBER,
                     }}
                     animate={{ opacity: time < 5 ? [1, 0.5, 1] : 1 }}
                     transition={{ duration: 0.5, repeat: time < 5 ? Infinity : 0 }}
                   />
                 </div>
-                <div
-                  data-testid="quiz-timer-display"
-                  className="text-center mt-2 font-arcade text-4xl"
-                  style={{ color: time < 5 ? "#FF3333" : accent }}
-                >
-                  {String(time).padStart(2, "0")}
-                </div>
               </div>
 
-              {/* Question card */}
+              {/* Question card — dialogue-box style */}
               <div
-                className="rounded-2xl p-8 border-2 mb-6 relative overflow-hidden"
-                style={{
-                  borderColor: `${accent}55`,
-                  background: "rgba(11, 11, 20, 0.85)",
-                  backdropFilter: "blur(12px)",
-                  boxShadow: `0 0 36px ${accent}30, inset 0 0 24px ${accent}10`,
-                }}
+                className="rounded-xl p-6 sm:p-8 border-2 mb-5 relative bg-[#0B0B14]"
+                style={{ borderColor: `${AMBER}55` }}
               >
-                <div className="scanline-bar" />
-                <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-arcade text-base">
-                  &gt;_ QUESTION {String(idx + 1).padStart(2, "0")}
+                <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-arcade text-base" style={{ color: AMBER }}>
+                  &gt;_ DIALOGUE.BOX [{String(idx + 1).padStart(2, "0")}/{list.length}]
                 </div>
-                <h2 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl tracking-tight text-white">
+                <h2 className="font-display font-bold text-xl sm:text-2xl lg:text-3xl tracking-tight text-white leading-snug">
                   {q.q[lang]}
                 </h2>
+                {/* dialogue triangle */}
+                <div className="absolute -bottom-2 left-8 w-3 h-3 rotate-45 bg-[#0B0B14] border-r-2 border-b-2" style={{ borderColor: `${AMBER}55` }} />
               </div>
 
               {/* Options */}
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-3">
                 {q.options.map((opt, i) => {
                   const isPicked = pickedIdx === i;
                   const isCorrect = i === q.answer;
                   const reveal = pickedIdx !== null;
-                  let bd = "rgba(255,255,255,0.1)";
-                  let bg = "rgba(18,18,30,0.8)";
-                  let glow = "";
+                  let bd = "rgba(255,255,255,0.12)";
+                  let bg = "#0B0B14";
+                  let txt = "#fff";
                   if (reveal && isCorrect) {
-                    bd = "#39FF14";
-                    bg = "rgba(57,255,20,0.12)";
-                    glow = "0 0 28px rgba(57,255,20,0.5)";
+                    bd = "#5DD66E";
+                    bg = "rgba(93,214,110,0.10)";
+                    txt = "#5DD66E";
                   } else if (reveal && isPicked && !isCorrect) {
-                    bd = "#FF3333";
-                    bg = "rgba(255,51,51,0.12)";
-                    glow = "0 0 28px rgba(255,51,51,0.5)";
-                  } else if (!reveal) {
-                    bd = `${accent}40`;
+                    bd = "#FF5555";
+                    bg = "rgba(255,85,85,0.10)";
+                    txt = "#FF5555";
                   }
 
                   return (
@@ -304,24 +291,24 @@ export default function QuizPlay() {
                       onClick={() => handlePick(i)}
                       data-testid={`quiz-option-${["a", "b", "c", "d"][i]}`}
                       disabled={pickedIdx !== null}
-                      whileHover={pickedIdx === null ? { scale: 1.02 } : {}}
-                      whileTap={pickedIdx === null ? { scale: 0.98 } : {}}
-                      className="text-left p-5 rounded-xl border-2 transition-all relative"
-                      style={{ borderColor: bd, background: bg, boxShadow: glow }}
+                      whileHover={pickedIdx === null ? { scale: 1.01, borderColor: AMBER } : {}}
+                      whileTap={pickedIdx === null ? { scale: 0.99 } : {}}
+                      className="text-left p-4 rounded-lg border-2 transition-colors relative"
+                      style={{ borderColor: bd, background: bg }}
                     >
                       <div className="flex items-center gap-4">
                         <div
-                          className="w-10 h-10 rounded-md flex items-center justify-center font-pixel text-xs flex-shrink-0"
-                          style={{ background: `${accent}25`, color: accent }}
+                          className="w-9 h-9 rounded-md flex items-center justify-center font-pixel text-[10px] flex-shrink-0 border"
+                          style={{ background: `${AMBER}15`, color: AMBER, borderColor: `${AMBER}50` }}
                         >
                           {["A", "B", "C", "D"][i]}
                         </div>
-                        <div className="font-medium text-white text-base">{opt}</div>
+                        <div className="font-medium text-base" style={{ color: txt }}>{opt}</div>
                         {reveal && isCorrect && (
-                          <Check className="ml-auto w-6 h-6 text-[#39FF14]" />
+                          <Check className="ml-auto w-5 h-5 text-[#5DD66E]" />
                         )}
                         {reveal && isPicked && !isCorrect && (
-                          <X className="ml-auto w-6 h-6 text-[#FF3333]" />
+                          <X className="ml-auto w-5 h-5 text-[#FF5555]" />
                         )}
                       </div>
                     </motion.button>
@@ -341,8 +328,8 @@ export default function QuizPlay() {
                     <div
                       className="font-display font-black uppercase text-6xl sm:text-8xl tracking-tighter"
                       style={{
-                        color: feedback === "correct" ? "#39FF14" : "#FF3333",
-                        textShadow: `0 0 30px ${feedback === "correct" ? "#39FF14" : "#FF3333"}`,
+                        color: feedback === "correct" ? "#5DD66E" : "#FF5555",
+                        textShadow: `0 0 30px ${feedback === "correct" ? "#5DD66E" : "#FF5555"}`,
                       }}
                     >
                       {feedback === "correct" ? t.quiz.correct : t.quiz.wrong}
@@ -360,29 +347,33 @@ export default function QuizPlay() {
               animate={{ opacity: 1, scale: 1 }}
               className="py-16 text-center"
             >
-              <Trophy className="w-20 h-20 mx-auto mb-4 text-[#FFD700]" />
+              <Trophy className="w-20 h-20 mx-auto mb-4" style={{ color: AMBER }} />
               <div className="text-xs uppercase tracking-widest text-slate-400 mb-2">GAME COMPLETE</div>
               <h2 className="font-display font-black text-5xl uppercase tracking-tighter mb-6">
                 {t.quiz.finalScore}
               </h2>
-              <div className="font-arcade text-[140px] leading-none text-[#FFD700] text-glow-yellow mb-2">
+              <div
+                className="font-arcade text-[140px] leading-none mb-2"
+                style={{ color: AMBER, textShadow: `0 0 30px ${AMBER}80` }}
+              >
                 {score}/{list.length}
               </div>
               <div className="text-slate-400 mb-8">
-                {t.quiz.rewardEarned}: <span className="font-arcade text-2xl text-[#39FF14]">+{(score * 18 + lives * 80).toLocaleString()}</span>
-                <Coins className="inline w-5 h-5 text-[#FFD700] ml-1" />
+                {t.quiz.rewardEarned}: <span className="font-arcade text-2xl" style={{ color: AMBER }}>+{(score * 18 + lives * 80).toLocaleString()}</span>
+                <Coins className="inline w-5 h-5 ml-1" style={{ color: AMBER }} />
               </div>
               <div className="flex flex-wrap justify-center gap-3">
                 <button
                   onClick={() => window.location.reload()}
                   data-testid="play-again-btn"
-                  className="px-6 py-3 bg-[#FFD700] text-black font-bold uppercase tracking-wider rounded-md hover:shadow-[0_0_24px_rgba(255,215,0,0.7)] transition flex items-center gap-2"
+                  className="px-6 py-3 font-bold uppercase tracking-wider rounded-md transition flex items-center gap-2"
+                  style={{ background: AMBER, color: "#000" }}
                 >
                   <Zap className="w-4 h-4" /> {t.quiz.playAgain}
                 </button>
                 <button
                   onClick={() => navigate("/lobby")}
-                  className="px-6 py-3 border border-[#00FFFF] text-[#00FFFF] font-bold uppercase tracking-wider rounded-md hover:bg-[#00FFFF]/10 transition flex items-center gap-2"
+                  className="px-6 py-3 border border-white/20 text-white font-bold uppercase tracking-wider rounded-md hover:bg-white/5 transition flex items-center gap-2"
                 >
                   {t.quiz.backToLobby} <ArrowRight className="w-4 h-4" />
                 </button>

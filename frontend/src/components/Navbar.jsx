@@ -25,11 +25,11 @@ export default function Navbar() {
           className="flex items-center gap-2 group"
           data-testid="nav-home-link"
         >
-          <div className="w-9 h-9 rounded-md bg-[#FFD700] text-black flex items-center justify-center font-pixel text-[10px] group-hover:rotate-6 transition-transform">
+          <div className="w-9 h-9 rounded-md text-black flex items-center justify-center font-pixel text-[10px] group-hover:rotate-6 transition-transform" style={{ background: "#E5A800" }}>
             QA
           </div>
           <span className="font-display font-black uppercase tracking-tight text-lg">
-            Quiz<span className="text-neon-cyan">Arena</span>
+            Quiz<span style={{ color: "#E5A800" }}>Arena</span>
           </span>
         </button>
 
@@ -42,7 +42,7 @@ export default function Navbar() {
               className={({ isActive }) =>
                 `px-4 py-2 text-sm font-medium uppercase tracking-wider transition-colors rounded-md ${
                   isActive
-                    ? "text-[#FFD700] bg-white/5"
+                    ? "text-[#E5A800] bg-white/5"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`
               }
@@ -54,18 +54,19 @@ export default function Navbar() {
 
         <div className="flex items-center gap-3">
           <div
-            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-md bg-black/40 border border-[#FFD700]/30"
+            className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-md bg-black/40 border"
             data-testid="wallet-balance-display"
+            style={{ borderColor: "rgba(229,168,0,0.3)" }}
           >
-            <Coins className="w-4 h-4 text-[#FFD700]" />
-            <span className="font-arcade text-[#FFD700] text-xl leading-none">
+            <Coins className="w-4 h-4" style={{ color: "#E5A800" }} />
+            <span className="font-arcade text-xl leading-none" style={{ color: "#E5A800" }}>
               {coins.toLocaleString()}
             </span>
           </div>
           <button
             onClick={toggleLang}
             data-testid="lang-toggle-btn"
-            className="px-3 py-2 rounded-md bg-black/40 border border-white/10 hover:border-[#00FFFF]/50 transition-colors flex items-center gap-2 text-xs uppercase tracking-widest font-medium"
+            className="px-3 py-2 rounded-md bg-black/40 border border-white/10 hover:border-[#E5A800]/50 transition-colors flex items-center gap-2 text-xs uppercase tracking-widest font-medium"
           >
             <Globe className="w-4 h-4" />
             {lang.toUpperCase()}
@@ -89,7 +90,7 @@ export default function Navbar() {
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `px-4 py-3 text-sm uppercase tracking-wider rounded-md ${
-                  isActive ? "text-[#FFD700] bg-white/5" : "text-slate-300 hover:bg-white/5"
+                  isActive ? "text-[#E5A800] bg-white/5" : "text-slate-300 hover:bg-white/5"
                 }`
               }
             >

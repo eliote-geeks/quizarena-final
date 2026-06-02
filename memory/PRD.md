@@ -37,6 +37,18 @@
 - data-testid sur tous les éléments interactifs majeurs
 - Toaster sonner pour notifications de gain/dépôt
 
+## Update 2026-02-14 — User feedback v1
+- **Palette sobrisée** : retrait du rainbow (pink/green/purple/cyan). Toute l'UI utilise désormais AMBRE (#E5A800) + blanc + noir + gris. Le vert/rouge n'est conservé que pour les indicateurs sémantiques gain/perte.
+- **Animations vidéo-ludiques intégrées** dans chaque quiz via le nouveau composant `PixelScene` (SVG pixel-art + framer-motion). 6 scènes uniques :
+  - Histoire → chevalier pixel chargeant un château, épée animée
+  - Géographie → globe filaire avec radar sweep et continents pixelisés
+  - Sciences → atome avec électrons orbitant + bécher bouillonnant
+  - Cinéma → pellicule défilante + 2 bobines qui tournent + projecteur
+  - Sport → boxeur frappant un sac de frappe (impact stars)
+  - Musique → équaliseur + vinyle qui tourne + waveform
+- **Banque de questions étoffée** : 50 questions par catégorie (300 au total) dans `/app/frontend/src/data/questions.js`. Chaque session pioche 10 au hasard.
+- Question affichée dans une **dialogue box** style RPG avec triangle en bas, sous la scène animée.
+
 ## Next Action Items
 - P1: Brancher un vrai backend (FastAPI + MongoDB) avec auth + matchmaking
 - P1: Vrai engine duel temps réel (WebSocket)
