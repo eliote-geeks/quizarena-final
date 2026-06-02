@@ -1,0 +1,237 @@
+{
+  "project_name": "QuizArena",
+  "domain": "SaaS Betting / Gamified Quiz Platform",
+  "theme_and_archetype": {
+    "theme": "Dark",
+    "archetype": "7 (Electric & Neon)",
+    "description": "High-energy gamified platform mixing retro arcade nostalgia with neon cyberpunk futurism. Designed to feel like a high-stakes esports arena or arcade cabinet."
+  },
+  "typography": {
+    "fonts": {
+      "primary_display": {
+        "family": "Unbounded, sans-serif",
+        "usage": "Main H1/H2 headings, section titles, high-impact marketing copy. Gives a modern esports/Web3 gaming vibe.",
+        "weights": ["400", "700", "900"]
+      },
+      "secondary_retro": {
+        "family": "VT323, monospace",
+        "usage": "Timers, HUD overlays, score counters, token balances, and 'terminal/arcade' specific moments.",
+        "weights": ["400"]
+      },
+      "body": {
+        "family": "Outfit, sans-serif",
+        "usage": "Clean body text, descriptions, functional dashboard data, standard buttons.",
+        "weights": ["300", "400", "500", "600"]
+      }
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter uppercase",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight uppercase",
+      "h3": "text-xl sm:text-2xl",
+      "hud_counter": "text-4xl sm:text-5xl font-['VT323'] text-neon-cyan drop-shadow-[0_0_8px_rgba(0,255,255,0.8)]",
+      "body_main": "text-base leading-relaxed text-slate-300",
+      "body_small": "text-sm text-slate-400 uppercase tracking-widest"
+    }
+  },
+  "colors": {
+    "backgrounds": {
+      "base": "#05050A",
+      "surface_primary": "#0B0B14",
+      "surface_secondary": "#12121E",
+      "glass": "rgba(11, 11, 20, 0.7)"
+    },
+    "accents": {
+      "cyber_yellow": "#FFD700",
+      "hot_pink": "#FF007F",
+      "neon_cyan": "#00FFFF",
+      "laser_green": "#39FF14",
+      "alert_red": "#FF3333"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A0A0B0",
+      "muted": "#606070"
+    },
+    "borders": {
+      "subtle": "rgba(255, 255, 255, 0.1)",
+      "neon_glow": "rgba(0, 255, 255, 0.4)"
+    }
+  },
+  "surface_strategies": {
+    "retro_futurism_terminal": {
+      "usage": "Bet slips, staking modules, live coding/question HUDs",
+      "classes": "bg-[#05050A] border border-neon-cyan/50 drop-shadow-[0_0_8px_rgba(0,255,255,0.3)] text-neon-cyan font-['VT323'] rounded-none"
+    },
+    "arcade_glass": {
+      "usage": "Sticky headers, floating navs, modals",
+      "classes": "bg-[#0B0B14]/70 backdrop-blur-xl border-b border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
+    },
+    "bento_dashboard_cards": {
+      "usage": "Lobby widgets, active tournaments, leaderboards",
+      "classes": "bg-[#12121E] border border-white/5 rounded-xl hover:border-cyber-yellow/40 hover:-translate-y-1 transition-all duration-300"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "High tension and generous spacing. Use The Control Room grid for dashboards and The Tetris Grid for the marketing landing page.",
+    "container_padding": "p-6 md:p-8 lg:p-12",
+    "bento_grid_marketing": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8",
+    "bento_grid_dashboard": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6"
+  },
+  "category_micro_aesthetics": [
+    {
+      "name": "Histoire",
+      "style": "Retro Arcade 8-bit / Antique Gold",
+      "colors": ["#FFD700", "#8B6508"],
+      "visuals": "Pixelated scrolls, 8-bit ancient architectures, sepia CRT scanlines"
+    },
+    {
+      "name": "Géographie",
+      "style": "Holographic / Cybernetic",
+      "colors": ["#00FFFF", "#0055FF"],
+      "visuals": "Wireframe globes, glowing cyan topographical maps, radar HUDs"
+    },
+    {
+      "name": "Sciences",
+      "style": "Matrix / Biotech Neon",
+      "colors": ["#39FF14", "#003300"],
+      "visuals": "Cascading green code, glowing molecular structures, hex grids"
+    },
+    {
+      "name": "Cinéma",
+      "style": "Film Noir / Neon Vaporwave",
+      "colors": ["#FF007F", "#4A00E0"],
+      "visuals": "Hot pink neon signs, film grain textures, dark alleyway lighting"
+    },
+    {
+      "name": "Sport",
+      "style": "Arcade Fighting Game",
+      "colors": ["#FF4500", "#FFD700"],
+      "visuals": "VS screens, health bars, dynamic stadium spotlights, high-contrast red/yellow"
+    },
+    {
+      "name": "Musique",
+      "style": "Synthwave",
+      "colors": ["#9D4CDD", "#00FFFF"],
+      "visuals": "Neon grid sunsets, audio visualizer bars, deep purple and cyan gradients (Restricted use of purple just for this specific synthwave context)"
+    }
+  ],
+  "pages_architecture": [
+    {
+      "page": "Landing / Home",
+      "description": "High-impact video-game arena hero showcasing the QuizArena concept. Animated 'Living Texture' marquee with top winners. Quick CTA to enter the Arena.",
+      "layout": "Tetris Grid (Asymmetrical)",
+      "components": ["Hero Section with dark overlay", "Marquee (Top Winners)", "Feature Bento Box"]
+    },
+    {
+      "page": "Dashboard / Lobby",
+      "description": "The 'Control Room'. Live match/odds browsing, active duels, upcoming tournaments. User's quick access to Play Solo.",
+      "layout": "Control Room Grid",
+      "components": ["Live Match Hero Panel", "Match Discovery Grid", "Sidebar Nav"]
+    },
+    {
+      "page": "Categories Browser",
+      "description": "Selection screen resembling a fighting game character select or arcade level select. 6 distinct cards with micro-aesthetics.",
+      "layout": "3x2 Grid or immersive carousel",
+      "components": ["Category Cards with hover 3D tilt effects"]
+    },
+    {
+      "page": "Live Quiz Play Interface (Solo)",
+      "description": "THE CORE EXPERIENCE. Video game UI. HUD overlay, timer countdown (VT323 font), score bursts. Question is framed inside an animated arena.",
+      "layout": "Centered immersive canvas",
+      "components": ["Progress Bar/Health Bar", "Timer Display", "Quiz Card (Glassmorphism)", "Animated Particle Burst on success"]
+    },
+    {
+      "page": "Duel 1v1 Setup/Play",
+      "description": "Split screen Player VS Player setup. Staking module (Bet Slip) where users set their token wager. Winner takes all.",
+      "layout": "Split 50/50 VS Layout",
+      "components": ["Betting Slip Module", "Opponent Matching Loader", "VS Animation Splash"]
+    },
+    {
+      "page": "Tournament Bracket",
+      "description": "Multi-player bracket visualization. Prize pool display.",
+      "layout": "Tree/Bracket layout with horizontal scrolling",
+      "components": ["Tournament Node Cards", "Prize Pool Hero Graphic"]
+    },
+    {
+      "page": "Leaderboard",
+      "description": "Top players, ranks, and badges. Gamified progress cues.",
+      "layout": "Dense List / Data Table",
+      "components": ["Rank Badges", "User Rows with avatars and XP bars"]
+    },
+    {
+      "page": "Wallet",
+      "description": "Coins balance, transaction history. Secure, transparent look.",
+      "layout": "Standard Dashboard Layout",
+      "components": ["Balance Hero Card", "Transaction History Table"]
+    },
+    {
+      "page": "Profile",
+      "description": "User stats, win rate, XP, badges. Gamification center.",
+      "layout": "Bento Grid Dashboard",
+      "components": ["Stats Widgets", "Badge Showcase Matrix"]
+    }
+  ],
+  "components_and_interactions": {
+    "buttons": {
+      "primary": "bg-cyber-yellow text-black font-bold uppercase tracking-wide hover:shadow-[0_0_15px_rgba(255,215,0,0.6)] transition-all",
+      "secondary": "border border-neon-cyan text-neon-cyan hover:bg-neon-cyan/10 font-bold uppercase",
+      "danger_vs": "bg-alert-red text-white font-bold uppercase hover:shadow-[0_0_15px_rgba(255,51,51,0.6)]"
+    },
+    "motion": {
+      "hover_states": "All interactive elements must scale slightly (scale-105) and emit a drop-shadow glow matching their accent color.",
+      "page_transitions": "Framer motion staggered fade-ins. Score changes must interpolate (count up/down animation).",
+      "feedback": "Correct answers trigger a 'level-up' particle burst or green neon flash. Wrong answers trigger a red screen-shake (CSS animation)."
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke-based, consistent sizing (w-5 h-5 for buttons, w-8 h-8 for widgets). Use neon glow filters on active icons."
+    }
+  },
+  "media_and_images": {
+    "hero_background": {
+      "url": "https://images.pexels.com/photos/28122495/pexels-photo-28122495.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Vibrant neon lights create a cyberpunk aesthetic in a bustling urban alleyway at night. Use with heavy dark overlay (bg-black/60) for landing page.",
+      "category": "landing_hero"
+    },
+    "arena_backdrop": {
+      "url": "https://images.unsplash.com/photo-1672872476232-da16b45c9001?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NjZ8MHwxfHNlYXJjaHwxfHxuZW9uJTIwY3liZXJwdW5rJTIwY2l0eXxlbnwwfHx8fDE3ODA0Mzc4ODZ8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Futuristic city at night with neon lights. Used as the blurred, moving background behind the Live Quiz Play interface.",
+      "category": "live_quiz_background"
+    },
+    "arcade_element": {
+      "url": "https://images.pexels.com/photos/29096083/pexels-photo-29096083.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Illuminated pixel art 'Game Over' sign. Use for end-of-game screens or error states.",
+      "category": "game_over_state"
+    },
+    "retro_tech_element": {
+      "url": "https://images.pexels.com/photos/37694203/pexels-photo-37694203.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "A classic arcade space shooter game displayed. Use as an asset in the dashboard or tutorial sections.",
+      "category": "dashboard_asset"
+    },
+    "fantasy_category_bg": {
+      "url": "https://images.unsplash.com/photo-1711319551836-f7ca9764a898?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwbGFuZHNjYXBlJTIwbGFuZHNjYXBlfGVufDB8fHx8MTc4MDQzNzg4Nnww&ixlib=rb-4.1.0&q=85",
+      "description": "Fantasy landscape painting. Use as the background for the 'Histoire' or 'Fantasy' quiz category cards.",
+      "category": "category_card_bg"
+    }
+  },
+  "data_testid_guidelines": {
+    "navigation": ["nav-home-link", "nav-lobby-link", "nav-leaderboard-link", "nav-wallet-link", "nav-profile-link", "lang-toggle-btn"],
+    "lobby": ["play-solo-btn", "duel-matchmaking-btn", "tournament-join-btn"],
+    "quiz_play": ["quiz-option-a", "quiz-option-b", "quiz-option-c", "quiz-option-d", "quiz-timer-display", "quiz-score-display"],
+    "betting": ["bet-stake-input", "bet-confirm-btn", "bet-slip-total"],
+    "wallet": ["wallet-balance-display", "wallet-deposit-btn", "wallet-withdraw-btn"]
+  },
+  "development_instructions": {
+    "libraries_required": [
+      "framer-motion",
+      "lucide-react",
+      "clsx",
+      "tailwind-merge",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-progress"
+    ],
+    "css_setup": "Include Google Fonts Unbounded, VT323, and Outfit in index.html. Add custom text-shadow and drop-shadow utilities in tailwind.config.js for the neon glow effects."
+  }
+}
