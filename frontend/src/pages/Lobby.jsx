@@ -1,47 +1,136 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
-import { LIVE_MATCHES, ACTIVE_DUELS, TOURNAMENTS, getCategory } from "../data/mockData";
+import { LIVE_MATCHES, ACTIVE_DUELS, TOURNAMENTS } from "../data/mockData";
 import CategoryChip from "../components/CategoryChip";
-import { Zap, Swords, Trophy, Eye, Play, Users, Clock, Coins } from "lucide-react";
+import SpectateModal from "../components/SpectateModal";
+import OnlinePlayersPanel from "../components/OnlinePlayersPanel";
+import { Zap, Swords, Trophy, Eye, Users, Clock, ChevronRight, Star, CheckCircle } from "lucide-react";
 import ArenaBackground from "../components/ArenaBackground";
 
+const AMBER = "#E5A800";
+
+const DAILY = {
+  category: "sciences",
+  label: { fr: "Sciences", en: "Science" },
+  total: 10,
+  players: 2847,
+};
+
 export default function Lobby() {
-  const { t, lang } = useApp();
+  const { t, lang, dailyDone } = useApp();
+  const navigate = useNavigate();
+  const [spectating, setSpectating] = useState(null);
+
+  const modes = [
+    { to: "/categories", icon: Zap, title: t.lobby.playSolo, desc: t.lobby.playSoloDesc, testId: "play-solo-btn" },
+    { to: "/duel", icon: Swords, title: t.lobby.duel, desc: t.lobby.duelDesc, testId: "duel-matchmaking-btn" },
+    { to: "/tournaments", icon: Trophy, title: t.lobby.tournament, desc: t.lobby.tournamentDesc, testId: "tournament-join-btn" },
+  ];
 
   return (
-    <div className="relative">
+    <>
+    <div className="relative min-h-screen">
       <ArenaBackground />
-      <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-12">
-        {/* Header */}
-        <div className="mb-10">
-          <div className="text-xs uppercase tracking-widest text-white/40 mb-2">// CONTROL_ROOM</div>
-          <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl">
-            {t.lobby.welcome}
-          </h1>
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+
+        {/* Page header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-sm font-semibold text-white">{t.lobby.welcome}</h1>
+            <p className="text-xs text-white/40 mt-0.5">
+              {lang === "fr" ? "Choisis ton mode de jeu" : "Choose your game mode"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full blink" style={{ background: AMBER }} />
+            <span className="text-xs text-white/40">{LIVE_MATCHES.length} {t.common.live}</span>
+          </div>
         </div>
 
-        {/* 3 Mode tiles */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-14">
-          {[
-            { to: "/categories", icon: Zap, title: t.lobby.playSolo, desc: t.lobby.playSoloDesc, testId: "play-solo-btn" },
-            { to: "/duel", icon: Swords, title: t.lobby.duel, desc: t.lobby.duelDesc, testId: "duel-matchmaking-btn" },
-            { to: "/tournaments", icon: Trophy, title: t.lobby.tournament, desc: t.lobby.tournamentDesc, testId: "tournament-join-btn" },
-          ].map((m, i) => {
+        {/* Daily challenge card */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-xl border overflow-hidden"
+          style={{ borderColor: dailyDone ? "rgba(255,255,255,0.07)" : `${AMBER}35`, background: dailyDone ? "#0B0B14" : `${AMBER}06` }}
+        >
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: dailyDone ? "rgba(255,255,255,0.06)" : `${AMBER}20`, color: dailyDone ? "rgba(255,255,255,0.3)" : AMBER }}
+              >
+                <Star className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-white">
+                    {lang === "fr" ? "Défi du Jour" : "Daily Challenge"}
+                  </span>
+                  {dailyDone && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-[#5DD66E]">
+                      <CheckCircle className="w-3 h-3" /> Complété
+                    </span>
+                  )}
+                  {!dailyDone && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: `${AMBER}25`, color: AMBER }}>
+                      +500 bonus
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-white/35 mt-0.5">
+                  {DAILY.label[lang]} · {DAILY.total} Q ·{" "}
+                  <span className="text-white/50">
+                    {DAILY.players.toLocaleString()} {lang === "fr" ? "joueurs aujourd'hui" : "players today"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {!dailyDone ? (
+              <button
+                onClick={() => navigate(`/play/${DAILY.category}?daily=1`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-black text-xs font-semibold rounded-md flex-shrink-0 transition hover:opacity-90"
+                style={{ background: AMBER }}
+              >
+                Jouer <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <div className="text-[10px] text-white/25 flex-shrink-0">Revenez demain</div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Mode selector */}
+        <div className="grid sm:grid-cols-3 gap-3">
+          {modes.map((m, i) => {
             const Icon = m.icon;
             return (
-              <motion.div key={m.to} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+              <motion.div
+                key={m.to}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+              >
                 <Link
                   to={m.to}
                   data-testid={m.testId}
-                  className="block relative group h-full p-8 rounded-2xl border border-white/10 bg-[#0B0B14] hover:border-[#E5A800]/40 overflow-hidden transition-all"
+                  className="group flex items-start gap-3 p-4 rounded-xl border border-white/[0.07] bg-[#0B0B14] hover:border-white/20 hover:bg-[#0E0E18] transition-all block"
                 >
-                  <div className="absolute -right-12 -bottom-12 w-44 h-44 rounded-full blur-3xl opacity-0 group-hover:opacity-30 transition-opacity bg-[#E5A800]" />
-                  <Icon className="w-11 h-11 mb-6" style={{ color: "#E5A800" }} />
-                  <h3 className="font-display font-bold uppercase text-2xl mb-2 tracking-tight text-white">{m.title}</h3>
-                  <p className="text-slate-400 text-sm">{m.desc}</p>
-                  <div className="mt-6 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wider" style={{ color: "#E5A800" }}>
-                    <Play className="w-4 h-4" /> {t.common.enter}
+                  <div
+                    className="mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: `${AMBER}18`, color: AMBER }}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white">{m.title}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 transition flex-shrink-0" />
+                    </div>
+                    <p className="text-xs text-white/40 mt-0.5 leading-relaxed">{m.desc}</p>
                   </div>
                 </Link>
               </motion.div>
@@ -50,79 +139,76 @@ export default function Lobby() {
         </div>
 
         {/* Live + Duels */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-14">
+        <div className="grid md:grid-cols-2 gap-3">
           {/* Live matches */}
-          <div className="rounded-2xl border border-white/10 bg-[#0B0B14] p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display font-bold uppercase tracking-tight text-xl">{t.lobby.liveMatches}</h2>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-white blink" />
-                <span className="text-xs uppercase tracking-widest text-white/70">{t.common.live}</span>
+          <div className="rounded-xl border border-white/[0.07] bg-[#0B0B14] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+              <span className="text-xs font-medium text-white/50">{t.lobby.liveMatches}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-white blink" />
+                <span className="text-[10px] uppercase tracking-widest text-white/25">{t.common.live}</span>
               </div>
             </div>
-            <div className="space-y-3">
-              {LIVE_MATCHES.map((m) => {
-                const cat = getCategory(m.category);
-                return (
-                  <div
-                    key={m.id}
-                    data-testid={`live-match-${m.id}`}
-                    className="p-4 rounded-lg bg-[#12121E] border border-white/5 hover:border-white/20 transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <CategoryChip id={m.category} />
-                      <div className="font-medium text-white truncate">
-                        {m.players[0]} <span className="text-slate-500 mx-2">VS</span> {m.players[1]}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      <div className="font-arcade text-xl" style={{ color: "#E5A800" }}>
-                        {m.pool.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {m.round}/{m.total}
-                      </div>
-                      <button className="p-2 rounded-md border border-white/10 hover:border-[#E5A800]/50 hover:text-[#E5A800] transition">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </div>
+            <div className="divide-y divide-white/[0.04]">
+              {LIVE_MATCHES.map((m) => (
+                <div
+                  key={m.id}
+                  data-testid={`live-match-${m.id}`}
+                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CategoryChip id={m.category} />
+                    <span className="text-xs text-white/60 truncate">
+                      {m.players[0]} <span className="text-white/25 mx-1">vs</span> {m.players[1]}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="font-arcade text-base leading-none" style={{ color: AMBER }}>
+                      {m.pool.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-white/25">{m.round}/{m.total}</span>
+                    <button
+                      onClick={() => setSpectating(m)}
+                      className="p-1 rounded text-white/25 hover:text-white/60 transition"
+                      title="Regarder"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* Active duels */}
-          <div className="rounded-2xl border border-white/10 bg-[#0B0B14] p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-display font-bold uppercase tracking-tight text-xl">{t.lobby.activeDuels}</h2>
-              <Swords className="w-5 h-5" style={{ color: "#E5A800" }} />
+          <div className="rounded-xl border border-white/[0.07] bg-[#0B0B14] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+              <span className="text-xs font-medium text-white/50">{t.lobby.activeDuels}</span>
+              <Swords className="w-3.5 h-3.5 text-white/25" />
             </div>
-            <div className="space-y-3">
+            <div className="divide-y divide-white/[0.04]">
               {ACTIVE_DUELS.map((d) => (
                 <div
                   key={d.id}
                   data-testid={`active-duel-${d.id}`}
-                  className="p-4 rounded-lg bg-[#12121E] border border-white/5 hover:border-[#E5A800]/40 transition-all flex items-center justify-between gap-3"
+                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <CategoryChip id={d.category} />
                     <div className="min-w-0">
-                      <div className="font-medium text-white truncate">{d.host}</div>
-                      <div className="text-xs text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {d.startsIn}
+                      <div className="text-xs font-medium text-white/60 truncate">{d.host}</div>
+                      <div className="flex items-center gap-1 mt-0.5 text-white/25">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span className="text-[10px]">{d.startsIn}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-slate-500">{t.common.stake}</div>
-                      <div className="font-arcade text-xl" style={{ color: "#E5A800" }}>{d.stake}</div>
-                    </div>
+                  <div className="flex items-center gap-2.5 flex-shrink-0">
+                    <span className="font-arcade text-base leading-none" style={{ color: AMBER }}>{d.stake}</span>
                     <Link
                       to="/duel"
-                      className="px-3 py-1.5 text-xs uppercase tracking-wider rounded-md border transition"
-                      style={{ borderColor: "#E5A80055", color: "#E5A800", background: "#E5A80010" }}
+                      className="px-2 py-1 text-[10px] uppercase tracking-wider rounded border transition hover:bg-white/5"
+                      style={{ borderColor: `${AMBER}35`, color: AMBER }}
                     >
                       {t.lobby.join}
                     </Link>
@@ -133,47 +219,58 @@ export default function Lobby() {
           </div>
         </div>
 
+        {/* Online players */}
+        <OnlinePlayersPanel />
+
         {/* Upcoming tournaments */}
-        <div className="rounded-2xl border border-white/10 bg-[#0B0B14] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-display font-bold uppercase tracking-tight text-xl">{t.lobby.upcomingTournaments}</h2>
-            <Trophy className="w-5 h-5" style={{ color: "#E5A800" }} />
+        <div className="rounded-xl border border-white/[0.07] bg-[#0B0B14] overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
+            <span className="text-xs font-medium text-white/50">{t.lobby.upcomingTournaments}</span>
+            <Link
+              to="/tournaments"
+              className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-white/25 hover:text-white/50 transition"
+            >
+              {lang === "fr" ? "Voir tout" : "See all"}
+              <ChevronRight className="w-3 h-3" />
+            </Link>
           </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {TOURNAMENTS.map((tr) => {
-              const cat = getCategory(tr.category);
-              return (
-                <Link
-                  key={tr.id}
-                  to="/tournaments"
-                  data-testid={`tournament-${tr.id}`}
-                  className="p-5 rounded-xl bg-[#12121E] border border-white/5 hover:border-[#E5A800]/40 transition-all group"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <CategoryChip id={tr.category} />
-                    <div className="font-arcade text-xl" style={{ color: "#E5A800" }}>
-                      {tr.startsIn}
-                    </div>
-                  </div>
-                  <h3 className="font-display font-bold uppercase text-lg mb-3 text-white group-hover:text-[#E5A800] transition">
+          <div className="divide-y divide-white/[0.04]">
+            {TOURNAMENTS.map((tr) => (
+              <Link
+                key={tr.id}
+                to="/tournaments"
+                data-testid={`tournament-${tr.id}`}
+                className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-white/[0.02] transition group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CategoryChip id={tr.category} />
+                  <span className="text-xs font-medium text-white/60 truncate group-hover:text-white/80 transition">
                     {tr.name[lang]}
-                  </h3>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-slate-400">
-                      <Users className="w-4 h-4" />
-                      {tr.registered}/{tr.slots}
-                    </div>
-                    <div className="flex items-center gap-1" style={{ color: "#E5A800" }}>
-                      <Coins className="w-4 h-4" />
-                      <span className="font-arcade text-lg">{tr.prizePool.toLocaleString()}</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <div className="flex items-center gap-1 text-white/25">
+                    <Users className="w-3 h-3" />
+                    <span className="text-[10px]">{tr.registered}/{tr.slots}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-white/25 mb-0.5">{tr.startsIn}</div>
+                    <div className="font-arcade text-base leading-none" style={{ color: AMBER }}>
+                      {tr.prizePool.toLocaleString()}
                     </div>
                   </div>
-                </Link>
-              );
-            })}
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
+
       </div>
     </div>
+
+    {spectating && (
+      <SpectateModal match={spectating} onClose={() => setSpectating(null)} />
+    )}
+    </>
   );
 }

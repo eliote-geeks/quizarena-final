@@ -1,19 +1,31 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { QUESTIONS, getCategory } from "../data/mockData";
-import { extractKey } from "../lib/answerKey";
-import { toast } from "sonner";
-import PixelScene from "../components/PixelScene";
-import PixelKeyboard from "../components/PixelKeyboard";
-import CoinShower from "../components/CoinShower";
-import { Heart, Zap, Trophy, X, ArrowRight, Coins, Skull } from "lucide-react";
+import { calcNewElo } from "../lib/eloEngine";
+import { SFX } from "../lib/soundEngine";
+import { X, Flame, Coins, Zap, AlertTriangle } from "lucide-react";
+import ResultScreen from "../components/ResultScreen";
 
-const TIME_PER_Q = 20;
-const ROUND_SIZE = 10;
-const BOSS_START_INDEX = 4; // Boss appears at question 5+
-const AMBER = "#E5A800";
+const TIME_PER_Q   = 15;
+const ROUND_SIZE   = 10;
+const AMBER        = "#E5A800";
+const LABELS       = ["A", "B", "C", "D"];
+const STAKES       = [100, 250, 500, 1000, 2500];
+
+// Payout multipliers indexed by score (0–10)
+// Below 7/10 → player loses some or all; 7+ → net positive
+const PAYOUT_MULT = [0, 0, 0, 0, 0, 0.60, 0.85, 1.20, 1.60, 2.20, 3.00];
+
+function shuffleOptions(q) {
+  const perm = [0, 1, 2, 3];
+  for (let i = perm.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [perm[i], perm[j]] = [perm[j], perm[i]];
+  }
+  return { ...q, options: perm.map(k => q.options[k]), answer: perm.indexOf(q.answer) };
+}
 
 function pickRandom(arr, n) {
   const copy = [...arr];
@@ -24,407 +36,643 @@ function pickRandom(arr, n) {
   return copy.slice(0, n);
 }
 
+function getMult(streak) {
+  if (streak >= 5) return 2.0;
+  if (streak >= 3) return 1.5;
+  return 1.0;
+}
+
+const R    = 46;
+const CIRC = 2 * Math.PI * R;
+
+function CircularTimer({ timeLeft, total, urgent }) {
+  const pct    = timeLeft / total;
+  const offset = CIRC * (1 - pct);
+  const color  = urgent ? "#FF5555" : timeLeft <= 7 ? AMBER : "#5DD66E";
+  return (
+    <div className="relative flex items-center justify-center select-none" style={{ width: 116, height: 116 }}>
+      <svg width="116" height="116" className="absolute" style={{ overflow: "visible" }}>
+        <circle cx="58" cy="58" r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+        <motion.circle
+          cx="58" cy="58" r={R} fill="none" strokeWidth="5" strokeLinecap="round"
+          strokeDasharray={CIRC} transform="rotate(-90 58 58)"
+          animate={{ strokeDashoffset: offset, stroke: color, filter: `drop-shadow(0 0 ${urgent ? 8 : 4}px ${color}80)` }}
+          transition={{ strokeDashoffset: { duration: 1, ease: "linear" }, stroke: { duration: 0.3 } }}
+        />
+      </svg>
+      <motion.span
+        className="font-arcade text-3xl leading-none z-10"
+        animate={{ color, scale: urgent ? [1, 1.12, 1] : 1 }}
+        transition={{ duration: 0.5, repeat: urgent ? Infinity : 0 }}
+      >
+        {timeLeft}
+      </motion.span>
+    </div>
+  );
+}
+
+const STATE_STYLE = {
+  idle:    { bg: "#0E0E1C", border: "rgba(255,255,255,0.07)", text: "rgba(255,255,255,0.78)", lBg: "rgba(255,255,255,0.06)", lCol: "rgba(255,255,255,0.25)", glow: "none" },
+  correct: { bg: "rgba(93,214,110,0.09)", border: "rgba(93,214,110,0.55)", text: "#5DD66E", lBg: "rgba(93,214,110,0.15)", lCol: "#5DD66E", glow: "0 0 14px rgba(93,214,110,0.18)" },
+  wrong:   { bg: "rgba(255,85,85,0.08)", border: "rgba(255,85,85,0.55)", text: "#FF6B6B", lBg: "rgba(255,85,85,0.12)", lCol: "#FF6B6B", glow: "0 0 14px rgba(255,85,85,0.15)" },
+};
+
+// ── Payout table row ──────────────────────────────────────────────────────────
+function PayoutRow({ score, mult, stake }) {
+  const isWin  = mult >= 1.0;
+  const payout = Math.round(stake * mult);
+  const net    = payout - stake;
+  return (
+    <div
+      className="flex items-center justify-between py-1.5 px-2 rounded-lg"
+      style={{ background: isWin ? "rgba(93,214,110,0.06)" : "rgba(255,85,85,0.05)" }}
+    >
+      <span className="text-xs font-semibold" style={{ color: isWin ? "#5DD66E" : "#FF6B6B", minWidth: 40 }}>
+        {score === "0–6" ? "0–6/10" : `${score}/10`}
+      </span>
+      <span className="font-arcade text-xs text-white/30">×{mult.toFixed(2)}</span>
+      <span className="font-arcade text-xs font-bold" style={{ color: isWin ? "#5DD66E" : "#FF6B6B" }}>
+        {net >= 0 ? "+" : ""}{net.toLocaleString()}
+      </span>
+    </div>
+  );
+}
+
 export default function QuizPlay() {
-  const { categoryId } = useParams();
-  const navigate = useNavigate();
-  const { t, lang, addCoins } = useApp();
+  const { categoryId }    = useParams();
+  const [searchParams]    = useSearchParams();
+  const isDaily           = searchParams.get("daily") === "1";
+  const navigate          = useNavigate();
+  const { lang, coins, addCoins, elo, updateElo, setDailyDone } = useApp();
 
-  const cat = getCategory(categoryId);
-  const list = useMemo(() => pickRandom(QUESTIONS[categoryId] || [], ROUND_SIZE), [categoryId]);
+  const cat       = getCategory(categoryId);
+  const questions = useMemo(
+    () => pickRandom(QUESTIONS[categoryId] || [], ROUND_SIZE).map(shuffleOptions),
+    [categoryId],
+  );
 
-  const [phase, setPhase] = useState("ready"); // ready | playing | done
-  const [countdown, setCountdown] = useState(3);
-  const [idx, setIdx] = useState(0);
-  const [score, setScore] = useState(0);
-  const [time, setTime] = useState(TIME_PER_Q);
-  const [lives, setLives] = useState(3);
-  const [typed, setTyped] = useState("");
-  const [feedback, setFeedback] = useState(null); // 'correct' | 'wrong' | 'timeout'
-  const [showShower, setShowShower] = useState(0);
-  const [hitFlash, setHitFlash] = useState(0);
-  const intervalRef = useRef(null);
+  // Game mode state
+  const [isChallenge,    setIsChallenge]   = useState(false);
+  const [selectedStake,  setSelectedStake] = useState(500);
 
-  const q = list[idx];
-  const answerKey = useMemo(() => (q ? extractKey(q.options[q.answer]) : ""), [q]);
-  const boss = idx >= BOSS_START_INDEX;
+  // Phase machine: setup → ready → playing → ceremony → done
+  const [phase,        setPhase]        = useState(isDaily ? "ready" : "setup");
+  const [countdown,    setCountdown]    = useState(3);
+  const [qIdx,         setQIdx]         = useState(0);
+  const [timeLeft,     setTimeLeft]     = useState(TIME_PER_Q);
+  const [chosen,       setChosen]       = useState(null);
+  const [totalPoints,  setTotalPoints]  = useState(0);
+  const [lastPts,      setLastPts]      = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [streak,       setStreak]       = useState(0);
+  const [eloResult,    setEloResult]    = useState(null);
+  const [flash,        setFlash]        = useState(null);
 
-  // Ready countdown
+  const correctRef = useRef(0);
+  const pointsRef  = useRef(0);
+  const streakRef  = useRef(0);
+  const timerRef   = useRef(null);
+  const phaseRef   = useRef(isDaily ? "ready" : "setup");
+
+  const q      = questions[qIdx];
+  const mult   = getMult(streak);
+  const urgent = timeLeft <= 5 && phase === "playing";
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  // Countdown
   useEffect(() => {
     if (phase !== "ready") return;
-    if (countdown <= 0) {
-      setPhase("playing");
-      return;
-    }
-    const id = setTimeout(() => setCountdown((c) => c - 1), 800);
+    if (countdown <= 0) { setPhase("playing"); return; }
+    const id = setTimeout(() => setCountdown(c => c - 1), 900);
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
   // Per-question timer
   useEffect(() => {
     if (phase !== "playing") return;
-    setTime(TIME_PER_Q);
-    setTyped("");
-    setFeedback(null);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setTime((tm) => {
-        if (tm <= 1) {
-          clearInterval(intervalRef.current);
-          handleTimeout();
-          return 0;
-        }
-        return tm - 1;
-      });
+    setTimeLeft(TIME_PER_Q); setChosen(null); setFlash(null);
+    let t = TIME_PER_Q;
+    clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      if (phaseRef.current !== "playing") { clearInterval(timerRef.current); return; }
+      t -= 1;
+      if (t <= 3) SFX.tick();
+      if (t <= 0) { clearInterval(timerRef.current); onTimeout(); return; }
+      setTimeLeft(t);
     }, 1000);
-    return () => clearInterval(intervalRef.current);
+    return () => clearInterval(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, phase]);
+  }, [qIdx, phase]);
+
+  // Ceremony → next / finalize
+  useEffect(() => {
+    if (phase !== "ceremony") return;
+    const id = setTimeout(() => {
+      if (qIdx + 1 >= questions.length) finalize();
+      else { setQIdx(i => i + 1); setPhase("playing"); }
+    }, 1800);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, qIdx]);
 
   const finalize = useCallback(() => {
-    setPhase("done");
-    clearInterval(intervalRef.current);
-    const reward = Math.round(score * 22 + lives * 90);
-    addCoins(reward);
-    toast.success(`+${reward.toLocaleString()} ${t.common.coins}`, {
-      description: `${t.quiz.finalScore}: ${score}/${list.length}`,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [score, lives, list.length, addCoins, t]);
+    clearInterval(timerRef.current);
+    const correct = correctRef.current;
 
-  const goNext = useCallback(() => {
-    if (idx + 1 >= list.length) {
-      finalize();
+    // ── Coins calculation ──────────────────────────────────────────────────
+    let netCoins, quizResult;
+    if (isChallenge) {
+      // Challenge: stake × multiplier table, can be negative
+      const payout = Math.round(selectedStake * PAYOUT_MULT[correct]);
+      netCoins    = payout - selectedStake;
+      quizResult  = netCoins >= 0 ? "win" : "loss";
     } else {
-      setIdx((i) => i + 1);
+      // Libre: 10 pts per correct answer + optional daily bonus
+      netCoins   = correct * 10 + (isDaily ? 500 : 0);
+      quizResult = correct >= 7 ? "win" : correct >= 5 ? "draw" : "loss";
     }
-  }, [idx, list.length, finalize]);
 
-  const handleTimeout = () => {
-    setFeedback("timeout");
-    setLives((l) => Math.max(0, l - 1));
-    setTimeout(() => {
-      if (lives - 1 <= 0) finalize();
-      else goNext();
-    }, 1300);
-  };
-
-  const handleWin = () => {
-    setScore((s) => s + 1);
-    setFeedback("correct");
-    setShowShower((s) => s + 1);
-    clearInterval(intervalRef.current);
-    setTimeout(() => setShowShower(0), 1300);
-    setTimeout(() => goNext(), 1300);
-  };
-
-  const handleWrongLetter = () => {
-    // Penalty: lose 2 seconds + shake. Lives are reserved for timeouts.
-    setTime((t) => Math.max(1, t - 2));
-    setFeedback("wrong");
-    setTimeout(() => setFeedback(null), 350);
-  };
-
-  const handleKey = useCallback(
-    (key) => {
-      if (phase !== "playing" || feedback === "correct" || feedback === "timeout") return;
-      if (key === "BACK") {
-        setTyped((t) => t.slice(0, -1));
-        return;
-      }
-      // Lock when complete
-      if (typed.length >= answerKey.length) return;
-      const expected = answerKey[typed.length];
-      if (key === expected) {
-        const newTyped = typed + key;
-        setTyped(newTyped);
-        setHitFlash((h) => h + 1);
-        if (newTyped === answerKey) {
-          // delay to show last letter
-          setTimeout(() => handleWin(), 250);
-        }
-      } else {
-        handleWrongLetter();
-      }
-    },
+    // ELO always tracks performance regardless of mode
+    const { newElo, delta } = calcNewElo(elo, 1050, correct >= 7 ? "win" : correct >= 5 ? "draw" : "loss");
+    updateElo(newElo);
+    setEloResult({ newElo, delta });
+    addCoins(netCoins);
+    if (isDaily) setDailyDone(true);
+    setTotalPoints(netCoins);
+    if (quizResult === "win") SFX.victory(); else SFX.defeat();
+    setPhase("done");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phase, feedback, typed, answerKey]
+  }, [isChallenge, selectedStake, isDaily, elo]);
+
+  const onTimeout = () => {
+    streakRef.current = 0;
+    setStreak(0); setFlash("wrong"); setLastPts(0);
+    SFX.wrong();
+    setChosen(-1);
+    setPhase("ceremony");
+  };
+
+  const handleChoice = useCallback((optIdx) => {
+    if (phase !== "playing" || chosen !== null) return;
+    clearInterval(timerRef.current);
+    setChosen(optIdx);
+    if (optIdx === q.answer) {
+      streakRef.current += 1;
+      const m    = getMult(streakRef.current);
+      const base = Math.round(200 + (timeLeft / TIME_PER_Q) * 800);
+      const pts  = Math.round(base * m);
+      correctRef.current += 1;
+      pointsRef.current  += pts;
+      setCorrectCount(correctRef.current);
+      setTotalPoints(pointsRef.current);
+      setStreak(streakRef.current);
+      setLastPts(pts);
+      setFlash("correct");
+      SFX.correct();
+      if (streakRef.current >= 5) setTimeout(() => SFX.onFire(), 300);
+      else if (streakRef.current >= 3) setTimeout(() => SFX.streak(), 300);
+    } else {
+      streakRef.current = 0;
+      setStreak(0); setLastPts(0); setFlash("wrong");
+      SFX.wrong();
+    }
+    setPhase("ceremony");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, chosen, q, timeLeft]);
+
+  useEffect(() => {
+    const map = { a: 0, b: 1, c: 2, d: 3 };
+    const fn  = (e) => { if (phase !== "playing") return; const i = map[e.key.toLowerCase()]; if (i !== undefined) handleChoice(i); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [phase, handleChoice]);
+
+  if (!cat || !q) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-white/50 mb-2 text-sm">Catégorie introuvable.</p>
+        <Link to="/" className="text-sm underline" style={{ color: AMBER }}>Retour</Link>
+      </div>
+    </div>
   );
 
-  // Physical keyboard listener
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (phase !== "playing") return;
-      if (e.key === "Backspace") {
-        e.preventDefault();
-        handleKey("BACK");
-        return;
-      }
-      const k = e.key.toUpperCase();
-      if (/^[A-Z0-9]$/.test(k)) {
-        e.preventDefault();
-        handleKey(k);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [handleKey, phase]);
-
-  if (!cat) {
+  if (phase === "done") {
     return (
-      <div className="min-h-screen flex items-center justify-center text-center">
-        <div>
-          <p>Catégorie introuvable.</p>
-          <Link to="/categories" className="text-amber-400 underline">Retour</Link>
-        </div>
-      </div>
+      <ResultScreen
+        result={
+          isChallenge
+            ? (totalPoints >= 0 ? "win" : "loss")
+            : (correctCount >= 7 ? "win" : correctCount >= 5 ? "draw" : "loss")
+        }
+        coinsGained={totalPoints}
+        myScore={correctCount}
+        total={questions.length}
+        eloNew={eloResult?.newElo}
+        eloDelta={eloResult?.delta}
+        streak={streak}
+        isDaily={isDaily}
+        onReplay={() => window.location.reload()}
+        onLobby={() => navigate("/")}
+      />
     );
   }
 
-  const timePct = (time / TIME_PER_Q) * 100;
+  const CatIcon = cat.icon;
 
   return (
-    <div className={`relative min-h-screen overflow-hidden bg-[#05050A] ${feedback === "wrong" || feedback === "timeout" ? "shake" : ""}`}>
-      {/* Ambience */}
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full blur-[160px] opacity-10 pointer-events-none"
-        style={{ background: AMBER }}
-      />
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${AMBER}11 1px, transparent 1px), linear-gradient(to bottom, ${AMBER}11 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
+    <div className="relative min-h-screen overflow-hidden" style={{ background: "#05050A" }}>
+      {/* Ambient glow */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        animate={{
+          background:
+            flash === "correct" ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(93,214,110,0.13) 0%, transparent 70%)" :
+            flash === "wrong"   ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,85,85,0.11) 0%, transparent 70%)" :
+            urgent              ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,85,85,0.07) 0%, transparent 70%)" :
+                                  "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(229,168,0,0.06) 0%, transparent 70%)",
         }}
+        transition={{ duration: 0.35 }}
       />
 
-      <CoinShower trigger={showShower} />
+      <div className="relative z-10 max-w-lg mx-auto px-4 sm:px-6 py-5 flex flex-col" style={{ minHeight: "100dvh" }}>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-6">
-        {/* HUD top */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-5 flex-shrink-0">
           <button
-            onClick={() => navigate("/lobby")}
-            data-testid="quit-quiz-btn"
-            className="flex items-center gap-2 px-3 py-2 text-xs uppercase tracking-widest rounded-md border border-white/10 hover:border-white/30 text-slate-300"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs text-white/40 border border-white/[0.07] rounded-lg hover:border-white/20 hover:text-white/70 transition"
           >
-            <X className="w-4 h-4" /> {t.common.quit}
+            <X className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Quitter</span>
           </button>
 
-          <div className="flex items-center gap-1.5">
-            {[0, 1, 2].map((i) => (
-              <Heart
-                key={i}
-                className={`w-5 h-5 sm:w-6 sm:h-6 ${i < lives ? "text-white fill-white" : "text-white/15"}`}
-              />
-            ))}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border"
+            style={{ background: `${AMBER}10`, borderColor: `${AMBER}28`, color: AMBER }}
+          >
+            <CatIcon className="w-3.5 h-3.5" />
+            {cat.name[lang]}
+            {isDaily && <span className="ml-1 opacity-70">⭐</span>}
           </div>
 
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-widest text-slate-500">{t.quiz.score}</div>
-            <div
-              data-testid="quiz-score-display"
-              className="font-arcade text-3xl"
-              style={{ color: AMBER }}
-            >
-              {String(score).padStart(2, "0")}
-            </div>
-          </div>
-        </div>
-
-        {/* Category label */}
-        <div className="text-center mb-4">
-          <div className="inline-flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-full border border-white/10">
-            <cat.icon className="w-4 h-4" style={{ color: AMBER }} />
-            <span className="font-display font-bold uppercase tracking-tight text-xs sm:text-sm text-white">
-              {cat.name[lang]}
-            </span>
-            {boss && (
-              <span className="inline-flex items-center gap-1 text-xs uppercase tracking-widest" style={{ color: AMBER }}>
-                <Skull className="w-3.5 h-3.5" /> BOSS STAGE
-              </span>
-            )}
+          <div className="w-20 flex justify-end">
+            <AnimatePresence>
+              {streak >= 3 && (
+                <motion.div
+                  key={`s-${streak}`}
+                  initial={{ scale: 0, opacity: 0, y: -8 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border"
+                  style={{ background: streak >= 5 ? "rgba(255,107,107,0.14)" : `${AMBER}14`, color: streak >= 5 ? "#FF7070" : AMBER, borderColor: streak >= 5 ? "rgba(255,107,107,0.3)" : `${AMBER}30` }}
+                >
+                  <Flame className="w-3 h-3" /> ×{mult}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
         <AnimatePresence mode="wait">
-          {phase === "ready" && (
-            <motion.div
-              key="ready"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.2 }}
-              className="text-center py-32"
-            >
-              <div className="text-xs uppercase tracking-widest text-slate-400 mb-4">{t.quiz.ready}</div>
-              <div
-                className="font-arcade text-[180px] leading-none"
-                style={{ color: AMBER, textShadow: `0 0 30px ${AMBER}80` }}
-              >
-                {countdown > 0 ? countdown : t.quiz.go}
-              </div>
-            </motion.div>
-          )}
 
-          {phase === "playing" && q && (
+          {/* ════ SETUP ════ */}
+          {phase === "setup" && (
             <motion.div
-              key={`q-${idx}`}
-              initial={{ opacity: 0, y: 20 }}
+              key="setup"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.35 }}
+              exit={{ opacity: 0, y: -16 }}
+              className="flex-1 flex flex-col gap-5"
             >
-              {/* PIXEL GAME SCENE */}
-              <div className="mb-4">
-                <PixelScene category={categoryId} idx={idx} boss={boss} hitFlash={hitFlash} />
-              </div>
-
-              {/* Timer bar */}
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex-1 h-2 rounded-sm bg-white/5 border border-white/10 overflow-hidden">
-                  <motion.div
-                    className="h-full"
-                    style={{ width: `${timePct}%`, background: time < 5 ? "#FF5555" : AMBER }}
-                    animate={{ opacity: time < 5 ? [1, 0.5, 1] : 1 }}
-                    transition={{ duration: 0.5, repeat: time < 5 ? Infinity : 0 }}
-                  />
-                </div>
+              {/* Category header */}
+              <div className="text-center pt-2">
                 <div
-                  data-testid="quiz-timer-display"
-                  className="font-arcade text-xl sm:text-2xl min-w-[40px] text-right"
-                  style={{ color: time < 5 ? "#FF5555" : AMBER }}
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                  style={{ background: `${AMBER}12`, color: AMBER }}
                 >
-                  {String(time).padStart(2, "0")}
+                  <CatIcon className="w-7 h-7" />
                 </div>
+                <h2 className="text-base font-bold text-white">{cat.name[lang]}</h2>
+                <p className="text-xs text-white/30 mt-0.5">{ROUND_SIZE} questions · {TIME_PER_Q}s par question</p>
               </div>
 
-              {/* Question dialogue box */}
-              <div
-                className="rounded-xl p-4 sm:p-6 border-2 mb-4 relative bg-[#0B0B14]"
-                style={{ borderColor: `${AMBER}55` }}
-              >
-                <div
-                  className="text-xs uppercase tracking-widest font-arcade text-sm mb-2"
-                  style={{ color: AMBER }}
+              {/* Mode selector */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Libre */}
+                <button
+                  onClick={() => setIsChallenge(false)}
+                  className="flex flex-col gap-2 p-4 rounded-2xl border text-left transition-all"
+                  style={{
+                    background: !isChallenge ? "rgba(229,168,0,0.08)" : "rgba(255,255,255,0.02)",
+                    borderColor: !isChallenge ? `${AMBER}50` : "rgba(255,255,255,0.08)",
+                    boxShadow: !isChallenge ? `0 0 20px ${AMBER}10` : "none",
+                  }}
                 >
-                  &gt;_ ÉNIGME [{String(idx + 1).padStart(2, "0")}/{list.length}]
-                </div>
-                <h2 className="font-display font-bold text-lg sm:text-2xl tracking-tight text-white leading-snug">
-                  {q.q[lang]}
-                </h2>
-                <div className="absolute -bottom-2 left-8 w-3 h-3 rotate-45 bg-[#0B0B14] border-r-2 border-b-2" style={{ borderColor: `${AMBER}55` }} />
-              </div>
-
-              {/* Answer slots */}
-              <div className="mb-5">
-                <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2 text-center">
-                  Tape la réponse ({answerKey.length} {answerKey.length > 1 ? "caractères" : "caractère"})
-                </div>
-                <div className="flex justify-center gap-1.5 sm:gap-2 flex-wrap">
-                  {answerKey.split("").map((ch, i) => {
-                    const filled = i < typed.length;
-                    const current = i === typed.length && phase === "playing" && feedback !== "correct";
-                    return (
-                      <div
-                        key={i}
-                        data-testid={`slot-${i}`}
-                        className={`pixel-block w-8 h-10 sm:w-10 sm:h-12 rounded-sm border-2 flex items-center justify-center font-pixel text-base sm:text-lg ${
-                          current ? "blink-slot" : ""
-                        }`}
-                        style={{
-                          borderColor: filled ? AMBER : "rgba(255,255,255,0.15)",
-                          background: filled ? `${AMBER}1f` : "#0B0B14",
-                          color: filled ? AMBER : "transparent",
-                          boxShadow: filled ? `0 0 8px ${AMBER}55` : "none",
-                        }}
-                      >
-                        {filled ? typed[i] : "_"}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* On-screen pixel keyboard */}
-              <PixelKeyboard onKey={handleKey} disabled={feedback === "correct" || feedback === "timeout"} accent={AMBER} />
-
-              {/* Feedback splash */}
-              <AnimatePresence>
-                {feedback === "correct" && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 flex items-center justify-center pointer-events-none z-50"
-                  >
-                    <div
-                      className="font-display font-black uppercase text-6xl sm:text-8xl tracking-tighter"
-                      style={{ color: "#5DD66E", textShadow: "0 0 30px #5DD66E" }}
-                    >
-                      {t.quiz.correct}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white/70">LIBRE</span>
+                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: !isChallenge ? AMBER : "rgba(255,255,255,0.2)" }}>
+                      {!isChallenge && <div className="w-2 h-2 rounded-full" style={{ background: AMBER }} />}
                     </div>
-                  </motion.div>
-                )}
-                {feedback === "timeout" && (
+                  </div>
+                  <p className="text-[10px] text-white/30 leading-relaxed">Sans risque · +10 pts par bonne réponse</p>
+                  <div className="text-xs font-semibold text-white/50">Max +100 pts</div>
+                </button>
+
+                {/* Challenge */}
+                <button
+                  onClick={() => setIsChallenge(true)}
+                  className="flex flex-col gap-2 p-4 rounded-2xl border text-left transition-all"
+                  style={{
+                    background: isChallenge ? "rgba(229,168,0,0.08)" : "rgba(255,255,255,0.02)",
+                    borderColor: isChallenge ? `${AMBER}50` : "rgba(255,255,255,0.08)",
+                    boxShadow: isChallenge ? `0 0 20px ${AMBER}10` : "none",
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white/70 flex items-center gap-1.5"><Zap className="w-3 h-3" style={{ color: AMBER }} /> CHALLENGE</span>
+                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: isChallenge ? AMBER : "rgba(255,255,255,0.2)" }}>
+                      {isChallenge && <div className="w-2 h-2 rounded-full" style={{ background: AMBER }} />}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-white/30 leading-relaxed">Mise des coins · gain selon ton score</p>
+                  <div className="text-xs font-semibold" style={{ color: AMBER }}>Jackpot ×3.00</div>
+                </button>
+              </div>
+
+              {/* Challenge: stake + payout */}
+              <AnimatePresence>
+                {isChallenge && (
                   <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 flex items-center justify-center pointer-events-none z-50"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
                   >
-                    <div className="text-center">
-                      <div className="font-display font-black uppercase text-5xl sm:text-7xl tracking-tighter text-[#FF5555]" style={{ textShadow: "0 0 24px #FF5555" }}>
-                        TIME OUT
+                    <div className="space-y-4">
+                      {/* Stake picker */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2">Ta mise</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {STAKES.map(s => {
+                            const canAfford = coins >= s;
+                            return (
+                              <button
+                                key={s}
+                                onClick={() => canAfford && setSelectedStake(s)}
+                                disabled={!canAfford}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold transition border"
+                                style={{
+                                  background: selectedStake === s ? AMBER : "rgba(255,255,255,0.03)",
+                                  borderColor: selectedStake === s ? AMBER : canAfford ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
+                                  color: selectedStake === s ? "#07070F" : canAfford ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.15)",
+                                  cursor: canAfford ? "pointer" : "not-allowed",
+                                }}
+                              >
+                                {s.toLocaleString()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {coins < selectedStake && (
+                          <div className="flex items-center gap-1.5 mt-2 text-[11px]" style={{ color: "#FF6B6B" }}>
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Solde insuffisant — tu as {coins.toLocaleString()} pts
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-2 font-arcade text-xl" style={{ color: AMBER }}>
-                        &gt; {q.options[q.answer]}
+
+                      {/* Payout table */}
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2">Grille de gain</p>
+                        <div className="space-y-1">
+                          <PayoutRow score="0–6" mult={0}    stake={selectedStake} />
+                          <PayoutRow score={7}   mult={1.20} stake={selectedStake} />
+                          <PayoutRow score={8}   mult={1.60} stake={selectedStake} />
+                          <PayoutRow score={9}   mult={2.20} stake={selectedStake} />
+                          <PayoutRow score={10}  mult={3.00} stake={selectedStake} />
+                        </div>
+                        <p className="text-[9px] text-white/20 mt-1.5">* 5/10 → ×0.60 · 6/10 → ×0.85 (récupération partielle)</p>
                       </div>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Start button */}
+              <div className="mt-auto pt-2">
+                <button
+                  onClick={() => setPhase("ready")}
+                  disabled={isChallenge && coins < selectedStake}
+                  className="w-full py-4 rounded-2xl text-sm font-bold transition disabled:opacity-40"
+                  style={{ background: AMBER, color: "#07070F" }}
+                >
+                  {isChallenge ? `Miser ${selectedStake.toLocaleString()} pts & Jouer` : "Jouer en Libre"}
+                </button>
+                <p className="text-center text-[10px] text-white/20 mt-2">
+                  <Link to="/rules" className="underline hover:text-white/40 transition">Lire les règles complètes</Link>
+                </p>
+              </div>
             </motion.div>
           )}
 
-          {phase === "done" && (
+          {/* ════ READY ════ */}
+          {phase === "ready" && (
             <motion.div
-              key="done"
-              initial={{ opacity: 0, scale: 0.9 }}
+              key="ready"
+              initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="py-16 text-center"
+              exit={{ opacity: 0, scale: 1.1 }}
+              className="flex-1 flex flex-col items-center justify-center text-center gap-6"
             >
-              <Trophy className="w-20 h-20 mx-auto mb-4" style={{ color: AMBER }} />
-              <div className="text-xs uppercase tracking-widest text-slate-400 mb-2">GAME COMPLETE</div>
-              <h2 className="font-display font-black text-5xl uppercase tracking-tighter mb-6">
-                {t.quiz.finalScore}
-              </h2>
-              <div
-                className="font-arcade text-[140px] leading-none mb-2"
-                style={{ color: AMBER, textShadow: `0 0 30px ${AMBER}80` }}
+              <motion.div
+                initial={{ scale: 0, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 220, damping: 14 }}
+                className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                style={{ background: `${AMBER}14`, color: AMBER }}
               >
-                {score}/{list.length}
+                <CatIcon className="w-10 h-10" />
+              </motion.div>
+              <div>
+                <p className="text-xs text-white/30 mb-2 uppercase tracking-widest">{ROUND_SIZE} questions · {cat.name[lang]}</p>
+                {isChallenge && (
+                  <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>
+                    ⚡ Challenge · Mise {selectedStake.toLocaleString()} pts
+                  </p>
+                )}
+                {isDaily && (
+                  <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>⭐ Défi du Jour · +500 pts bonus</p>
+                )}
               </div>
-              <div className="text-slate-400 mb-8">
-                {t.quiz.rewardEarned}: <span className="font-arcade text-2xl" style={{ color: AMBER }}>+{(score * 22 + lives * 90).toLocaleString()}</span>
-                <Coins className="inline w-5 h-5 ml-1" style={{ color: AMBER }} />
-              </div>
-              <div className="flex flex-wrap justify-center gap-3">
-                <button
-                  onClick={() => window.location.reload()}
-                  data-testid="play-again-btn"
-                  className="px-6 py-3 font-bold uppercase tracking-wider rounded-md transition flex items-center gap-2"
-                  style={{ background: AMBER, color: "#000" }}
-                >
-                  <Zap className="w-4 h-4" /> {t.quiz.playAgain}
-                </button>
-                <button
-                  onClick={() => navigate("/lobby")}
-                  className="px-6 py-3 border border-white/20 text-white font-bold uppercase tracking-wider rounded-md hover:bg-white/5 transition flex items-center gap-2"
-                >
-                  {t.quiz.backToLobby} <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+              <motion.div
+                key={countdown}
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 1.6, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 280, damping: 18 }}
+                className="font-arcade leading-none"
+                style={{ fontSize: 110, color: AMBER, textShadow: `0 0 40px ${AMBER}70` }}
+              >
+                {countdown > 0 ? countdown : "GO!"}
+              </motion.div>
             </motion.div>
           )}
+
+          {/* ════ PLAYING + CEREMONY ════ */}
+          {(phase === "playing" || phase === "ceremony") && (
+            <motion.div
+              key={`q-${qIdx}`}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -24 }}
+              transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
+              className="flex-1 flex flex-col"
+            >
+              {/* Scoreboard */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="text-center min-w-[72px]">
+                  <p className="text-[9px] text-white/20 uppercase tracking-widest mb-0.5">
+                    {isChallenge ? "Mise" : "Pts"}
+                  </p>
+                  <motion.p
+                    key={totalPoints}
+                    initial={{ y: -10, opacity: 0.5 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="font-arcade text-xl leading-none"
+                    style={{ color: AMBER }}
+                  >
+                    {isChallenge ? selectedStake.toLocaleString() : totalPoints.toLocaleString()}
+                  </motion.p>
+                </div>
+
+                <CircularTimer timeLeft={timeLeft} total={TIME_PER_Q} urgent={urgent} />
+
+                <div className="text-center min-w-[72px]">
+                  <p className="text-[9px] text-white/20 uppercase tracking-widest mb-0.5">Score</p>
+                  <p className="font-arcade text-xl leading-none text-[#5DD66E]">
+                    {correctCount}<span className="text-white/20 text-sm">/{questions.length}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Question card */}
+              <motion.div
+                className="rounded-2xl border mb-4"
+                style={{ background: "#0C0C17" }}
+                animate={{
+                  borderColor:
+                    flash === "correct" ? "rgba(93,214,110,0.35)" :
+                    flash === "wrong"   ? "rgba(255,85,85,0.35)"  :
+                    "rgba(255,255,255,0.07)",
+                  boxShadow:
+                    flash === "correct" ? "0 0 24px rgba(93,214,110,0.09)" :
+                    flash === "wrong"   ? "0 0 24px rgba(255,85,85,0.09)" : "none",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="h-[3px] rounded-t-2xl" style={{ background: `linear-gradient(90deg, ${AMBER}70 0%, ${AMBER}10 100%)` }} />
+                <div className="px-5 py-4">
+                  <p className="text-[10px] text-white/20 uppercase tracking-widest font-semibold mb-2.5">Question {qIdx + 1} / {questions.length}</p>
+                  <h2 className="text-base sm:text-[17px] font-semibold text-white leading-snug">{q.q[lang]}</h2>
+                </div>
+              </motion.div>
+
+              {/* Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                {q.options.map((opt, i) => {
+                  let state = "idle";
+                  if (phase === "ceremony") {
+                    if (i === q.answer) state = "correct";
+                    else if (i === chosen && chosen !== q.answer) state = "wrong";
+                  }
+                  const s = STATE_STYLE[state];
+                  return (
+                    <motion.button
+                      key={i}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0, scale: state === "correct" ? [1, 1.05, 0.98, 1] : 1, x: state === "wrong" ? [0, -7, 7, -5, 5, -3, 3, 0] : 0 }}
+                      transition={{ opacity: { delay: 0.05 * i, duration: 0.2 }, y: { delay: 0.05 * i, duration: 0.2 }, scale: { duration: 0.4 }, x: { duration: 0.45 } }}
+                      onClick={() => handleChoice(i)}
+                      disabled={phase !== "playing"}
+                      whileHover={phase === "playing" ? { scale: 1.025, y: -1 } : {}}
+                      whileTap={phase === "playing" ? { scale: 0.96 } : {}}
+                      className="relative flex items-center gap-3 w-full text-left px-4 py-3.5 rounded-xl border transition-colors duration-200"
+                      style={{ background: s.bg, borderColor: s.border, boxShadow: s.glow, cursor: phase !== "playing" ? "default" : "pointer" }}
+                    >
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ background: s.lBg, color: s.lCol }}>
+                        {state === "correct" ? "✓" : state === "wrong" ? "✗" : LABELS[i]}
+                      </div>
+                      <span className="text-sm leading-snug" style={{ color: s.text }}>{opt}</span>
+                      {phase === "ceremony" && state === "correct" && (
+                        <motion.span initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="absolute right-3 text-[10px] font-bold text-[#5DD66E]">
+                          {chosen === i ? "✓ Toi" : "✓"}
+                        </motion.span>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              {/* Feedback banner */}
+              <AnimatePresence>
+                {phase === "ceremony" && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.22 }}
+                    className="rounded-xl border px-4 py-3 mb-3 flex items-center justify-between"
+                    style={flash === "correct" ? { background: "rgba(93,214,110,0.07)", borderColor: "rgba(93,214,110,0.28)" } : { background: "rgba(255,85,85,0.07)", borderColor: "rgba(255,85,85,0.28)" }}
+                  >
+                    {flash === "correct" ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-[#5DD66E]">✓ Correct !</span>
+                          {streak >= 3 && <span className="text-xs font-semibold" style={{ color: AMBER }}>{streak >= 5 ? "🔥 En feu !" : "⚡ Série !"}</span>}
+                        </div>
+                        {!isChallenge && (
+                          <div className="flex items-center gap-1 font-semibold text-xs" style={{ color: AMBER }}>
+                            <Coins className="w-3.5 h-3.5" />
+                            +{lastPts.toLocaleString()}
+                            {mult > 1 && <span className="text-[10px] opacity-60 ml-0.5">×{mult}</span>}
+                          </div>
+                        )}
+                      </>
+                    ) : chosen === -1 ? (
+                      <>
+                        <span className="text-sm font-bold text-[#FF6B6B]">⏱ Temps écoulé</span>
+                        <span className="text-xs text-white/40">→ <span className="text-white/60">{q.options[q.answer]}</span></span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm font-bold text-[#FF6B6B]">✗ Incorrect</span>
+                        <span className="text-xs text-white/40">→ <span className="text-white/60">{q.options[q.answer]}</span></span>
+                      </>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Progress dots */}
+              <div className="flex items-center justify-center gap-1.5 mt-auto pt-2 pb-1">
+                {questions.map((_, i) => {
+                  const done    = i < qIdx || (i === qIdx && phase === "ceremony");
+                  const current = i === qIdx && phase === "playing";
+                  return (
+                    <motion.div
+                      key={i} className="rounded-full h-[5px]"
+                      animate={{ width: current ? 22 : 6, background: done ? AMBER : current ? AMBER : "rgba(255,255,255,0.1)", opacity: done || current ? 1 : 0.35 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    />
+                  );
+                })}
+              </div>
+              {phase === "playing" && <p className="text-center text-[10px] text-white/10 mt-1.5">A · B · C · D</p>}
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </div>
     </div>

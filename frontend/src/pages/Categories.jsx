@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES } from "../data/mockData";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import ArenaBackground from "../components/ArenaBackground";
 import PixelScene from "../components/PixelScene";
 
@@ -14,66 +14,47 @@ export default function Categories() {
   return (
     <div className="relative min-h-screen">
       <ArenaBackground />
-      <div className="relative max-w-[1400px] mx-auto px-6 lg:px-10 py-14">
-        <div className="mb-12 text-center">
-          <div className="text-xs uppercase tracking-widest text-white/40 mb-3">// SELECT_STAGE</div>
-          <h1 className="font-display font-black uppercase tracking-tighter text-4xl sm:text-5xl lg:text-6xl">
-            {t.categories.title}
-          </h1>
-          <p className="text-slate-400 mt-4 max-w-2xl mx-auto">{t.categories.subtitle}</p>
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8">
+
+        <div className="mb-6">
+          <h1 className="text-sm font-semibold text-white">{t.categories.title}</h1>
+          <p className="text-xs text-white/40 mt-0.5">{t.categories.subtitle}</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {CATEGORIES.map((c, i) => {
             const Icon = c.icon;
             return (
               <motion.div
                 key={c.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
+                transition={{ delay: i * 0.05 }}
               >
                 <Link
-                  to={`/play/${c.id}`}
+                  to={`/category/${c.id}`}
                   data-testid={`category-${c.id}`}
-                  className="group block relative overflow-hidden rounded-2xl border border-white/10 hover:border-[#E5A800]/50 transition-all bg-[#0B0B14]"
+                  className="group block rounded-xl border border-white/[0.07] hover:border-white/20 transition-all bg-[#0B0B14] overflow-hidden"
                 >
-                  {/* Pixel scene preview */}
-                  <div className="relative">
-                    <PixelScene category={c.id} idx={i} />
-                  </div>
+                  <PixelScene category={c.id} idx={i} />
 
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div
-                        className="w-11 h-11 rounded-lg flex items-center justify-center border"
-                        style={{ background: `${AMBER}10`, borderColor: `${AMBER}40`, color: AMBER }}
-                      >
-                        <Icon className="w-5 h-5" />
+                  <div className="p-3.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                          style={{ background: `${AMBER}18`, color: AMBER }}
+                        >
+                          <Icon className="w-3 h-3" />
+                        </div>
+                        <span className="text-sm font-medium text-white">{c.name[lang]}</span>
                       </div>
-                      <div className="font-arcade text-lg" style={{ color: AMBER }}>
-                        {String(i + 1).padStart(2, "0")}
-                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 transition" />
                     </div>
-
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">
-                      {c.style[lang]}
-                    </div>
-                    <h3 className="font-display font-black uppercase text-2xl tracking-tighter mb-2 text-white">
-                      {c.name[lang]}
-                    </h3>
-                    <p className="text-sm text-slate-400 mb-4">{c.description[lang]}</p>
-                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                      <div className="text-xs uppercase tracking-widest text-slate-500">
-                        {c.questions} {t.categories.questions}
-                      </div>
-                      <div
-                        className="inline-flex items-center gap-1 text-xs uppercase tracking-widest font-bold"
-                        style={{ color: AMBER }}
-                      >
-                        {t.categories.pick}
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                      </div>
+                    <p className="text-xs text-white/40 leading-relaxed mb-2">{c.description[lang]}</p>
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                      <span className="text-[10px] text-white/25">{c.style[lang]}</span>
+                      <span className="text-[10px] text-white/25">{c.questions} {t.categories.questions}</span>
                     </div>
                   </div>
                 </Link>

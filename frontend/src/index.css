@@ -162,7 +162,7 @@ code {
 .scanline-bar {
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(0, 255, 255, 0.08) 50%, transparent 100%);
+    background: linear-gradient(180deg, transparent 0%, rgba(229, 168, 0, 0.05) 50%, transparent 100%);
     pointer-events: none;
     animation: scanline-move 6s linear infinite;
 }
@@ -223,8 +223,8 @@ code {
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #0B0B14; }
-::-webkit-scrollbar-thumb { background: #00FFFF44; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #00FFFF88; }
+::-webkit-scrollbar-thumb { background: rgba(229,168,0,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(229,168,0,0.4); }
 
 @layer base {
     [data-debug-wrapper="true"] { display: contents !important; }

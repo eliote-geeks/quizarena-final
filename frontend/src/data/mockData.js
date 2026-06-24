@@ -277,3 +277,218 @@ export const TOP_WINNERS_MARQUEE = [
 ];
 
 export const getCategory = (id) => CATEGORIES.find((c) => c.id === id);
+
+export const CATEGORY_COLORS = {
+  histoire:   "#FF6B6B",
+  geographie: "#26de81",
+  sciences:   "#45aaf2",
+  cinema:     "#fd9644",
+  sport:      "#a55eea",
+  musique:    "#2bcbba",
+};
+
+export const ONLINE_PLAYERS = [
+  { name: "NeoQuiz",    elo: 1580, status: "lobby",  avatar: "NQ", room: "histoire"   },
+  { name: "AtomBlitz",  elo: 1820, status: "lobby",  avatar: "AB", room: "sciences"   },
+  { name: "CipherQueen",elo: 1420, status: "ingame", avatar: "CQ", room: "cinema"     },
+  { name: "VortexNyx",  elo: 1480, status: "lobby",  avatar: "VN", room: "geographie" },
+  { name: "ZenithRay",  elo: 1650, status: "lobby",  avatar: "ZR", room: "histoire"   },
+  { name: "EchoVoid",   elo: 1230, status: "ingame", avatar: "EV", room: "musique"    },
+  { name: "NovaSpark",  elo: 980,  status: "lobby",  avatar: "NS", room: "sciences"   },
+  { name: "QuantumKid", elo: 1120, status: "lobby",  avatar: "QK", room: "sport"      },
+  { name: "GlitchOwl",  elo: 890,  status: "ingame", avatar: "GO", room: "sport"      },
+  { name: "LumaCore",   elo: 1150, status: "away",   avatar: "LC", room: "geographie" },
+  { name: "PixelMind",  elo: 1340, status: "lobby",  avatar: "PM", room: "cinema"     },
+  { name: "OrbitFox",   elo: 1060, status: "lobby",  avatar: "OF", room: "histoire"   },
+];
+
+export const ALL_REPLAYS = [
+  {
+    id: "rp1", tournament: "Néon Showdown", round: "Quarts de finale",
+    date: "2026-06-21", playerA: "NeoQuiz", eloA: 1580, scoreA: 9,
+    playerB: "QuantumKid", eloB: 1120, scoreB: 7, category: "sciences", duration: "4m32s",
+    results: [
+      { a: true,  b: false, timeA: 6.2,  timeB: null  },
+      { a: true,  b: true,  timeA: 4.1,  timeB: 11.3  },
+      { a: false, b: true,  timeA: null, timeB: 7.8   },
+      { a: true,  b: false, timeA: 3.4,  timeB: null  },
+      { a: true,  b: true,  timeA: 8.9,  timeB: 9.1   },
+      { a: true,  b: false, timeA: 2.8,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 5.5   },
+      { a: true,  b: true,  timeA: 7.2,  timeB: 12.4  },
+      { a: true,  b: true,  timeA: 4.8,  timeB: 8.9   },
+      { a: true,  b: true,  timeA: 11.1, timeB: 9.7   },
+    ],
+  },
+  {
+    id: "rp2", tournament: "Coupe des Cerveaux", round: "Demis-finale",
+    date: "2026-06-20", playerA: "AtomBlitz", eloA: 1820, scoreA: 8,
+    playerB: "NovaSpark", eloB: 980, scoreB: 5, category: "histoire", duration: "5m11s",
+    results: [
+      { a: true,  b: true,  timeA: 5.1,  timeB: 13.2  },
+      { a: true,  b: false, timeA: 3.9,  timeB: null  },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 8.4,  timeB: 10.1  },
+      { a: true,  b: false, timeA: 6.3,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 7.9   },
+      { a: true,  b: false, timeA: 4.7,  timeB: null  },
+      { a: true,  b: true,  timeA: 9.2,  timeB: 11.8  },
+      { a: true,  b: false, timeA: 2.1,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 6.4   },
+    ],
+  },
+  {
+    id: "rp3", tournament: "Master Cinéphile", round: "1/8 de finale",
+    date: "2026-06-19", playerA: "CipherQueen", eloA: 1420, scoreA: 6,
+    playerB: "OrbitFox", eloB: 1060, scoreB: 8, category: "cinema", duration: "6m05s",
+    results: [
+      { a: false, b: true,  timeA: null, timeB: 5.3   },
+      { a: true,  b: true,  timeA: 7.8,  timeB: 9.2   },
+      { a: true,  b: true,  timeA: 4.2,  timeB: 11.0  },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 6.9,  timeB: 8.4   },
+      { a: false, b: true,  timeA: null, timeB: 6.7   },
+      { a: true,  b: false, timeA: 3.5,  timeB: null  },
+      { a: true,  b: true,  timeA: 8.1,  timeB: 7.6   },
+      { a: false, b: true,  timeA: null, timeB: 4.8   },
+      { a: true,  b: false, timeA: 12.3, timeB: null  },
+    ],
+  },
+  {
+    id: "rp4", tournament: "Globe Masters", round: "Finale",
+    date: "2026-06-18", playerA: "ZenithRay", eloA: 1650, scoreA: 10,
+    playerB: "VortexNyx", eloB: 1480, scoreB: 8, category: "geographie", duration: "3m58s",
+    results: [
+      { a: true,  b: true,  timeA: 3.1,  timeB: 9.4   },
+      { a: true,  b: false, timeA: 5.7,  timeB: null  },
+      { a: true,  b: true,  timeA: 4.2,  timeB: 7.1   },
+      { a: true,  b: false, timeA: 2.9,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 6.3   },
+      { a: true,  b: true,  timeA: 6.8,  timeB: 11.2  },
+      { a: true,  b: false, timeA: 3.4,  timeB: null  },
+      { a: true,  b: true,  timeA: 5.5,  timeB: 8.8   },
+      { a: true,  b: false, timeA: 7.2,  timeB: null  },
+      { a: true,  b: true,  timeA: 4.1,  timeB: 9.7   },
+    ],
+  },
+  {
+    id: "rp5", tournament: "Arena Sport", round: "Quarts",
+    date: "2026-06-17", playerA: "ByteGhost", eloA: 1180, scoreA: 7,
+    playerB: "LumaCore", eloB: 1150, scoreB: 9, category: "sport", duration: "5m44s",
+    results: [
+      { a: false, b: true,  timeA: null, timeB: 4.8   },
+      { a: true,  b: true,  timeA: 8.3,  timeB: 6.2   },
+      { a: true,  b: true,  timeA: 5.1,  timeB: 9.9   },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 7.6,  timeB: 5.5   },
+      { a: true,  b: true,  timeA: 3.9,  timeB: 8.1   },
+      { a: true,  b: false, timeA: 6.4,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 7.3   },
+      { a: true,  b: true,  timeA: 9.2,  timeB: 11.0  },
+      { a: false, b: true,  timeA: null, timeB: 6.8   },
+    ],
+  },
+  {
+    id: "rp6", tournament: "Duel Libre", round: "Match simple",
+    date: "2026-06-16", playerA: "EchoVoid", eloA: 1230, scoreA: 8,
+    playerB: "GlitchOwl", eloB: 890, scoreB: 5, category: "musique", duration: "4m19s",
+    results: [
+      { a: true,  b: false, timeA: 4.5,  timeB: null  },
+      { a: true,  b: true,  timeA: 7.2,  timeB: 13.1  },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 5.8,  timeB: 9.4   },
+      { a: true,  b: false, timeA: 3.2,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 8.7   },
+      { a: true,  b: false, timeA: 6.1,  timeB: null  },
+      { a: true,  b: false, timeA: 4.9,  timeB: null  },
+      { a: true,  b: true,  timeA: 7.8,  timeB: 10.6  },
+      { a: false, b: false, timeA: null, timeB: null  },
+    ],
+  },
+];
+
+export const REPLAYS = [
+  {
+    id: "rp1", tournament: "Néon Showdown", round: "Quarts de finale",
+    date: "2026-06-21", playerA: "NeoQuiz", eloA: 1580, scoreA: 9,
+    playerB: "QuantumKid", eloB: 1120, scoreB: 7, category: "sciences", duration: "4m32s",
+    results: [
+      { a: true,  b: false, timeA: 6.2,  timeB: null  },
+      { a: true,  b: true,  timeA: 4.1,  timeB: 11.3  },
+      { a: false, b: true,  timeA: null, timeB: 7.8   },
+      { a: true,  b: false, timeA: 3.4,  timeB: null  },
+      { a: true,  b: true,  timeA: 8.9,  timeB: 9.1   },
+      { a: true,  b: false, timeA: 2.8,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 5.5   },
+      { a: true,  b: true,  timeA: 7.2,  timeB: 12.4  },
+      { a: true,  b: true,  timeA: 4.8,  timeB: 8.9   },
+      { a: true,  b: true,  timeA: 11.1, timeB: 9.7   },
+    ],
+  },
+  {
+    id: "rp2", tournament: "Coupe des Cerveaux", round: "Demis-finale",
+    date: "2026-06-20", playerA: "AtomBlitz", eloA: 1820, scoreA: 8,
+    playerB: "NovaSpark", eloB: 980, scoreB: 5, category: "histoire", duration: "5m11s",
+    results: [
+      { a: true,  b: true,  timeA: 5.1,  timeB: 13.2  },
+      { a: true,  b: false, timeA: 3.9,  timeB: null  },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 8.4,  timeB: 10.1  },
+      { a: true,  b: false, timeA: 6.3,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 7.9   },
+      { a: true,  b: false, timeA: 4.7,  timeB: null  },
+      { a: true,  b: true,  timeA: 9.2,  timeB: 11.8  },
+      { a: true,  b: false, timeA: 2.1,  timeB: null  },
+      { a: false, b: true,  timeA: null, timeB: 6.4   },
+    ],
+  },
+  {
+    id: "rp3", tournament: "Master Cinéphile", round: "1/8 de finale",
+    date: "2026-06-19", playerA: "CipherQueen", eloA: 1420, scoreA: 6,
+    playerB: "OrbitFox", eloB: 1060, scoreB: 8, category: "cinema", duration: "6m05s",
+    results: [
+      { a: false, b: true,  timeA: null, timeB: 5.3   },
+      { a: true,  b: true,  timeA: 7.8,  timeB: 9.2   },
+      { a: true,  b: true,  timeA: 4.2,  timeB: 11.0  },
+      { a: false, b: false, timeA: null, timeB: null  },
+      { a: true,  b: true,  timeA: 6.9,  timeB: 8.4   },
+      { a: false, b: true,  timeA: null, timeB: 6.7   },
+      { a: true,  b: false, timeA: 3.5,  timeB: null  },
+      { a: true,  b: true,  timeA: 8.1,  timeB: 7.6   },
+      { a: false, b: true,  timeA: null, timeB: 4.8   },
+      { a: true,  b: false, timeA: 12.3, timeB: null  },
+    ],
+  },
+];
+
+// Deterministic player profile generator — same name always gives same stats
+export function getMockPlayerProfile(name) {
+  let h = 0;
+  for (const c of name) h = (((h * 31) >>> 0) + c.charCodeAt(0)) >>> 0;
+  const elo = 700 + (h % 1200);
+  const games = 60 + ((h >> 4) % 240);
+  const winRate = 40 + ((h >> 8) % 40);
+  const wins = Math.round(games * winRate / 100);
+  const streak = (h >> 12) % 9;
+  const categories = ["histoire", "geographie", "sciences", "cinema", "sport", "musique"];
+  const favCat = categories[(h >> 16) % 6];
+  const yr = 2025 + ((h >> 20) % 2);
+  const mo = String(1 + ((h >> 22) % 12)).padStart(2, "0");
+  const dy = String(1 + ((h >> 24) % 28)).padStart(2, "0");
+  const joined = `${yr}-${mo}-${dy}`;
+  const allBadges = [
+    { id: "b1", name: { fr: "Premier sang", en: "First Blood" }, icon: "swords" },
+    { id: "b2", name: { fr: "Cerveau d'acier", en: "Steel Brain" }, icon: "brain" },
+    { id: "b3", name: { fr: "Vitesse lumière", en: "Light Speed" }, icon: "zap" },
+    { id: "b4", name: { fr: "Champion", en: "Champion" }, icon: "crown" },
+  ];
+  const badges = allBadges.slice(0, 1 + (h % 4));
+  const categoryPerf = categories.map((id, i) => ({ id, rate: 35 + ((h >> (i * 3)) % 55) }));
+  const modes = ["Duel", "Solo", "Duel", "Tournoi", "Duel"];
+  const recent = categories.slice(0, 5).map((cat, i) => ({
+    mode: modes[i], category: cat,
+    result: ((h >> (i * 5)) & 1) ? "win" : "loss",
+    delta: ((h >> (i * 5)) & 1) ? (100 + ((h >> (i * 4)) % 1400)) : -(100 + ((h >> (i * 2)) % 600)),
+  }));
+  return { name, avatar: name.substring(0, 2).toUpperCase(), elo, games, wins, winRate, streak, joined, badges, categoryPerf, recent, favCat };
+}
