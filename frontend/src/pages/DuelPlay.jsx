@@ -5,10 +5,11 @@ import { useApp } from "../context/AppContext";
 import { QUESTIONS, getCategory } from "../data/mockData";
 import { calcNewElo, getRank } from "../lib/eloEngine";
 import { SFX } from "../lib/soundEngine";
-import { X, Swords, Coins } from "lucide-react";
+import { X, Swords } from "lucide-react";
+import { formatMoney } from "../lib/currency";
 import ResultScreen from "../components/ResultScreen";
 
-const TIME_PER_Q = 15;
+const TIME_PER_Q = 13;
 const ROUND_SIZE = 10;
 const AMBER = "#E5A800";
 const LABELS = ["A", "B", "C", "D"];
@@ -25,7 +26,7 @@ function pickRandom(arr, n) {
 export default function DuelPlay() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { lang, addCoins, elo, updateElo } = useApp();
+  const { lang, addCoins, elo, updateElo, currency } = useApp();
   const duelState = location.state;
 
   // Derive values with fallbacks so hooks always run unconditionally
@@ -47,6 +48,7 @@ export default function DuelPlay() {
   const [oppCorrect, setOppCorrect] = useState(0);
   const [eloResult, setEloResult] = useState(null);
   const [cashoutValue] = useState(() => Math.round(stake * 1.5));
+  const [nextIn, setNextIn] = useState(null); // inter-question countdown
 
   // Refs
   const myCorrectRef = useRef(0);
@@ -162,9 +164,9 @@ export default function DuelPlay() {
     return () => window.removeEventListener("keydown", onKey);
   }, [phase, handleChoice]);
 
-  // Ceremony: update scores → check cashout → next question or result
+  // Ceremony: update scores → 3s countdown → check cashout → next question or result
   useEffect(() => {
-    if (phase !== "ceremony") return;
+    if (phase !== "ceremony") { setNextIn(null); return; }
 
     // Update scores based on what was chosen
     const myWon = chosen !== -1 && chosen === q?.answer;
@@ -173,25 +175,30 @@ export default function DuelPlay() {
     if (myWon) { myCorrectRef.current += 1; setMyCorrect(myCorrectRef.current); }
     if (oppWon) { oppCorrectRef.current += 1; setOppCorrect(oppCorrectRef.current); }
 
-    const id = setTimeout(() => {
-      const isLastQ = qIdx + 1 >= questions.length;
-
-      // Cashout offer: leading by 2+ after Q5
-      const lead = myCorrectRef.current - oppCorrectRef.current;
-      if (!isLastQ && qIdx >= 4 && lead >= 2) {
-        setPhase("cashout");
-        SFX.cashOut();
-        return;
-      }
-
-      if (isLastQ) {
-        finalizeResult();
+    setNextIn(3);
+    let t = 3;
+    const id = setInterval(() => {
+      t -= 1;
+      if (t <= 0) {
+        clearInterval(id);
+        const isLastQ = qIdx + 1 >= questions.length;
+        const lead = myCorrectRef.current - oppCorrectRef.current;
+        if (!isLastQ && qIdx >= 4 && lead >= 2) {
+          setPhase("cashout");
+          SFX.cashOut();
+          return;
+        }
+        if (isLastQ) {
+          finalizeResult();
+        } else {
+          setQIdx(i => i + 1);
+          setPhase("playing");
+        }
       } else {
-        setQIdx(i => i + 1);
-        setPhase("playing");
+        setNextIn(t);
       }
-    }, 1800);
-    return () => clearTimeout(id);
+    }, 1000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -300,8 +307,7 @@ export default function DuelPlay() {
 
           {/* Stake */}
           <div className="flex items-center gap-1">
-            <Coins className="w-3.5 h-3.5" style={{ color: AMBER }} />
-            <span className="font-arcade text-base" style={{ color: AMBER }}>{stake.toLocaleString()}</span>
+            <span className="font-arcade text-sm" style={{ color: AMBER }}>{formatMoney(stake, currency)}</span>
           </div>
         </div>
 
@@ -438,13 +444,31 @@ export default function DuelPlay() {
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3.5 flex items-center justify-between"
+                  className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.03] p-3.5"
                 >
-                  <div className="text-xs text-white/40">
-                    {chosen === q.answer ? "✓ Tu as bon" : chosen === -1 ? "⏱ Timeout" : "✗ Raté"}
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="text-xs text-white/40">
+                      {chosen === q.answer ? "✓ Tu as bon" : chosen === -1 ? "⏱ Timeout" : "✗ Raté"}
+                    </div>
+                    <div className="text-xs text-white/40">
+                      {opponentAnswerRef.current === q.answer ? `${opponentName} a bon` : `${opponentName} a raté`}
+                    </div>
                   </div>
-                  <div className="text-xs text-white/40">
-                    {opponentAnswerRef.current === q.answer ? `${opponentName} a bon` : `${opponentName} a raté`}
+                  <div className="flex items-center justify-center gap-2 pt-2 border-t border-white/[0.05]">
+                    <span className="text-[10px] text-white/20">Question suivante dans</span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={nextIn}
+                        initial={{ scale: 1.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.6, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="font-arcade text-sm leading-none"
+                        style={{ color: nextIn === 1 ? AMBER : "rgba(255,255,255,0.4)" }}
+                      >
+                        {nextIn}s
+                      </motion.span>
+                    </AnimatePresence>
                   </div>
                 </motion.div>
               )}
@@ -472,15 +496,15 @@ export default function DuelPlay() {
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <div className="rounded-xl bg-[#0D0D18] border border-white/[0.07] p-4">
                   <div className="text-[10px] text-white/30 mb-1">Sécuriser</div>
-                  <div className="font-arcade text-xl" style={{ color: AMBER }}>
-                    +{cashoutValue.toLocaleString()}
+                  <div className="font-arcade text-lg" style={{ color: AMBER }}>
+                    {formatMoney(cashoutValue - stake, currency, { showPlus: true })}
                   </div>
-                  <div className="text-[9px] text-white/20 mt-0.5">coins garantis</div>
+                  <div className="text-[9px] text-white/20 mt-0.5">garanti</div>
                 </div>
                 <div className="rounded-xl bg-[#0D0D18] border border-white/[0.07] p-4">
                   <div className="text-[10px] text-white/30 mb-1">Si victoire</div>
-                  <div className="font-arcade text-xl text-[#5DD66E]">
-                    +{(stake * 2 - Math.round(stake * 0.05)).toLocaleString()}
+                  <div className="font-arcade text-lg text-[#5DD66E]">
+                    {formatMoney(Math.round(stake * 2 * 0.90) - stake, currency, { showPlus: true })}
                   </div>
                   <div className="text-[9px] text-white/20 mt-0.5">mais risque de perdre</div>
                 </div>
@@ -492,7 +516,7 @@ export default function DuelPlay() {
                   className="w-full py-3 text-black text-sm font-semibold rounded-xl transition"
                   style={{ background: AMBER }}
                 >
-                  Prendre {cashoutValue.toLocaleString()} coins
+                  Prendre {formatMoney(cashoutValue, currency)}
                 </button>
                 <button
                   onClick={continueDuel}
