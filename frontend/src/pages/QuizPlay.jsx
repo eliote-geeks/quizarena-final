@@ -8,7 +8,7 @@ import { SFX } from "../lib/soundEngine";
 import { X, Flame, Coins, Zap, AlertTriangle } from "lucide-react";
 import ResultScreen from "../components/ResultScreen";
 
-const TIME_PER_Q   = 15;
+const TIME_PER_Q   = 13;
 const ROUND_SIZE   = 10;
 const AMBER        = "#E5A800";
 const LABELS       = ["A", "B", "C", "D"];
@@ -127,6 +127,7 @@ export default function QuizPlay() {
   const [streak,       setStreak]       = useState(0);
   const [eloResult,    setEloResult]    = useState(null);
   const [flash,        setFlash]        = useState(null);
+  const [nextIn,       setNextIn]       = useState(null); // countdown before next question
 
   const correctRef = useRef(0);
   const pointsRef  = useRef(0);
@@ -165,14 +166,22 @@ export default function QuizPlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qIdx, phase]);
 
-  // Ceremony → next / finalize
+  // Ceremony → countdown → next question / finalize
   useEffect(() => {
-    if (phase !== "ceremony") return;
-    const id = setTimeout(() => {
-      if (qIdx + 1 >= questions.length) finalize();
-      else { setQIdx(i => i + 1); setPhase("playing"); }
-    }, 1800);
-    return () => clearTimeout(id);
+    if (phase !== "ceremony") { setNextIn(null); return; }
+    setNextIn(3);
+    let t = 3;
+    const id = setInterval(() => {
+      t -= 1;
+      if (t <= 0) {
+        clearInterval(id);
+        if (qIdx + 1 >= questions.length) finalize();
+        else { setQIdx(i => i + 1); setPhase("playing"); }
+      } else {
+        setNextIn(t);
+      }
+    }, 1000);
+    return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, qIdx]);
 
@@ -355,7 +364,7 @@ export default function QuizPlay() {
                   <CatIcon className="w-7 h-7" />
                 </div>
                 <h2 className="text-base font-bold text-white">{cat.name[lang]}</h2>
-                <p className="text-xs text-white/30 mt-0.5">{ROUND_SIZE} questions · {TIME_PER_Q}s par question</p>
+                <p className="text-xs text-white/30 mt-0.5">{ROUND_SIZE} questions · {TIME_PER_Q}s par question · 3s entre chaque</p>
               </div>
 
               {/* Mode selector */}
@@ -623,9 +632,10 @@ export default function QuizPlay() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.97 }}
                     transition={{ duration: 0.22 }}
-                    className="rounded-xl border px-4 py-3 mb-3 flex items-center justify-between"
+                    className="rounded-xl border px-4 py-3 mb-3"
                     style={flash === "correct" ? { background: "rgba(93,214,110,0.07)", borderColor: "rgba(93,214,110,0.28)" } : { background: "rgba(255,85,85,0.07)", borderColor: "rgba(255,85,85,0.28)" }}
                   >
+                    <div className="flex items-center justify-between">
                     {flash === "correct" ? (
                       <>
                         <div className="flex items-center gap-2">
@@ -651,6 +661,24 @@ export default function QuizPlay() {
                         <span className="text-xs text-white/40">→ <span className="text-white/60">{q.options[q.answer]}</span></span>
                       </>
                     )}
+                    </div>
+                    {/* Next-question countdown */}
+                    <div className="flex items-center justify-center gap-2 mt-2.5 pt-2 border-t border-white/[0.06]">
+                      <span className="text-[10px] text-white/25">Question suivante dans</span>
+                      <AnimatePresence mode="wait">
+                        <motion.span
+                          key={nextIn}
+                          initial={{ scale: 1.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.6, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="font-arcade text-sm leading-none"
+                          style={{ color: nextIn === 1 ? AMBER : "rgba(255,255,255,0.45)" }}
+                        >
+                          {nextIn}s
+                        </motion.span>
+                      </AnimatePresence>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
