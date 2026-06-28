@@ -1,13 +1,18 @@
 import { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { translations } from "../i18n/translations";
+import { CURRENCY_ORDER } from "../lib/currency";
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [lang, setLang]         = useState("fr");
-  const [coins, setCoins]       = useState(12450);
+  const [coins, setCoins]       = useState(12450); // 1 coin = 1 XAF
   const [elo, setElo]           = useState(1050);
   const [dailyDone, setDailyDone] = useState(false);
+
+  const [currency, setCurrencyState] = useState(() => {
+    return localStorage.getItem("qa_currency") || "XAF";
+  });
 
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("qa_user")); }
@@ -32,6 +37,13 @@ export function AppProvider({ children }) {
     setUser(null);
   }, []);
 
+  const setCurrency = useCallback((code) => {
+    if (CURRENCY_ORDER.includes(code)) {
+      localStorage.setItem("qa_currency", code);
+      setCurrencyState(code);
+    }
+  }, []);
+
   const value = useMemo(() => {
     const t = translations[lang];
     return {
@@ -39,19 +51,21 @@ export function AppProvider({ children }) {
       setLang,
       toggleLang: () => setLang((l) => (l === "fr" ? "en" : "fr")),
       t,
-      coins,
+      coins,      // balance in XAF
       setCoins,
       addCoins: (amount) => setCoins((c) => Math.max(0, c + amount)),
       elo,
       updateElo: setElo,
       dailyDone,
       setDailyDone,
+      currency,
+      setCurrency,
       user,
       login,
       register,
       logout,
     };
-  }, [lang, coins, elo, dailyDone, user, login, register, logout]);
+  }, [lang, coins, elo, dailyDone, currency, setCurrency, user, login, register, logout]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

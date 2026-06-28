@@ -4,9 +4,11 @@ import {
   CATEGORIES, ONLINE_PLAYERS, LIVE_MATCHES, CATEGORY_COLORS,
 } from "../data/mockData";
 import { getRank } from "../lib/eloEngine";
+import { formatMoney } from "../lib/currency";
+import CurrencyBadge from "./CurrencyBadge";
 import { Link } from "react-router-dom";
 import {
-  Coins, Trophy, BarChart2, Wallet, User, Star, CheckCircle,
+  Trophy, BarChart2, Wallet, User, Star, CheckCircle,
   RotateCcw, LogOut, BookOpen,
 } from "lucide-react";
 
@@ -24,7 +26,7 @@ const BOTTOM_NAV = [
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { coins, elo, dailyDone, user, logout } = useApp();
+  const { coins, elo, dailyDone, user, logout, currency } = useApp();
   const rank = getRank(elo);
 
   const roomMatch = location.pathname.match(/^\/room\/(.+)/);
@@ -54,9 +56,8 @@ export default function Sidebar() {
 
         <div className="flex gap-1.5">
           <div className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-black/40 border border-white/[0.07] flex-1 min-w-0">
-            <Coins className="w-3 h-3 flex-shrink-0" style={{ color: AMBER }} />
-            <span className="font-medium text-xs text-white truncate">
-              {coins.toLocaleString()}
+            <span className="font-arcade text-xs leading-none truncate" style={{ color: AMBER }}>
+              {formatMoney(coins, currency)}
             </span>
           </div>
           <div className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-black/40 border border-white/[0.07]">
@@ -65,6 +66,9 @@ export default function Sidebar() {
               {elo}
             </span>
           </div>
+        </div>
+        <div className="mt-2">
+          <CurrencyBadge />
         </div>
       </div>
 

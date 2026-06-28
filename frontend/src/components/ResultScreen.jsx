@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { Zap, Swords, ArrowRight, Coins, TrendingUp, TrendingDown, Home } from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { formatMoney } from "../lib/currency";
+import { Zap, Swords, TrendingUp, TrendingDown, Home } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -59,6 +61,7 @@ export default function ResultScreen({
   onReplay,     // fn
   onLobby,      // fn
 }) {
+  const { currency } = useApp();
   const cfg = CONFIGS[result] || CONFIGS.loss;
   const isWin = result === "win" || result === "cashout";
   const isLoss = result === "loss";
@@ -141,28 +144,24 @@ export default function ResultScreen({
           className="mb-8"
         >
           <div
-            className="inline-flex items-center gap-3 px-7 py-5 rounded-2xl border"
+            className="inline-flex flex-col items-center gap-1 px-8 py-5 rounded-2xl border"
             style={{
               background:   isLoss ? "rgba(255,107,107,0.07)" : isWin ? `${AMBER}09` : "rgba(255,255,255,0.03)",
               borderColor:  isLoss ? "rgba(255,107,107,0.25)" : isWin ? `${AMBER}35` : "rgba(255,255,255,0.08)",
               boxShadow:    isWin ? `0 0 30px ${AMBER}18` : isLoss ? "0 0 30px rgba(255,107,107,0.12)" : "none",
             }}
           >
-            <Coins
-              className="w-7 h-7 flex-shrink-0"
-              style={{ color: isLoss ? "#FF6B6B" : AMBER }}
-            />
             <span
               className="font-arcade leading-none"
               style={{
-                fontSize: "clamp(30px, 8vw, 52px)",
+                fontSize: "clamp(28px, 7vw, 48px)",
                 color: isLoss ? "#FF6B6B" : AMBER,
                 textShadow: `0 0 24px ${isLoss ? "#FF6B6B" : AMBER}60`,
               }}
             >
-              {coinsGained >= 0 ? "+" : ""}{coinsGained.toLocaleString()}
+              {formatMoney(coinsGained, currency, { showPlus: true })}
             </span>
-            <span className="text-xs text-white/25">pts</span>
+            <span className="text-[10px] text-white/20 mt-0.5">argent réel · 1 FCFA = 1 XAF</span>
           </div>
         </motion.div>
 

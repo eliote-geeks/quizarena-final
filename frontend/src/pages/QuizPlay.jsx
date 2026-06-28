@@ -5,7 +5,8 @@ import { useApp } from "../context/AppContext";
 import { QUESTIONS, getCategory } from "../data/mockData";
 import { calcNewElo } from "../lib/eloEngine";
 import { SFX } from "../lib/soundEngine";
-import { X, Flame, Coins, Zap, AlertTriangle } from "lucide-react";
+import { formatMoney } from "../lib/currency";
+import { X, Flame, Zap, AlertTriangle } from "lucide-react";
 import ResultScreen from "../components/ResultScreen";
 
 const TIME_PER_Q   = 13;
@@ -78,10 +79,9 @@ const STATE_STYLE = {
 };
 
 // ── Payout table row ──────────────────────────────────────────────────────────
-function PayoutRow({ score, mult, stake }) {
+function PayoutRow({ score, mult, stake, currency }) {
   const isWin  = mult >= 1.0;
-  const payout = Math.round(stake * mult);
-  const net    = payout - stake;
+  const net    = Math.round(stake * mult) - stake;
   return (
     <div
       className="flex items-center justify-between py-1.5 px-2 rounded-lg"
@@ -92,7 +92,7 @@ function PayoutRow({ score, mult, stake }) {
       </span>
       <span className="font-arcade text-xs text-white/30">×{mult.toFixed(2)}</span>
       <span className="font-arcade text-xs font-bold" style={{ color: isWin ? "#5DD66E" : "#FF6B6B" }}>
-        {net >= 0 ? "+" : ""}{net.toLocaleString()}
+        {formatMoney(net, currency, { showPlus: true })}
       </span>
     </div>
   );
@@ -103,7 +103,7 @@ export default function QuizPlay() {
   const [searchParams]    = useSearchParams();
   const isDaily           = searchParams.get("daily") === "1";
   const navigate          = useNavigate();
-  const { lang, coins, addCoins, elo, updateElo, setDailyDone } = useApp();
+  const { lang, coins, addCoins, elo, updateElo, setDailyDone, currency } = useApp();
 
   const cat       = getCategory(categoryId);
   const questions = useMemo(
@@ -439,7 +439,7 @@ export default function QuizPlay() {
                                   cursor: canAfford ? "pointer" : "not-allowed",
                                 }}
                               >
-                                {s.toLocaleString()}
+                                {formatMoney(s, currency)}
                               </button>
                             );
                           })}
@@ -447,7 +447,7 @@ export default function QuizPlay() {
                         {coins < selectedStake && (
                           <div className="flex items-center gap-1.5 mt-2 text-[11px]" style={{ color: "#FF6B6B" }}>
                             <AlertTriangle className="w-3.5 h-3.5" />
-                            Solde insuffisant — tu as {coins.toLocaleString()} pts
+                            Solde insuffisant — solde : {formatMoney(coins, currency)}
                           </div>
                         )}
                       </div>
@@ -456,11 +456,11 @@ export default function QuizPlay() {
                       <div>
                         <p className="text-[10px] uppercase tracking-widest text-white/25 font-semibold mb-2">Grille de gain</p>
                         <div className="space-y-1">
-                          <PayoutRow score="0–6" mult={0}    stake={selectedStake} />
-                          <PayoutRow score={7}   mult={1.20} stake={selectedStake} />
-                          <PayoutRow score={8}   mult={1.60} stake={selectedStake} />
-                          <PayoutRow score={9}   mult={2.20} stake={selectedStake} />
-                          <PayoutRow score={10}  mult={3.00} stake={selectedStake} />
+                          <PayoutRow score="0–6" mult={0}    stake={selectedStake} currency={currency} />
+                          <PayoutRow score={7}   mult={1.20} stake={selectedStake} currency={currency} />
+                          <PayoutRow score={8}   mult={1.60} stake={selectedStake} currency={currency} />
+                          <PayoutRow score={9}   mult={2.20} stake={selectedStake} currency={currency} />
+                          <PayoutRow score={10}  mult={3.00} stake={selectedStake} currency={currency} />
                         </div>
                         <p className="text-[9px] text-white/20 mt-1.5">* 5/10 → ×0.60 · 6/10 → ×0.85 (récupération partielle)</p>
                       </div>
@@ -477,7 +477,7 @@ export default function QuizPlay() {
                   className="w-full py-4 rounded-2xl text-sm font-bold transition disabled:opacity-40"
                   style={{ background: AMBER, color: "#07070F" }}
                 >
-                  {isChallenge ? `Miser ${selectedStake.toLocaleString()} pts & Jouer` : "Jouer en Libre"}
+                  {isChallenge ? `Miser ${formatMoney(selectedStake, currency)} & Jouer` : "Jouer en Libre"}
                 </button>
                 <p className="text-center text-[10px] text-white/20 mt-2">
                   <Link to="/rules" className="underline hover:text-white/40 transition">Lire les règles complètes</Link>
@@ -508,7 +508,7 @@ export default function QuizPlay() {
                 <p className="text-xs text-white/30 mb-2 uppercase tracking-widest">{ROUND_SIZE} questions · {cat.name[lang]}</p>
                 {isChallenge && (
                   <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>
-                    ⚡ Challenge · Mise {selectedStake.toLocaleString()} pts
+                    ⚡ Challenge · Mise {formatMoney(selectedStake, currency)}
                   </p>
                 )}
                 {isDaily && (
@@ -543,16 +543,18 @@ export default function QuizPlay() {
               <div className="flex items-center justify-between mb-5">
                 <div className="text-center min-w-[72px]">
                   <p className="text-[9px] text-white/20 uppercase tracking-widest mb-0.5">
-                    {isChallenge ? "Mise" : "Pts"}
+                    {isChallenge ? "Mise" : "Gains"}
                   </p>
                   <motion.p
-                    key={totalPoints}
+                    key={totalPoints + currency}
                     initial={{ y: -10, opacity: 0.5 }}
                     animate={{ y: 0, opacity: 1 }}
-                    className="font-arcade text-xl leading-none"
+                    className="font-arcade text-base leading-none"
                     style={{ color: AMBER }}
                   >
-                    {isChallenge ? selectedStake.toLocaleString() : totalPoints.toLocaleString()}
+                    {isChallenge
+                      ? formatMoney(selectedStake, currency)
+                      : formatMoney(totalPoints, currency, { showPlus: true })}
                   </motion.p>
                 </div>
 
@@ -644,8 +646,7 @@ export default function QuizPlay() {
                         </div>
                         {!isChallenge && (
                           <div className="flex items-center gap-1 font-semibold text-xs" style={{ color: AMBER }}>
-                            <Coins className="w-3.5 h-3.5" />
-                            +{lastPts.toLocaleString()}
+                            {formatMoney(lastPts, currency, { showPlus: true })}
                             {mult > 1 && <span className="text-[10px] opacity-60 ml-0.5">×{mult}</span>}
                           </div>
                         )}
