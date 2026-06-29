@@ -8,6 +8,7 @@ import { SFX } from "../lib/soundEngine";
 import { X, Swords } from "lucide-react";
 import { formatMoney } from "../lib/currency";
 import ResultScreen from "../components/ResultScreen";
+import QuestionIntro from "../components/QuestionIntro";
 
 const TIME_PER_Q = 13;
 const ROUND_SIZE = 10;
@@ -152,6 +153,13 @@ export default function DuelPlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, chosen, q, opponentAnswered]);
 
+  // Intro → playing after 1.5s
+  useEffect(() => {
+    if (phase !== "intro") return;
+    const id = setTimeout(() => setPhase("playing"), 1500);
+    return () => clearTimeout(id);
+  }, [phase]);
+
   // Keyboard A/B/C/D
   useEffect(() => {
     const map = { a: 0, b: 1, c: 2, d: 3 };
@@ -192,7 +200,7 @@ export default function DuelPlay() {
           finalizeResult();
         } else {
           setQIdx(i => i + 1);
-          setPhase("playing");
+          setPhase("intro");
         }
       } else {
         setNextIn(t);
@@ -334,8 +342,8 @@ export default function DuelPlay() {
             </motion.div>
           )}
 
-          {/* PLAYING + CEREMONY */}
-          {(phase === "playing" || phase === "ceremony") && (
+          {/* PLAYING + CEREMONY + INTRO (question pre-rendered under overlay) */}
+          {(phase === "playing" || phase === "ceremony" || phase === "intro") && (
             <motion.div
               key={`q-${qIdx}`}
               initial={{ opacity: 0, y: 14 }}
@@ -532,6 +540,19 @@ export default function DuelPlay() {
 
         </AnimatePresence>
       </div>
+
+      {/* Question intro overlay */}
+      <AnimatePresence>
+        {phase === "intro" && q && (
+          <QuestionIntro
+            qIdx={qIdx}
+            total={ROUND_SIZE}
+            question={q}
+            cat={cat}
+            lang={lang}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

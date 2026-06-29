@@ -8,6 +8,7 @@ import { SFX } from "../lib/soundEngine";
 import { formatMoney } from "../lib/currency";
 import { X, Flame, Zap, AlertTriangle } from "lucide-react";
 import ResultScreen from "../components/ResultScreen";
+import QuestionIntro from "../components/QuestionIntro";
 
 const TIME_PER_Q   = 13;
 const ROUND_SIZE   = 10;
@@ -149,6 +150,13 @@ export default function QuizPlay() {
     return () => clearTimeout(id);
   }, [phase, countdown]);
 
+  // Intro → playing after 1.5s
+  useEffect(() => {
+    if (phase !== "intro") return;
+    const id = setTimeout(() => setPhase("playing"), 1500);
+    return () => clearTimeout(id);
+  }, [phase]);
+
   // Per-question timer
   useEffect(() => {
     if (phase !== "playing") return;
@@ -176,7 +184,7 @@ export default function QuizPlay() {
       if (t <= 0) {
         clearInterval(id);
         if (qIdx + 1 >= questions.length) finalize();
-        else { setQIdx(i => i + 1); setPhase("playing"); }
+        else { setQIdx(i => i + 1); setPhase("intro"); }
       } else {
         setNextIn(t);
       }
@@ -529,8 +537,8 @@ export default function QuizPlay() {
             </motion.div>
           )}
 
-          {/* ════ PLAYING + CEREMONY ════ */}
-          {(phase === "playing" || phase === "ceremony") && (
+          {/* ════ PLAYING + CEREMONY + INTRO (question rendered underneath overlay) ════ */}
+          {(phase === "playing" || phase === "ceremony" || phase === "intro") && (
             <motion.div
               key={`q-${qIdx}`}
               initial={{ opacity: 0, y: 24 }}
@@ -704,6 +712,19 @@ export default function QuizPlay() {
 
         </AnimatePresence>
       </div>
+
+      {/* Question intro overlay — full screen, sits above everything */}
+      <AnimatePresence>
+        {phase === "intro" && (
+          <QuestionIntro
+            qIdx={qIdx}
+            total={questions.length}
+            question={questions[qIdx]}
+            cat={cat}
+            lang={lang}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
