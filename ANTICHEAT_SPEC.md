@@ -1,6 +1,8 @@
 # QuizArena — Spécification Anti-Triche & Anti-Fraude
 
-> **Statut** : Planifié — à implémenter avec le backend  
+> **Statut** : Phase 1 implémentée et testée bout-en-bout (12 août 2026) —
+> voir `backend/README.md`. R01-R03 actifs, R04-R08 en attente du moteur de
+> duel temps réel et du fingerprint device (Phase 2-4, roadmap §10 inchangée).  
 > **Priorité** : Haute (dès la mise en production avec argent réel)  
 > **Date de rédaction** : Juin 2026
 

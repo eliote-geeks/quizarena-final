@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES, QUESTIONS, getCategory } from "../data/mockData";
 import { calcNewElo } from "../lib/eloEngine";
-import { SFX, ZenMusic } from "../lib/soundEngine";
+import { SFX } from "../lib/soundEngine";
 import { formatMoney } from "../lib/currency";
 import { X, Flame, Zap, AlertTriangle, Volume2, VolumeX, ShieldQuestion, Image as ImageIcon, Type, BookOpen } from "lucide-react";
 import ResultScreen from "../components/ResultScreen";
@@ -183,7 +183,12 @@ export default function QuizPlay() {
   const [eloResult,    setEloResult]    = useState(null);
   const [flash,        setFlash]        = useState(null);
   const [nextIn,       setNextIn]       = useState(null); // countdown before next question
-  const [muted,        setMuted]        = useState(() => localStorage.getItem("qa_music_muted") === "1");
+  const [muted,        setMuted]        = useState(() => localStorage.getItem("qa_sound_muted") === "1");
+  const mutedRef = useRef(muted);
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+  // Joue un effet sonore, sauf si l'utilisateur a coupé le son (ref pour
+  // rester correct dans les callbacks mémoïsés qui n'ont pas `muted` en dep).
+  const playSfx = useCallback((fn) => { if (!mutedRef.current) fn(); }, []);
 
   const correctRef = useRef(0);
   const pointsRef  = useRef(0);
@@ -192,19 +197,10 @@ export default function QuizPlay() {
   const revealTimerRef = useRef(null);
   const phaseRef   = useRef(isDaily ? "ready" : "setup");
 
-  // Zen music
-  useEffect(() => {
-    if (!muted) ZenMusic.start();
-    return () => ZenMusic.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const toggleMusic = useCallback(() => {
     setMuted((m) => {
       const next = !m;
-      localStorage.setItem("qa_music_muted", next ? "1" : "0");
-      if (next) ZenMusic.stop();
-      else ZenMusic.start();
+      localStorage.setItem("qa_sound_muted", next ? "1" : "0");
       return next;
     });
   }, []);
@@ -269,7 +265,7 @@ export default function QuizPlay() {
       timerRef.current = setInterval(() => {
         if (phaseRef.current !== "playing") { clearInterval(timerRef.current); return; }
         t -= 1;
-        if (t <= 3) SFX.tick();
+        if (t <= 3) playSfx(SFX.tick);
         if (t <= 0) { clearInterval(timerRef.current); onTimeout(); return; }
         setTimeLeft(t);
       }, 1000);
@@ -325,7 +321,7 @@ export default function QuizPlay() {
     addCoins(netCoins);
     if (isDaily) setDailyDone(true);
     setTotalPoints(netCoins);
-    if (quizResult === "win") SFX.victory(); else SFX.defeat();
+    if (quizResult === "win") playSfx(SFX.victory); else playSfx(SFX.defeat);
     setPhase("done");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isChallenge, selectedStake, isDaily, elo]);
@@ -333,7 +329,7 @@ export default function QuizPlay() {
   const onTimeout = () => {
     streakRef.current = 0;
     setStreak(0); setFlash("wrong"); setLastPts(0);
-    SFX.wrong();
+    playSfx(SFX.wrong);
     setChosen(-1);
     setPhase("ceremony");
   };
@@ -354,13 +350,13 @@ export default function QuizPlay() {
       setStreak(streakRef.current);
       setLastPts(pts);
       setFlash("correct");
-      SFX.correct();
-      if (streakRef.current >= 5) setTimeout(() => SFX.onFire(), 300);
-      else if (streakRef.current >= 3) setTimeout(() => SFX.streak(), 300);
+      playSfx(SFX.correct);
+      if (streakRef.current >= 5) setTimeout(() => playSfx(SFX.onFire), 300);
+      else if (streakRef.current >= 3) setTimeout(() => playSfx(SFX.streak), 300);
     } else {
       streakRef.current = 0;
       setStreak(0); setLastPts(0); setFlash("wrong");
-      SFX.wrong();
+      playSfx(SFX.wrong);
     }
     setPhase("ceremony");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -453,7 +449,7 @@ export default function QuizPlay() {
                 color: muted ? "var(--qa-text-faint)" : AMBER,
                 background: muted ? (isGameScreen ? "rgba(7,18,14,0.40)" : "var(--qa-surface)") : `${AMBER}18`,
               }}
-              title={muted ? "Activer la musique zen" : "Couper la musique"}
+              title={muted ? "Activer le son" : "Couper le son"}
             >
               {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
             </button>

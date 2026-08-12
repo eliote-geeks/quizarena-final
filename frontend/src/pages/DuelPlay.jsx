@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES, QUESTIONS, getCategory } from "../data/mockData";
 import { calcNewElo } from "../lib/eloEngine";
-import { SFX, ZenMusic } from "../lib/soundEngine";
+import { SFX } from "../lib/soundEngine";
 import { Image as ImageIcon, Type, X, Swords, Volume2, VolumeX } from "lucide-react";
 import { formatMoney } from "../lib/currency";
 import ResultScreen from "../components/ResultScreen";
@@ -63,7 +63,12 @@ export default function DuelPlay() {
 
   const [phase, setPhase] = useState("countdown"); // countdown | playing | ceremony | cashout | result
   const [countdownVal, setCountdownVal] = useState(3);
-  const [muted, setMuted] = useState(() => localStorage.getItem("qa_music_muted") === "1");
+  const [muted, setMuted] = useState(() => localStorage.getItem("qa_sound_muted") === "1");
+  const mutedRef = useRef(muted);
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+  // Joue un effet sonore, sauf si l'utilisateur a coupé le son (ref pour
+  // rester correct dans les callbacks mémoïsés qui n'ont pas `muted` en dep).
+  const playSfx = useCallback((fn) => { if (!mutedRef.current) fn(); }, []);
   const [qIdx, setQIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_PER_Q);
   const [chosen, setChosen] = useState(null); // my choice (null | 0-3 | -1 for timeout)
@@ -89,13 +94,6 @@ export default function DuelPlay() {
   const q = questions[qIdx];
   const cat = getCategory(q?.categoryId || category);
 
-  // Zen music — auto-start on mount, stop on unmount
-  useEffect(() => {
-    if (!muted) ZenMusic.start();
-    return () => ZenMusic.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const speakQuestion = useCallback(() => {
     if (!q || typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -113,13 +111,10 @@ export default function DuelPlay() {
     };
   }, [phase, qIdx, q?.displayType, speakQuestion]);
 
-  // Toggle zen music
   const toggleMusic = useCallback(() => {
     setMuted((m) => {
       const next = !m;
-      localStorage.setItem("qa_music_muted", next ? "1" : "0");
-      if (next) ZenMusic.stop();
-      else ZenMusic.start();
+      localStorage.setItem("qa_sound_muted", next ? "1" : "0");
       return next;
     });
   }, []);
@@ -149,9 +144,9 @@ export default function DuelPlay() {
       if (phaseRef.current !== "playing") return;
       opponentAnswerRef.current = oppChoice;
       setOpponentAnswered(true);
-      SFX.opponentLocked();
+      playSfx(SFX.opponentLocked);
     }, thinkTime);
-  }, []);
+  }, [playSfx]);
 
   // Per-question timer
   useEffect(() => {
@@ -173,7 +168,7 @@ export default function DuelPlay() {
       timerRef.current = setInterval(() => {
         if (phaseRef.current !== "playing") { clearInterval(timerRef.current); return; }
         t -= 1;
-        if (t <= 3) SFX.tick();
+        if (t <= 3) playSfx(SFX.tick);
         if (t <= 0) {
           clearInterval(timerRef.current);
           clearTimeout(oppTimerRef.current);
@@ -222,8 +217,8 @@ export default function DuelPlay() {
       setTimeout(finalize, 700);
     }
 
-    if (optIdx === q.answer) SFX.correct();
-    else SFX.wrong();
+    if (optIdx === q.answer) playSfx(SFX.correct);
+    else playSfx(SFX.wrong);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, answersReady, chosen, q, opponentAnswered]);
 
@@ -267,7 +262,7 @@ export default function DuelPlay() {
         const lead = myCorrectRef.current - oppCorrectRef.current;
         if (!isLastQ && qIdx >= 4 && lead >= 2) {
           setPhase("cashout");
-          SFX.cashOut();
+          playSfx(SFX.cashOut);
           return;
         }
         if (isLastQ) {
@@ -296,15 +291,15 @@ export default function DuelPlay() {
       // House fee: 10% of pot → winner gets 90% of 2×stake = 1.80×stake
       const prize = Math.round(stake * 2 * 0.90);
       addCoins(prize - stake); // net +0.80×stake
-      SFX.victory();
+      playSfx(SFX.victory);
     } else if (result === "draw") {
       // House fee: 5% each → each gets back 95% of stake
       const refund = Math.round(stake * 0.95);
       addCoins(refund - stake); // net -0.05×stake
-      SFX.cashOut();
+      playSfx(SFX.cashOut);
     } else {
       addCoins(-stake); // net -stake
-      SFX.defeat();
+      playSfx(SFX.defeat);
     }
     setPhase("result");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -315,7 +310,7 @@ export default function DuelPlay() {
     updateElo(newElo);
     addCoins(cashoutValue - stake);
     setEloResult({ newElo, delta, result: "cashout", myCorrect: myCorrectRef.current, oppCorrect: oppCorrectRef.current });
-    SFX.victory();
+    playSfx(SFX.victory);
     setPhase("result");
   };
 
@@ -398,7 +393,7 @@ export default function DuelPlay() {
             </div>
           </div>
 
-          {/* Stake + music toggle */}
+          {/* Stake + son toggle */}
           <div className="flex items-center gap-2">
             <button
               onClick={toggleMusic}
@@ -409,7 +404,7 @@ export default function DuelPlay() {
                 color: muted ? "var(--text-faint)" : "var(--accent)",
                 backdropFilter: "blur(12px)",
               }}
-              title={muted ? "Activer la musique zen" : "Couper la musique"}
+              title={muted ? "Activer le son" : "Couper le son"}
             >
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>

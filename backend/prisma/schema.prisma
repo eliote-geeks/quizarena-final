@@ -1,0 +1,263 @@
+// QuizArena — schéma de données.
+// Principe directeur : le client n'est jamais la source de vérité sur
+// l'argent ou le score. Tout ce qui touche à l'argent passe par Transaction
+// (ledger append-only, jamais de UPDATE sur un solde). Voir ANTICHEAT_SPEC.md
+// à la racine du repo pour la justification de chaque champ anti-fraude.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Compte
+// ────────────────────────────────────────────────────────────────────
+
+enum AccountStatus {
+  ACTIVE
+  WATCHED     // niveau 0-1 : surveillance, pas de restriction visible
+  RESTRICTED  // niveau 2 : mise plafonnée, duel bloqué
+  SUSPENDED   // niveau 3 : suspension temporaire
+  BANNED      // niveau 4 : définitif
+}
+
+model User {
+  id           String        @id @default(uuid())
+  username     String        @unique
+  email        String?       @unique
+  phone        String        @unique
+  passwordHash String
+  region       String?
+  eloRating    Int           @default(1000)
+  accountStatus AccountStatus @default(ACTIVE)
+  riskScore    Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
+  createdAt    DateTime      @default(now())
+  lastLoginAt  DateTime?
+
+  transactions Transaction[]
+  quizSessions QuizSession[]
+  flags        Flag[]
+  stats        PlayerStats?
+  duelsAsA     DuelMatch[]   @relation("DuelPlayerA")
+  duelsAsB     DuelMatch[]   @relation("DuelPlayerB")
+
+  @@index([riskScore])
+  @@index([accountStatus])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Portefeuille — ledger append-only. Solde = SUM(amountCoins) où
+// status = COMPLETED. Ne JAMAIS ajouter de colonne "balance" mutable :
+// c'est la garantie qu'aucune requête ne peut créer d'argent par erreur.
+// 1 coin = 1 FCFA (voir currency.js du frontend).
+// ────────────────────────────────────────────────────────────────────
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  STAKE       // mise engagée (négatif)
+  PAYOUT      // gain de partie/tournoi (positif)
+  REFUND      // panne technique ou tournoi annulé (§ Refund.jsx)
+  BONUS       // parrainage, promo
+}
+
+enum TransactionStatus {
+  PENDING     // en attente (ex : webhook Mobile Money pas encore reçu)
+  COMPLETED
+  FAILED
+  QUARANTINED // suspicion_score 50-89 : gain retenu, voir ANTICHEAT_SPEC §3.4 phase 9.2
+}
+
+model Transaction {
+  id            String             @id @default(uuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id])
+  type          TransactionType
+  amountCoins   Int                // signé : dépôt/gain positif, retrait/mise négatif
+  status        TransactionStatus  @default(COMPLETED)
+  provider      String?            // "orange_money" | "mtn_momo" | "system"
+  providerRef   String?            // référence opérateur, pour rapprochement
+  quizSessionId String?
+  quizSession   QuizSession?       @relation(fields: [quizSessionId], references: [id])
+  duelMatchId   String?
+  duelMatch     DuelMatch?         @relation(fields: [duelMatchId], references: [id])
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+  releasedAt    DateTime?          // date de sortie de quarantaine
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Banque de questions — jamais exposée au client avec la réponse.
+// ────────────────────────────────────────────────────────────────────
+
+model Category {
+  id         String     @id // slug, ex "histoire"
+  nameFr     String
+  nameEn     String
+  difficulty String     @default("moyen")
+  questions  Question[]
+}
+
+model Question {
+  id          String   @id @default(uuid())
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  textFr      String
+  textEn      String
+  options     Json     // string[4], ordre canonique — le shuffle se fait à l'envoi (§3.4)
+  answerIndex Int      // index dans `options`, jamais envoyé au client avant submit
+  active      Boolean  @default(true)
+
+  @@index([categoryId, active])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Partie solo (libre / challenge) — le cœur du Phase 1 anti-triche.
+// Une QuizSession fixe la liste de questions et l'heure de départ côté
+// serveur ; le score n'existe qu'après recalcul serveur dans submit().
+// ────────────────────────────────────────────────────────────────────
+
+enum QuizMode {
+  LIBRE
+  CHALLENGE
+}
+
+enum SessionStatus {
+  STARTED
+  SUBMITTED
+  EXPIRED
+}
+
+model QuizSession {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  categoryId    String
+  mode          QuizMode
+  stakeCoins    Int           @default(0)
+  targetScore   Int?          // seuil de gain en mode challenge
+  questionIds   Json          // string[] — ordre figé au démarrage (§3.4 : anti-refresh)
+  status        SessionStatus @default(STARTED)
+  startedAt     DateTime      @default(now())
+  expiresAt     DateTime      // startedAt + (nb_questions × timer) + marge
+  submittedAt   DateTime?
+
+  // Résultat, rempli uniquement par submit() côté serveur
+  scoreServer      Int?
+  tabSwitches      Int      @default(0) // rapporté par le client, indicatif (§2.2 : pas une preuve seule)
+  totalDurationMs  Int?
+  suspicionScore   Float?
+  suspicionFlags   Json?       // string[] des règles déclenchées (R01…)
+  clientScoreMismatch Boolean @default(false) // le client a menti sur son score
+
+  answers      QuizAnswer[]
+  transactions Transaction[]
+
+  @@index([userId, status])
+}
+
+model QuizAnswer {
+  id            String      @id @default(uuid())
+  sessionId     String
+  session       QuizSession @relation(fields: [sessionId], references: [id])
+  questionId    String
+  chosenIndex   Int
+  correct       Boolean     // recalculé serveur, jamais pris du client
+  responseMs    Int
+  createdAt     DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Duel — squelette de données pour le moteur temps réel (Phase suivante,
+// non branché ici : voir README « Prochaines phases »). Les colonnes
+// existent déjà pour que PlayerStats puisse agréger dès que le moteur
+// WebSocket écrit ici.
+// ────────────────────────────────────────────────────────────────────
+
+enum DuelStatus {
+  MATCHING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model DuelMatch {
+  id           String       @id @default(uuid())
+  categoryId   String
+  stakeCoins   Int
+  playerAId    String
+  playerA      User         @relation("DuelPlayerA", fields: [playerAId], references: [id])
+  playerBId    String
+  playerB      User         @relation("DuelPlayerB", fields: [playerBId], references: [id])
+  status       DuelStatus   @default(MATCHING)
+  scoreA       Int          @default(0)
+  scoreB       Int          @default(0)
+  winnerId     String?
+  eloDeltaA    Int?
+  eloDeltaB    Int?
+  startedAt    DateTime     @default(now())
+  completedAt  DateTime?
+
+  transactions Transaction[]
+
+  @@index([playerAId])
+  @@index([playerBId])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Profil comportemental — agrégé après chaque partie par un job
+// asynchrone (§5.1, §6.2 du spec). Alimente RISK_SCORE et le dashboard
+// admin (à construire).
+// ────────────────────────────────────────────────────────────────────
+
+model PlayerStats {
+  userId          String   @id
+  user            User     @relation(fields: [userId], references: [id])
+
+  totalGames      Int      @default(0)
+  winRateGlobal   Float    @default(0)
+  avgScore        Float    @default(0)
+  avgResponseMs   Float    @default(0)
+
+  games7d         Int      @default(0)
+  winRate7d       Float    @default(0)
+  coinsWon7d      Int      @default(0)
+  coinsLost7d     Int      @default(0)
+
+  games30d        Int      @default(0)
+  winRate30d      Float    @default(0)
+  avgScore30d     Float    @default(0)
+
+  avgTabSwitches  Float    @default(0)
+  fastAnswerRate  Float    @default(0)
+  timingVariance  Float    @default(0)
+
+  eloDelta7d      Int      @default(0)
+
+  suspicionScoreAvg Float  @default(0) // moyenne mobile sur 30 parties
+  flagsCount        Int    @default(0)
+  lastFlagAt        DateTime?
+
+  updatedAt       DateTime @updatedAt
+}
+
+model Flag {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rule      String   // "RESPONSE_TOO_FAST", "ABNORMAL_WIN_RATE", … (§6.1)
+  detail    Json?
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, resolved])
+}
