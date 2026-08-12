@@ -49,7 +49,7 @@ export default function PlayerPage() {
   const winPct = p.games > 0 ? Math.round((p.wins / p.games) * 100) : 0;
 
   return (
-    <div className="relative min-h-screen" style={{ background: "#05050A" }}>
+    <div className="relative min-h-screen" style={{ background: "var(--qa-page)" }}>
       <ArenaBackground />
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
@@ -176,7 +176,7 @@ export default function PlayerPage() {
               style={
                 activeTab === i
                   ? { background: `${AMBER}18`, color: AMBER }
-                  : { color: "rgba(255,255,255,0.35)" }
+                  : { color: "var(--qa-text-sub)" }
               }
             >
               {tab}

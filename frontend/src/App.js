@@ -1,3 +1,4 @@
+/* v2.1 — QuestionIntro, real money, 13s timer */
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
@@ -24,6 +25,7 @@ import Rules from "./pages/Rules";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Refund from "./pages/Refund";
+import VipPage from "./pages/VipPage";
 
 function App() {
   return (
@@ -64,6 +66,7 @@ function App() {
               <Route path="profile"           element={<Profile />} />
               <Route path="player/:username"  element={<PlayerPage />} />
               <Route path="replays"           element={<Replays />} />
+              <Route path="vip"               element={<VipPage />} />
               <Route path="rules"            element={<Rules />} />
             </Route>
           </Routes>

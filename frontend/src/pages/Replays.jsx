@@ -4,8 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { ALL_REPLAYS, getCategory } from "../data/mockData";
 import ReplayModal from "../components/ReplayModal";
-import { Play, Filter, Clock, Trophy } from "lucide-react";
-import ArenaBackground from "../components/ArenaBackground";
+import { Play, Filter, Clock, Trophy, Users } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -17,6 +16,14 @@ const CATEGORY_LABELS = {
   cinema: "Cinéma",
   sport: "Sport",
   musique: "Musique",
+  technologie: "Tech",
+  afrique: "Afrique",
+  nature: "Nature",
+  gastronomie: "Gastro",
+  litterature: "Littérature",
+  celebrites: "Célébrités",
+  anime: "Anime",
+  culture: "Culture",
 };
 
 export default function Replays() {
@@ -24,18 +31,8 @@ export default function Replays() {
   const navigate = useNavigate();
 
   const [activeCat, setActiveCat] = useState("all");
-  const [sort, setSort] = useState("recent"); // "recent" | "top"
+  const [sort, setSort] = useState("recent");
   const [selectedReplay, setSelectedReplay] = useState(null);
-
-  // Build category counts
-  const categoryCounts = Object.keys(CATEGORY_LABELS).reduce((acc, key) => {
-    if (key === "all") {
-      acc[key] = ALL_REPLAYS.length;
-    } else {
-      acc[key] = ALL_REPLAYS.filter((r) => r.category === key).length;
-    }
-    return acc;
-  }, {});
 
   const filtered = ALL_REPLAYS.filter(
     (r) => activeCat === "all" || r.category === activeCat
@@ -47,11 +44,9 @@ export default function Replays() {
       const maxB = Math.max(b.scoreA, b.scoreB);
       return maxB - maxA;
     }
-    // "recent" — sort by date descending
     return new Date(b.date) - new Date(a.date);
   });
 
-  // Mock stats
   const totalPlayers = new Set(
     ALL_REPLAYS.flatMap((r) => [r.playerA, r.playerB])
   ).size;
@@ -64,138 +59,146 @@ export default function Replays() {
   const avgSec = Math.round(avgDurationRaw % 60);
   const avgDuration = `${avgMin}m${String(avgSec).padStart(2, "0")}s`;
 
+  const availableCats = Object.keys(CATEGORY_LABELS).filter(
+    (k) => k === "all" || ALL_REPLAYS.some((r) => r.category === k)
+  );
+
   return (
-    <div className="relative min-h-screen" style={{ background: "#05050A" }}>
-      <ArenaBackground />
+    <div className="min-h-full px-4 sm:px-6 py-6 max-w-2xl mx-auto space-y-6">
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Header */}
-        <div className="mb-5">
-          <h1 className="text-sm font-semibold text-white">Rediffusions</h1>
-          <p className="text-xs text-white/40 mt-0.5">Tous les matchs enregistrés</p>
-        </div>
+      {/* Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h1 className="font-display font-bold text-2xl sm:text-3xl" style={{ color: "var(--qa-text)" }}>
+          Rediffusions
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--qa-text-sub)" }}>
+          Regarde tous les matchs enregistrés
+        </p>
+      </motion.header>
 
-        {/* Stats bar */}
-        <div className="flex items-center gap-4 mb-5 flex-wrap">
-          <div className="flex items-center gap-1.5 text-xs text-white/40">
-            <Play className="w-3.5 h-3.5" style={{ color: AMBER }} />
-            <span>
-              <span className="text-white font-medium">{ALL_REPLAYS.length}</span>{" "}
-              replays
-            </span>
-          </div>
-          <div className="w-px h-3 bg-white/[0.10]" />
-          <div className="flex items-center gap-1.5 text-xs text-white/40">
-            <Trophy className="w-3.5 h-3.5" style={{ color: AMBER }} />
-            <span>
-              <span className="text-white font-medium">{totalPlayers}</span>{" "}
-              joueurs
-            </span>
-          </div>
-          <div className="w-px h-3 bg-white/[0.10]" />
-          <div className="flex items-center gap-1.5 text-xs text-white/40">
-            <Clock className="w-3.5 h-3.5" style={{ color: AMBER }} />
-            <span>
-              Durée moy.{" "}
-              <span className="text-white font-medium">{avgDuration}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Category filter pills */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
-            const isActive = activeCat === key;
-            const count = categoryCounts[key];
-            if (count === 0 && key !== "all") return null;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveCat(key)}
-                className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-                style={
-                  isActive
-                    ? {
-                        borderColor: `${AMBER}60`,
-                        background: `${AMBER}10`,
-                        color: AMBER,
-                      }
-                    : {
-                        borderColor: "rgba(255,255,255,0.07)",
-                        color: "rgba(255,255,255,0.40)",
-                        background: "transparent",
-                      }
-                }
-              >
-                {label} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Sort row */}
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-3.5 h-3.5 text-white/25 flex-shrink-0" />
-          {[
-            { key: "recent", label: "Récents" },
-            { key: "top", label: "Top scores" },
-          ].map(({ key, label }) => {
-            const isActive = sort === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setSort(key)}
-                className="px-2.5 py-1 rounded-md text-xs font-medium border transition-all"
-                style={
-                  isActive
-                    ? {
-                        borderColor: `${AMBER}50`,
-                        background: `${AMBER}10`,
-                        color: AMBER,
-                      }
-                    : {
-                        borderColor: "rgba(255,255,255,0.07)",
-                        color: "rgba(255,255,255,0.35)",
-                        background: "transparent",
-                      }
-                }
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Replay list */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${activeCat}-${sort}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="space-y-2"
-          >
-            {sorted.length === 0 && (
-              <div className="text-center py-12 text-xs text-white/25">
-                Aucun replay disponible pour cette catégorie.
+      {/* Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="grid grid-cols-3 gap-3"
+      >
+        {[
+          { icon: Play,    label: "Replays",  value: ALL_REPLAYS.length },
+          { icon: Trophy,  label: "Joueurs",  value: totalPlayers },
+          { icon: Clock,   label: "Durée moy.", value: avgDuration },
+        ].map((s) => {
+          const Icon = s.icon;
+          return (
+            <div
+              key={s.label}
+              className="rounded-2xl p-4"
+              style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
+            >
+              <Icon className="w-4 h-4 mb-2" style={{ color: AMBER }} />
+              <div className="text-xs font-semibold" style={{ color: "var(--qa-text-sub)" }}>{s.label}</div>
+              <div className="font-display font-bold text-lg mt-1" style={{ color: "var(--qa-text)" }}>
+                {s.value}
               </div>
-            )}
-            {sorted.map((replay, i) => (
-              <ReplayRow
-                key={replay.id}
-                replay={replay}
-                index={i}
-                lang={lang}
-                navigate={navigate}
-                onRevoir={() => setSelectedReplay(replay)}
-              />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+            </div>
+          );
+        })}
+      </motion.div>
 
-      {/* Replay modal */}
+      {/* Category pills */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className="flex gap-2 overflow-x-auto no-scrollbar pb-1"
+      >
+        {availableCats.map((key) => {
+          const label = CATEGORY_LABELS[key];
+          const isActive = activeCat === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveCat(key)}
+              className="flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all"
+              style={
+                isActive
+                  ? { background: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }
+                  : { background: "var(--qa-surface)", color: "var(--qa-text-sub)", border: "1px solid var(--qa-border)" }
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </motion.div>
+
+      {/* Sort */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.11 }}
+        className="flex items-center gap-2"
+      >
+        <Filter className="w-4 h-4 flex-shrink-0" style={{ color: "var(--qa-text-faint)" }} />
+        {[
+          { key: "recent", label: "Récents" },
+          { key: "top", label: "Top scores" },
+        ].map(({ key, label }) => {
+          const isActive = sort === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setSort(key)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+              style={
+                isActive
+                  ? { background: `${AMBER}22`, color: AMBER }
+                  : { color: "var(--qa-text-sub)" }
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </motion.div>
+
+      {/* Replay list */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`${activeCat}-${sort}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="space-y-2"
+        >
+          {sorted.length === 0 && (
+            <div
+              className="py-12 text-center text-sm rounded-2xl"
+              style={{
+                background: "var(--qa-surface)",
+                border: "1px dashed var(--qa-border)",
+                color: "var(--qa-text-sub)",
+              }}
+            >
+              Aucun replay pour cette catégorie
+            </div>
+          )}
+          {sorted.map((replay) => (
+            <ReplayRow
+              key={replay.id}
+              replay={replay}
+              lang={lang}
+              navigate={navigate}
+              onRevoir={() => setSelectedReplay(replay)}
+            />
+          ))}
+        </motion.div>
+      </AnimatePresence>
+
       {selectedReplay && (
         <ReplayModal
           replay={selectedReplay}
@@ -206,82 +209,73 @@ export default function Replays() {
   );
 }
 
-function ReplayRow({ replay, index, lang, navigate, onRevoir }) {
+function ReplayRow({ replay, lang, navigate, onRevoir }) {
   const cat = getCategory(replay.category);
   const Icon = cat?.icon;
   const isAWinner = replay.scoreA > replay.scoreB;
   const isBWinner = replay.scoreB > replay.scoreA;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-white/[0.07] bg-[#0B0B14] hover:border-white/[0.14] transition-all"
+    <div
+      className="flex items-center gap-3 p-4 rounded-2xl"
+      style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
     >
-      {/* Category icon */}
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: `${AMBER}15`, color: AMBER }}
+        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: `${AMBER}22`, color: AMBER }}
       >
-        {Icon && <Icon className="w-4 h-4" />}
+        {Icon && <Icon className="w-5 h-5" />}
       </div>
 
-      {/* Middle: players + meta */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => navigate("/player/" + replay.playerA)}
-            className="text-sm font-medium hover:underline transition-colors"
-            style={{ color: isAWinner ? AMBER : "rgba(255,255,255,0.85)" }}
+            className="text-sm font-bold hover:underline"
+            style={{ color: isAWinner ? AMBER : "var(--qa-text)" }}
           >
             {replay.playerA}
           </button>
-          <span className="text-xs text-white/20">vs</span>
+          <span className="text-xs font-bold" style={{ color: "var(--qa-text-faint)" }}>vs</span>
           <button
             onClick={() => navigate("/player/" + replay.playerB)}
-            className="text-sm font-medium hover:underline transition-colors"
-            style={{ color: isBWinner ? AMBER : "rgba(255,255,255,0.85)" }}
+            className="text-sm font-bold hover:underline"
+            style={{ color: isBWinner ? AMBER : "var(--qa-text)" }}
           >
             {replay.playerB}
           </button>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] text-white/25">{replay.tournament}</span>
-          <span className="text-[10px] text-white/15">·</span>
-          <span className="text-[10px] text-white/25">{replay.round}</span>
-          <span className="text-[10px] text-white/15">·</span>
-          <span className="text-[10px] text-white/25">{replay.date}</span>
-          <span className="text-[10px] text-white/15">·</span>
-          <span className="text-[10px] text-white/25 flex items-center gap-0.5">
-            <Clock className="w-2.5 h-2.5" />
+        <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: "var(--qa-text-sub)" }}>
+          <span>{replay.date}</span>
+          <span>·</span>
+          <span className="inline-flex items-center gap-0.5">
+            <Clock className="w-3 h-3" />
             {replay.duration}
           </span>
         </div>
       </div>
 
-      {/* Right: score + button */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <div className="text-center">
-          <div className="text-sm font-semibold tabular-nums">
-            <span style={{ color: isAWinner ? AMBER : "rgba(255,255,255,0.55)" }}>
+          <div className="font-display font-bold text-base">
+            <span style={{ color: isAWinner ? AMBER : "var(--qa-text-sub)" }}>
               {replay.scoreA}
             </span>
-            <span className="text-white/20 mx-1">–</span>
-            <span style={{ color: isBWinner ? AMBER : "rgba(255,255,255,0.55)" }}>
+            <span className="mx-1" style={{ color: "var(--qa-text-faint)" }}>–</span>
+            <span style={{ color: isBWinner ? AMBER : "var(--qa-text-sub)" }}>
               {replay.scoreB}
             </span>
           </div>
         </div>
         <button
           onClick={onRevoir}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
-          style={{ background: `${AMBER}18`, color: AMBER }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition hover:opacity-90"
+          style={{ background: `${AMBER}22`, color: AMBER }}
         >
-          <Play className="w-3 h-3" />
+          <Play className="w-3.5 h-3.5" />
           Revoir
         </button>
       </div>
-    </motion.div>
+    </div>
   );
 }

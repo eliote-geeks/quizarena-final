@@ -5,6 +5,14 @@ import {
   Film,
   Trophy,
   Music4,
+  Cpu,
+  MapPin,
+  Leaf,
+  ChefHat,
+  BookOpen,
+  Sparkles,
+  Swords,
+  Drama,
 } from "lucide-react";
 import { QUESTIONS_BANK } from "./questions";
 
@@ -67,10 +75,102 @@ export const CATEGORIES = [
     questions: QUESTIONS_BANK.musique.length,
     description: { fr: "Rock, classique, pop, hip-hop", en: "Rock, classical, pop, hip-hop" },
   },
+  {
+    id: "technologie",
+    name: { fr: "Tech", en: "Tech" },
+    icon: Cpu,
+    style: { fr: "Circuits & Code", en: "Circuits & Code" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.technologie.length,
+    description: { fr: "Informatique, IA, gaming, internet", en: "Computing, AI, gaming, internet" },
+  },
+  {
+    id: "afrique",
+    name: { fr: "Afrique", en: "Africa" },
+    icon: MapPin,
+    style: { fr: "Continent & Culture", en: "Continent & Culture" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.afrique.length,
+    description: { fr: "Pays, histoire, culture africaine", en: "Countries, history, African culture" },
+  },
+  {
+    id: "nature",
+    name: { fr: "Nature", en: "Nature" },
+    icon: Leaf,
+    style: { fr: "Faune & Flore", en: "Fauna & Flora" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.nature.length,
+    description: { fr: "Animaux, plantes, écosystèmes", en: "Animals, plants, ecosystems" },
+  },
+  {
+    id: "gastronomie",
+    name: { fr: "Gastronomie", en: "Food" },
+    icon: ChefHat,
+    style: { fr: "Chef & Épices", en: "Chef & Spices" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.gastronomie.length,
+    description: { fr: "Plats, cuisines du monde, chefs", en: "Dishes, world cuisines, chefs" },
+  },
+  {
+    id: "litterature",
+    name: { fr: "Littérature", en: "Literature" },
+    icon: BookOpen,
+    style: { fr: "Plume & Roman", en: "Quill & Novel" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.litterature.length,
+    description: { fr: "Romans, poésie, auteurs cultes", en: "Novels, poetry, iconic authors" },
+  },
+  {
+    id: "celebrites",
+    name: { fr: "Célébrités", en: "Celebrities" },
+    icon: Sparkles,
+    style: { fr: "Étoiles & Icônes", en: "Stars & Icons" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.celebrites.length,
+    description: { fr: "Cinéma, musique, sport, tech", en: "Cinema, music, sport, tech" },
+  },
+  {
+    id: "anime",
+    name: { fr: "Anime & Manga", en: "Anime & Manga" },
+    icon: Swords,
+    style: { fr: "Otaku & Shonen", en: "Otaku & Shonen" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.anime.length,
+    description: { fr: "Naruto, One Piece, Ghibli, MAPPA", en: "Naruto, One Piece, Ghibli, MAPPA" },
+  },
+  {
+    id: "culture",
+    name: { fr: "Culture du monde", en: "World Culture" },
+    icon: Drama,
+    style: { fr: "Fêtes & Traditions", en: "Feasts & Traditions" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.culture.length,
+    description: { fr: "Fêtes, danses, traditions", en: "Feasts, dances, traditions" },
+  },
 ];
 
 // Re-export the full questions bank (50+ per category)
 export const QUESTIONS = QUESTIONS_BANK;
+
+// ── Unified single theme "Culture générale" ──
+// Public app affiche un thème unique. En interne, on garde 14 categoryId pour la variété
+// (les questions restent tirées de toutes les sous-catégories).
+import { BookOpen as BookOpenIcon } from "lucide-react";
+export const UNIFIED_THEME = {
+  id: "culture",
+  name: { fr: "Culture générale", en: "General knowledge" },
+  icon: BookOpenIcon,
+  description: { fr: "Toutes les questions, toutes les époques", en: "All questions, all eras" },
+  style: { fr: "Mix universel", en: "Universal mix" },
+};
+
+// Pool aggregate — flat list of all questions with their sub-category id kept internally
+export function getAllQuestions() {
+  return CATEGORIES.flatMap((cat) =>
+    (QUESTIONS_BANK[cat.id] || []).map((q) => ({ ...q, categoryId: cat.id }))
+  );
+}
+export const TOTAL_QUESTIONS = CATEGORIES.reduce((s, c) => s + (QUESTIONS_BANK[c.id]?.length || 0), 0);
 
 // Legacy short sample kept for reference (unused)
 const _LEGACY_QUESTIONS = {
@@ -148,33 +248,42 @@ export const ACTIVE_DUELS = [
 export const TOURNAMENTS = [
   {
     id: "t1",
-    name: { fr: "Coupe des Cerveaux", en: "Brain Cup" },
-    category: "histoire",
+    name: { fr: "Coupe du Savoir", en: "Knowledge Cup" },
+    category: "culture",
+    tagline: { fr: "Débutant amical", en: "Beginner friendly" },
     entryFee: 500,
+    minElo: 900,
     slots: 16,
     registered: 12,
     prizePool: 8000,
     startsIn: "00:14:32",
+    gradient: "linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)",
   },
   {
     id: "t2",
-    name: { fr: "Néon Showdown", en: "Neon Showdown" },
-    category: "sciences",
+    name: { fr: "Grand Prix Culture", en: "Culture Grand Prix" },
+    category: "culture",
+    tagline: { fr: "Pour les vétérans", en: "For veterans" },
     entryFee: 1000,
+    minElo: 1200,
     slots: 32,
     registered: 28,
     prizePool: 32000,
     startsIn: "01:42:08",
+    gradient: "linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)",
   },
   {
     id: "t3",
-    name: { fr: "Master Cinéphile", en: "Cinephile Master" },
-    category: "cinema",
+    name: { fr: "Ouverture Weekend", en: "Weekend Opener" },
+    category: "culture",
+    tagline: { fr: "Accessible à tous", en: "Open to all" },
     entryFee: 250,
+    minElo: 700,
     slots: 16,
     registered: 9,
     prizePool: 4000,
     startsIn: "03:08:55",
+    gradient: "linear-gradient(135deg, #10B981 0%, #6366F1 100%)",
   },
 ];
 
@@ -219,14 +328,14 @@ export const BRACKET = {
 };
 
 export const TRANSACTIONS = [
-  { id: "tx1", type: "win", amount: 1200, date: "2026-02-12 21:42", status: "ok", meta: "Duel — Cinéma" },
-  { id: "tx2", type: "loss", amount: -500, date: "2026-02-12 20:18", status: "ok", meta: "Duel — Histoire" },
+  { id: "tx1", type: "win", amount: 1200, date: "2026-02-12 21:42", status: "ok", meta: "Duel — Mix global" },
+  { id: "tx2", type: "loss", amount: -500, date: "2026-02-12 20:18", status: "ok", meta: "Duel — Mix global" },
   { id: "tx3", type: "win", amount: 3200, date: "2026-02-11 23:05", status: "ok", meta: "Tournoi — Néon Showdown" },
   { id: "tx4", type: "entry", amount: -1000, date: "2026-02-11 22:00", status: "ok", meta: "Entrée Tournoi" },
-  { id: "tx5", type: "win", amount: 740, date: "2026-02-10 19:35", status: "ok", meta: "Solo — Sciences" },
+  { id: "tx5", type: "win", amount: 740, date: "2026-02-10 19:35", status: "ok", meta: "Solo — Mix global" },
   { id: "tx6", type: "deposit", amount: 5000, date: "2026-02-09 12:10", status: "ok", meta: "Dépôt initial" },
-  { id: "tx7", type: "loss", amount: -250, date: "2026-02-08 21:20", status: "ok", meta: "Duel — Sport" },
-  { id: "tx8", type: "win", amount: 980, date: "2026-02-07 18:45", status: "ok", meta: "Solo — Musique" },
+  { id: "tx7", type: "loss", amount: -250, date: "2026-02-08 21:20", status: "ok", meta: "Duel — Mix global" },
+  { id: "tx8", type: "win", amount: 980, date: "2026-02-07 18:45", status: "ok", meta: "Solo — Mix global" },
 ];
 
 export const USER_PROFILE = {
@@ -279,12 +388,20 @@ export const TOP_WINNERS_MARQUEE = [
 export const getCategory = (id) => CATEGORIES.find((c) => c.id === id);
 
 export const CATEGORY_COLORS = {
-  histoire:   "#FF6B6B",
-  geographie: "#26de81",
-  sciences:   "#45aaf2",
-  cinema:     "#fd9644",
-  sport:      "#a55eea",
-  musique:    "#2bcbba",
+  histoire:    "#FF6B6B",
+  geographie:  "#26de81",
+  sciences:    "#45aaf2",
+  cinema:      "#fd9644",
+  sport:       "#a55eea",
+  musique:     "#2bcbba",
+  technologie: "#5f9ea0",
+  afrique:     "#F0A860",
+  nature:      "#84cc16",
+  gastronomie: "#f97316",
+  litterature: "#c084fc",
+  celebrites:  "#ec4899",
+  anime:       "#f43f5e",
+  culture:     "#eab308",
 };
 
 export const ONLINE_PLAYERS = [

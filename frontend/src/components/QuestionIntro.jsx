@@ -2,13 +2,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { extractContext } from "../lib/questionContext";
 import { CATEGORY_COLORS } from "../data/mockData";
 
-// Horizontal scan lines — purely decorative
 const LINES = [14, 28, 42, 56, 70, 84];
+const _BUILD = "v2.1";
 
 export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr" }) {
   const catColor = CATEGORY_COLORS[cat?.id] || "#E5A800";
   const CatIcon  = cat?.icon;
   const tags     = extractContext(question, cat?.id, lang);
+  void _BUILD;
 
   return (
     <motion.div

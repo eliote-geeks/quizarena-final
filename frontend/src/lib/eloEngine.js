@@ -8,12 +8,12 @@ export function calcNewElo(myElo, oppElo, result) {
 }
 
 export const RANKS = [
-  { min: 0,    name: "Recrue",  color: "#9aa0a6", emoji: "🪨" },
-  { min: 800,  name: "Soldat",  color: "#5DD66E", emoji: "🛡️" },
-  { min: 1000, name: "Vétéran", color: "#60a5fa", emoji: "⚔️" },
-  { min: 1200, name: "Expert",  color: "#c084fc", emoji: "🔮" },
-  { min: 1500, name: "Maître",  color: "#E5A800", emoji: "👑" },
-  { min: 1800, name: "Légende", color: "#ff6b6b", emoji: "🏆" },
+  { min: 0,    name: "Recrue",  color: "#9aa0a6", emoji: "" },
+  { min: 800,  name: "Soldat",  color: "#5DD66E", emoji: "" },
+  { min: 1000, name: "Vétéran", color: "#60a5fa", emoji: "" },
+  { min: 1200, name: "Expert",  color: "#c084fc", emoji: "" },
+  { min: 1500, name: "Maître",  color: "#E5A800", emoji: "" },
+  { min: 1800, name: "Légende", color: "#ff6b6b", emoji: "" },
 ];
 
 export function getRank(elo) {

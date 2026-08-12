@@ -1,170 +1,234 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { USER_PROFILE, getCategory } from "../data/mockData";
-import { Swords, Brain, Zap, Star, Crown, Target, Trophy } from "lucide-react";
-import ArenaBackground from "../components/ArenaBackground";
+import {
+  Swords, Brain, Zap, Star, Crown, Target, Trophy,
+  RotateCcw, BookOpen, ChevronRight, Sparkles,
+} from "lucide-react";
 
-const AMBER = "#E5A800";
+const GREEN = "var(--success)";
+const RED   = "var(--danger)";
 const ICONS = { swords: Swords, brain: Brain, zap: Zap, star: Star, crown: Crown, target: Target };
 
 export default function Profile() {
-  const { t, lang } = useApp();
+  const { t, lang, resetOnboarding } = useApp();
+  const navigate = useNavigate();
   const p = USER_PROFILE;
   const xpPct = (p.xp / p.xpNext) * 100;
 
   return (
-    <div className="relative min-h-screen">
-      <ArenaBackground />
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+    <div className="min-h-full px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-8">
 
-        {/* Identity card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl p-5 border border-white/[0.07] bg-[#0B0B14]"
+      {/* Identity */}
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-5"
+      >
+        <div
+          className="w-20 h-20 rounded-full flex items-center justify-center font-display font-semibold text-2xl flex-shrink-0"
+          style={{
+            background: "var(--accent-soft)",
+            color: "var(--accent-hover)",
+            border: "1px solid var(--border-md)",
+          }}
         >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-xl flex items-center justify-center font-display font-bold text-xl border flex-shrink-0"
-              style={{ background: `${AMBER}15`, color: AMBER, borderColor: `${AMBER}40` }}
-            >
-              {p.avatar}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <h1 className="text-base font-semibold text-white truncate">{p.name}</h1>
-                <span className="text-xs text-white/30">·</span>
-                <span className="text-xs text-white/40">{t.common.level} <span style={{ color: AMBER }}>{p.level}</span></span>
-              </div>
-              <div className="text-xs text-white/30 mb-2">Membre depuis {p.joined}</div>
-              <div>
-                <div className="flex items-center justify-between text-[10px] text-white/30 mb-1">
-                  <span>{t.common.xp}</span>
-                  <span style={{ color: AMBER }}>{p.xp.toLocaleString()} / {p.xpNext.toLocaleString()}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${xpPct}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
-                    className="h-full rounded-full"
-                    style={{ background: AMBER }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="text-right flex-shrink-0">
-              <div className="text-[10px] text-white/30 mb-0.5">Rang global</div>
-              <div className="font-arcade text-2xl leading-none" style={{ color: AMBER }}>#142</div>
-            </div>
+          {p.avatar}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="font-display font-semibold text-3xl sm:text-4xl leading-tight tracking-tight" style={{ color: "var(--text)" }}>
+            {p.name}
+          </h1>
+          <div className="text-sm mt-1" style={{ color: "var(--text-sub)" }}>
+            Niveau <span className="font-semibold" style={{ color: "var(--accent)" }}>{p.level}</span> · Rang #142 · Membre depuis {p.joined}
           </div>
-        </motion.div>
+        </div>
+      </motion.header>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { icon: Trophy, label: t.profile.totalWins, value: p.wins },
-            { icon: Swords, label: t.profile.totalGames, value: p.games },
-            { icon: Target, label: t.profile.winRate, value: `${p.winRate}%` },
-            { icon: Zap, label: t.profile.bestStreak, value: p.bestStreak },
-          ].map((s) => {
-            const Icon = s.icon;
+      {/* XP */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="card rounded-2xl p-5"
+      >
+        <div className="flex items-center justify-between text-xs mb-3" style={{ color: "var(--text-sub)" }}>
+          <span className="font-medium">Progression</span>
+          <span className="font-medium tabular-nums" style={{ color: "var(--accent)" }}>
+            {p.xp.toLocaleString()} / {p.xpNext.toLocaleString()} XP
+          </span>
+        </div>
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--active)" }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${xpPct}%` }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="h-full rounded-full"
+            style={{ background: "var(--accent)" }}
+          />
+        </div>
+      </motion.div>
+
+      {/* Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+      >
+        {[
+          { icon: Trophy, label: "Victoires", value: p.wins },
+          { icon: Swords, label: "Parties",   value: p.games },
+          { icon: Target, label: "Win rate",  value: `${p.winRate}%` },
+          { icon: Zap,    label: "Streak",    value: p.bestStreak },
+        ].map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="card rounded-2xl p-4">
+              <Icon className="w-4 h-4 mb-2" style={{ color: "var(--accent)" }} strokeWidth={2} />
+              <div className="text-xs font-medium" style={{ color: "var(--text-sub)" }}>{s.label}</div>
+              <div className="font-display font-semibold text-2xl mt-1 tracking-tight" style={{ color: "var(--text)" }}>
+                {s.value}
+              </div>
+            </div>
+          );
+        })}
+      </motion.div>
+
+      {/* Category perf */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.11 }}
+      >
+        <h2 className="font-display font-semibold text-2xl tracking-tight mb-4" style={{ color: "var(--text)" }}>
+          Par catégorie
+        </h2>
+        <div className="card rounded-2xl p-5 space-y-4">
+          {p.categoryPerf.map((cp) => {
+            const c = getCategory(cp.id);
             return (
-              <div key={s.label} className="rounded-xl p-3.5 bg-[#0B0B14] border border-white/[0.07]">
-                <Icon className="w-3.5 h-3.5 mb-2" style={{ color: AMBER }} />
-                <div className="text-[10px] text-white/30 mb-0.5">{s.label}</div>
-                <div className="font-arcade text-xl leading-none" style={{ color: AMBER }}>{s.value}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-3">
-          {/* Badges */}
-          <div className="lg:col-span-2 rounded-xl bg-[#0B0B14] border border-white/[0.07] overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-white/[0.06]">
-              <span className="text-xs font-medium text-white/50">{t.profile.badges}</span>
-            </div>
-            <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {p.badges.map((b) => {
-                const Icon = ICONS[b.icon] || Star;
-                return (
-                  <div
-                    key={b.id}
-                    data-testid={`badge-${b.id}`}
-                    className="aspect-square rounded-lg border flex flex-col items-center justify-center gap-1.5 p-1.5 transition hover:border-amber-400/40"
-                    style={{ borderColor: `${AMBER}20`, background: `${AMBER}06` }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: AMBER }} />
-                    <div className="text-[8px] text-white/50 text-center leading-tight">{b.name[lang]}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Recent matches */}
-          <div className="rounded-xl bg-[#0B0B14] border border-white/[0.07] overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-white/[0.06]">
-              <span className="text-xs font-medium text-white/50">{t.profile.recentMatches}</span>
-            </div>
-            <div className="divide-y divide-white/[0.04]">
-              {p.recent.map((r, i) => {
-                const c = getCategory(r.category);
-                const won = r.result === "win";
-                return (
-                  <div key={i} className="flex items-center justify-between px-4 py-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <c.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: AMBER }} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-white/70 truncate">{r.mode}</div>
-                        <div className="text-[10px] text-white/30 truncate">{c.name[lang]}</div>
-                      </div>
-                    </div>
-                    <div className={`font-arcade text-base leading-none flex-shrink-0 ${won ? "text-[#5DD66E]" : "text-[#E67373]"}`}>
-                      {won ? "+" : ""}{r.delta}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Category performance */}
-        <div className="rounded-xl bg-[#0B0B14] border border-white/[0.07] overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-white/[0.06]">
-            <span className="text-xs font-medium text-white/50">{t.profile.categoryPerf}</span>
-          </div>
-          <div className="p-4 space-y-3">
-            {p.categoryPerf.map((cp) => {
-              const c = getCategory(cp.id);
-              return (
-                <div key={cp.id} className="flex items-center gap-3">
-                  <div className="w-28 flex items-center gap-1.5 flex-shrink-0">
-                    <c.icon className="w-3.5 h-3.5" style={{ color: AMBER }} />
-                    <span className="text-xs text-white/60 truncate">{c.name[lang]}</span>
-                  </div>
-                  <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+              <div key={cp.id} className="flex items-center gap-4">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-soft)", color: "var(--accent-hover)" }}>
+                  <c.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold mb-1.5" style={{ color: "var(--text)" }}>{c.name[lang]}</div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--active)" }}>
                     <motion.div
                       initial={{ width: 0 }}
                       whileInView={{ width: `${cp.rate}%` }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.8 }}
                       className="h-full rounded-full"
-                      style={{ background: AMBER }}
+                      style={{ background: "var(--accent)" }}
                     />
                   </div>
-                  <div className="font-arcade text-sm w-10 text-right flex-shrink-0" style={{ color: AMBER }}>
-                    {cp.rate}%
-                  </div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="font-display font-semibold text-base w-12 text-right tabular-nums" style={{ color: "var(--accent)" }}>
+                  {cp.rate}%
+                </div>
+              </div>
+            );
+          })}
         </div>
+      </motion.section>
 
-      </div>
+      {/* Badges */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.14 }}
+      >
+        <h2 className="font-display font-semibold text-2xl tracking-tight mb-4" style={{ color: "var(--text)" }}>
+          Badges
+        </h2>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          {p.badges.map((b) => {
+            const Icon = ICONS[b.icon] || Star;
+            return (
+              <div
+                key={b.id}
+                data-testid={`badge-${b.id}`}
+                className="card aspect-square rounded-2xl flex flex-col items-center justify-center gap-1.5 p-2"
+              >
+                <Icon className="w-6 h-6" style={{ color: "var(--accent)" }} strokeWidth={1.8} />
+                <div className="text-xs font-medium text-center leading-tight" style={{ color: "var(--text-sub)" }}>
+                  {b.name[lang]}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Recent */}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.17 }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display font-semibold text-2xl tracking-tight" style={{ color: "var(--text)" }}>Récents</h2>
+          <button onClick={() => navigate("/replays")} className="btn-ghost text-xs px-3 py-1.5 rounded-lg inline-flex items-center gap-1">
+            Tous <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="card rounded-2xl overflow-hidden divide-y" style={{ borderColor: "var(--divider)" }}>
+          {p.recent.map((r, i) => {
+            const c = getCategory(r.category);
+            const won = r.result === "win";
+            return (
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--accent-soft)", color: "var(--accent-hover)" }}>
+                  <c.icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{r.mode}</div>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--text-sub)" }}>{c.name[lang]}</div>
+                </div>
+                <div className="font-display font-semibold text-base tabular-nums" style={{ color: won ? GREEN : RED }}>
+                  {won ? "+" : ""}{r.delta}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Actions */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.20 }}
+        className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+      >
+        <button
+          onClick={() => navigate("/replays")}
+          className="card card-hover flex items-center gap-3 p-4 rounded-2xl text-left"
+        >
+          <RotateCcw className="w-5 h-5" style={{ color: "var(--accent)" }} />
+          <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Replays</span>
+          <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "var(--text-faint)" }} />
+        </button>
+        <button
+          onClick={() => navigate("/rules")}
+          className="card card-hover flex items-center gap-3 p-4 rounded-2xl text-left"
+        >
+          <BookOpen className="w-5 h-5" style={{ color: "var(--accent)" }} />
+          <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Règles</span>
+          <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "var(--text-faint)" }} />
+        </button>
+        <button
+          onClick={() => { resetOnboarding(); navigate("/"); }}
+          className="card card-hover flex items-center gap-3 p-4 rounded-2xl text-left"
+        >
+          <Sparkles className="w-5 h-5" style={{ color: "var(--accent)" }} />
+          <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>Revoir le tutoriel</span>
+          <ChevronRight className="w-4 h-4 ml-auto" style={{ color: "var(--text-faint)" }} />
+        </button>
+      </motion.div>
     </div>
   );
 }

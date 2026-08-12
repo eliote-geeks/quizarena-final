@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES } from "../data/mockData";
-import { ChevronRight } from "lucide-react";
-import ArenaBackground from "../components/ArenaBackground";
+import { BadgeHelp, ChevronRight, Grid2X2, Headphones, Zap } from "lucide-react";
 import PixelScene from "../components/PixelScene";
 
 const AMBER = "#E5A800";
@@ -12,14 +11,35 @@ export default function Categories() {
   const { t, lang } = useApp();
 
   return (
-    <div className="relative min-h-screen">
-      <ArenaBackground />
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-8">
+    <div className="min-h-full px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-5">
 
-        <div className="mb-6">
-          <h1 className="text-sm font-semibold text-white">{t.categories.title}</h1>
-          <p className="text-xs text-white/40 mt-0.5">{t.categories.subtitle}</p>
+      <motion.header
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4"
+      >
+        <div>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest" style={{ color: AMBER }}>
+            <Grid2X2 className="w-4 h-4" />
+            Banque de quiz
+          </div>
+          <h1 className="font-display font-bold text-2xl sm:text-3xl mt-1" style={{ color: "var(--qa-text)" }}>
+            {t.categories.title}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--qa-text-sub)" }}>
+            {t.categories.subtitle}
+          </p>
         </div>
+
+        <div
+          className="grid grid-cols-3 gap-2 rounded-2xl p-2"
+          style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
+        >
+          <CategoryStat icon={BadgeHelp} label="Thèmes" value={CATEGORIES.length} />
+          <CategoryStat icon={Zap} label="Chrono" value="8s" />
+          <CategoryStat icon={Headphones} label="Formats" value="A/V" />
+        </div>
+      </motion.header>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {CATEGORIES.map((c, i) => {
@@ -34,7 +54,8 @@ export default function Categories() {
                 <Link
                   to={`/category/${c.id}`}
                   data-testid={`category-${c.id}`}
-                  className="group block rounded-xl border border-white/[0.07] hover:border-white/20 transition-all bg-[#0B0B14] overflow-hidden"
+                  className="group block rounded-2xl transition-all overflow-hidden hover:scale-[1.01]"
+                  style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
                 >
                   <PixelScene category={c.id} idx={i} />
 
@@ -47,14 +68,14 @@ export default function Categories() {
                         >
                           <Icon className="w-3 h-3" />
                         </div>
-                        <span className="text-sm font-medium text-white">{c.name[lang]}</span>
+                        <span className="text-sm font-bold" style={{ color: "var(--qa-text)" }}>{c.name[lang]}</span>
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 transition" />
+                      <ChevronRight className="w-3.5 h-3.5 transition" style={{ color: "var(--qa-text-faint)" }} />
                     </div>
-                    <p className="text-xs text-white/40 leading-relaxed mb-2">{c.description[lang]}</p>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-                      <span className="text-[10px] text-white/25">{c.style[lang]}</span>
-                      <span className="text-[10px] text-white/25">{c.questions} {t.categories.questions}</span>
+                    <p className="text-xs leading-relaxed mb-2" style={{ color: "var(--qa-text-sub)" }}>{c.description[lang]}</p>
+                    <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--qa-divider)" }}>
+                      <span className="text-[10px]" style={{ color: "var(--qa-text-faint)" }}>{c.style[lang]}</span>
+                      <span className="text-[10px]" style={{ color: "var(--qa-text-faint)" }}>{c.questions} {t.categories.questions}</span>
                     </div>
                   </div>
                 </Link>
@@ -62,6 +83,19 @@ export default function Categories() {
             );
           })}
         </div>
+    </div>
+  );
+}
+
+function CategoryStat({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-xl px-3 py-2" style={{ background: "var(--qa-active)" }}>
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold" style={{ color: "var(--qa-text-faint)" }}>
+        <Icon className="w-3.5 h-3.5" style={{ color: AMBER }} />
+        {label}
+      </div>
+      <div className="text-sm font-bold mt-0.5" style={{ color: "var(--qa-text)" }}>
+        {value}
       </div>
     </div>
   );

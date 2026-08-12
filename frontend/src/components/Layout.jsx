@@ -1,65 +1,93 @@
 import Sidebar from "./Sidebar";
-import { Outlet } from "react-router-dom";
+import BottomNav from "./BottomNav";
+import OnboardingModal from "./OnboardingModal";
+import { Outlet, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { useApp } from "../context/AppContext";
 import { getRank } from "../lib/eloEngine";
+import { formatMoney } from "../lib/currency";
 import { Coins } from "lucide-react";
 
-const AMBER = "#E5A800";
-
 export default function Layout() {
-  const { coins, elo } = useApp();
+  const { coins, elo, currency } = useApp();
+  const navigate = useNavigate();
   const rank = getRank(elo);
 
   return (
     <div
-      className="flex h-screen overflow-hidden text-white font-body"
-      style={{ background: "#0A0A12" }}
+      className="flex h-screen overflow-hidden"
+      style={{ background: "var(--bg)", color: "var(--text)" }}
     >
-      {/* ── Desktop sidebar ── */}
+      {/* Desktop sidebar */}
       <div className="hidden lg:flex h-full">
         <Sidebar />
       </div>
 
-      {/* ── Mobile top bar ── */}
+      {/* Mobile top bar */}
       <div
-        className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 border-b border-white/[0.06]"
-        style={{ background: "#06060E", height: 48 }}
+        className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-4 glass"
+        style={{
+          height: 56,
+          borderBottom: "1px solid var(--border)",
+        }}
       >
-        <div className="flex items-center gap-2">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2.5 transition hover:opacity-90"
+        >
           <div
-            className="w-6 h-6 rounded-md flex items-center justify-center font-pixel text-[7px] text-black"
-            style={{ background: AMBER }}
-          >QA</div>
-          <span className="font-display font-black text-sm">
-            Quiz<span style={{ color: AMBER }}>Arena</span>
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-fg)",
+              boxShadow: "0 6px 16px -4px var(--accent-glow)",
+            }}
+          >
+            Q
+          </div>
+          <span className="font-display font-semibold text-base" style={{ color: "var(--text)" }}>
+            QuizArena
           </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-black/40 border border-white/[0.07]">
-            <Coins className="w-3 h-3" style={{ color: AMBER }} />
-            <span className="font-medium text-xs text-white">{coins.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-black/40 border border-white/[0.07]">
-            <span className="text-[10px]">{rank.emoji}</span>
-            <span className="font-arcade text-xs" style={{ color: rank.color }}>{elo}</span>
-          </div>
-        </div>
+        </button>
+
+        <button
+          onClick={() => navigate("/wallet")}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full transition hover:opacity-95"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <Coins className="w-3.5 h-3.5" style={{ color: "var(--accent)" }} />
+          <span className="text-sm font-semibold" style={{ color: "var(--text)" }}>
+            {formatMoney(coins, currency)}
+          </span>
+          <span className="text-xs" style={{ color: "var(--text-faint)" }}>
+            · {rank.name}
+          </span>
+        </button>
       </div>
 
-      {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto min-w-0 lg:pt-0 pt-[48px]">
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto min-w-0">
+        <div className="lg:hidden" style={{ height: 56 }} />
         <Outlet />
+        <div className="lg:hidden" style={{ height: 72 }} />
       </main>
+
+      <BottomNav />
+
+      <OnboardingModal />
 
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            background: "#0B0B14",
-            border: "1px solid rgba(255,165,0,0.25)",
-            color: "#fff",
-            fontFamily: "Outfit",
+            background: "var(--surface)",
+            border: "1px solid var(--border-md)",
+            color: "var(--text)",
+            fontFamily: "Inter, sans-serif",
+            borderRadius: 12,
           },
         }}
       />

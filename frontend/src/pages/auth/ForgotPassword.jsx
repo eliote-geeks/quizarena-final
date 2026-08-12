@@ -26,8 +26,8 @@ export default function ForgotPassword() {
 
   return (
     <div
-      className="min-h-screen grid lg:grid-cols-[5fr_7fr] font-body"
-      style={{ background: "#05050A" }}
+      className="min-h-screen grid lg:grid-cols-[5fr_7fr]"
+      style={{ background: "var(--qa-page)", color: "var(--qa-text)" }}
     >
       <AuthLeft />
 
@@ -38,67 +38,70 @@ export default function ForgotPassword() {
           transition={{ duration: 0.35 }}
           className="w-full max-w-sm mx-auto"
         >
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center font-pixel text-[8px] text-black" style={{ background: AMBER }}>QA</div>
-            <span className="font-display font-black text-sm text-white">Quiz<span style={{ color: AMBER }}>Arena</span></span>
+          <div className="flex items-center gap-2.5 mb-10 lg:hidden">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: AMBER, color: "#07070F" }}>QA</div>
+            <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
+              Quiz<span style={{ color: AMBER }}>Arena</span>
+            </span>
           </div>
 
-          {/* Back */}
           <Link
             to="/login"
-            className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/60 transition mb-8"
+            className="flex items-center gap-1.5 text-sm font-semibold mb-8 hover:opacity-70"
+            style={{ color: "var(--qa-text-sub)" }}
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Retour à la connexion
+            <ArrowLeft className="w-4 h-4" /> Retour
           </Link>
 
           <AnimatePresence mode="wait">
             {!sent ? (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
+              <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="mb-8">
-                  <h1 className="text-xl font-bold text-white mb-1">Mot de passe oublié ?</h1>
-                  <p className="text-sm text-white/40">
+                  <h1 className="font-display font-bold text-3xl mb-1" style={{ color: "var(--qa-text)" }}>
+                    Mot de passe oublié ?
+                  </h1>
+                  <p className="text-sm" style={{ color: "var(--qa-text-sub)" }}>
                     Saisis ton email et on t'envoie un lien de réinitialisation.
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5">
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
                       Adresse email
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setError(""); }}
                         placeholder="ton@email.com"
                         autoComplete="email"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-white/20 outline-none transition"
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
                         style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: `1px solid ${error ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.09)"}`,
+                          background: "var(--qa-active)",
+                          border: `1px solid ${error ? "#FF6B6B" : "var(--qa-border)"}`,
+                          color: "var(--qa-text)",
                         }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = `${AMBER}60`)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = error ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.09)")}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#FF6B6B" : "var(--qa-border)")}
                       />
                     </div>
-                    {error && <p className="text-[11px] mt-1.5" style={{ color: "#FF6B6B" }}>{error}</p>}
+                    {error && <p className="text-xs font-semibold mt-1.5" style={{ color: "#FF6B6B" }}>{error}</p>}
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-60 flex items-center justify-center gap-2"
-                    style={{ background: AMBER, color: "#07070F" }}
+                    className="w-full py-4 rounded-2xl text-base font-bold transition disabled:opacity-60 flex items-center justify-center gap-2"
+                    style={{
+                      background: AMBER,
+                      color: "#07070F",
+                      boxShadow: !loading ? `0 12px 28px -12px ${AMBER}66` : "none",
+                    }}
                   >
-                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Envoi…</> : "Envoyer le lien"}
+                    {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Envoi…</> : "Envoyer le lien"}
                   </button>
                 </form>
               </motion.div>
@@ -111,28 +114,28 @@ export default function ForgotPassword() {
                 className="text-center"
               >
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                  style={{ background: "rgba(93,214,110,0.12)", border: "1px solid rgba(93,214,110,0.25)" }}
+                  className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6"
+                  style={{ background: "rgba(93,214,110,0.15)", border: "1px solid rgba(93,214,110,0.35)" }}
                 >
-                  <CheckCircle className="w-8 h-8 text-[#5DD66E]" />
+                  <CheckCircle className="w-10 h-10" style={{ color: "#5DD66E" }} />
                 </div>
-                <h2 className="text-lg font-bold text-white mb-2">Email envoyé !</h2>
-                <p className="text-sm text-white/40 mb-1">
-                  Si <span className="text-white/70">{email}</span> est associé à un compte,
+                <h2 className="font-display font-bold text-2xl mb-2" style={{ color: "var(--qa-text)" }}>Email envoyé !</h2>
+                <p className="text-sm mb-1" style={{ color: "var(--qa-text-sub)" }}>
+                  Si <span className="font-bold" style={{ color: "var(--qa-text)" }}>{email}</span> est associé à un compte,
                 </p>
-                <p className="text-sm text-white/40 mb-8">
+                <p className="text-sm mb-8" style={{ color: "var(--qa-text-sub)" }}>
                   tu recevras un lien dans quelques minutes.
                 </p>
                 <div
-                  className="px-4 py-3 rounded-xl text-xs text-white/40 mb-6 text-left"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  className="p-4 rounded-2xl text-sm text-left mb-6"
+                  style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)", color: "var(--qa-text-sub)" }}
                 >
-                  <p className="font-medium text-white/60 mb-1">Tu ne trouves pas l'email ?</p>
+                  <p className="font-bold mb-1" style={{ color: "var(--qa-text)" }}>Tu ne trouves pas l'email ?</p>
                   <p>Vérifie tes spams ou contacte le support.</p>
                 </div>
                 <Link
                   to="/login"
-                  className="text-sm font-semibold hover:underline transition"
+                  className="text-sm font-bold hover:underline"
                   style={{ color: AMBER }}
                 >
                   Retour à la connexion

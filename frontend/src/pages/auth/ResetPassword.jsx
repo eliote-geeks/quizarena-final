@@ -50,8 +50,8 @@ export default function ResetPassword() {
 
   return (
     <div
-      className="min-h-screen grid lg:grid-cols-[5fr_7fr] font-body"
-      style={{ background: "#05050A" }}
+      className="min-h-screen grid lg:grid-cols-[5fr_7fr]"
+      style={{ background: "var(--qa-page)", color: "var(--qa-text)" }}
     >
       <AuthLeft />
 
@@ -62,48 +62,61 @@ export default function ResetPassword() {
           transition={{ duration: 0.35 }}
           className="w-full max-w-sm mx-auto"
         >
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2 mb-10 lg:hidden">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center font-pixel text-[8px] text-black" style={{ background: AMBER }}>QA</div>
-            <span className="font-display font-black text-sm text-white">Quiz<span style={{ color: AMBER }}>Arena</span></span>
+          <div className="flex items-center gap-2.5 mb-10 lg:hidden">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: AMBER, color: "#07070F" }}>QA</div>
+            <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
+              Quiz<span style={{ color: AMBER }}>Arena</span>
+            </span>
           </div>
 
           <AnimatePresence mode="wait">
             {!done ? (
               <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Link to="/login" className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/60 transition mb-8">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Retour
+                <Link
+                  to="/login"
+                  className="flex items-center gap-1.5 text-sm font-semibold mb-8 hover:opacity-70"
+                  style={{ color: "var(--qa-text-sub)" }}
+                >
+                  <ArrowLeft className="w-4 h-4" /> Retour
                 </Link>
 
                 <div className="mb-8">
-                  <h1 className="text-xl font-bold text-white mb-1">Nouveau mot de passe</h1>
-                  <p className="text-sm text-white/40">Choisis un mot de passe solide.</p>
+                  <h1 className="font-display font-bold text-3xl mb-1" style={{ color: "var(--qa-text)" }}>
+                    Nouveau mot de passe
+                  </h1>
+                  <p className="text-sm" style={{ color: "var(--qa-text-sub)" }}>
+                    Choisis un mot de passe solide.
+                  </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* New password */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5">Nouveau mot de passe</label>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
+                      Nouveau mot de passe
+                    </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
                       <input
                         type={showPw ? "text" : "password"}
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setErrors(o => ({ ...o, password: "" })); }}
                         placeholder="Min. 8 caractères"
                         autoComplete="new-password"
-                        className="w-full pl-10 pr-10 py-3 rounded-xl text-sm text-white placeholder-white/20 outline-none transition"
+                        className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm outline-none transition-colors"
                         style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: `1px solid ${errors.password ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.09)"}`,
+                          background: "var(--qa-active)",
+                          border: `1px solid ${errors.password ? "#FF6B6B" : "var(--qa-border)"}`,
+                          color: "var(--qa-text)",
                         }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = `${AMBER}60`)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.password ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.09)")}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.password ? "#FF6B6B" : "var(--qa-border)")}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPw(v => !v)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-80"
+                        style={{ color: "var(--qa-text-faint)" }}
                       >
                         {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -115,48 +128,55 @@ export default function ResetPassword() {
                             <div
                               key={i}
                               className="flex-1 h-1 rounded-full transition-all duration-300"
-                              style={{ background: i <= strength ? STRENGTH_COLOR[strength] : "rgba(255,255,255,0.07)" }}
+                              style={{ background: i <= strength ? STRENGTH_COLOR[strength] : "var(--qa-active)" }}
                             />
                           ))}
                         </div>
-                        <span className="text-[10px]" style={{ color: STRENGTH_COLOR[strength] }}>
+                        <span className="text-xs font-bold" style={{ color: STRENGTH_COLOR[strength] || "var(--qa-text-sub)" }}>
                           {STRENGTH_LABEL[strength]}
                         </span>
                       </div>
                     )}
-                    {errors.password && <p className="text-[11px] mt-1.5" style={{ color: "#FF6B6B" }}>{errors.password}</p>}
+                    {errors.password && <p className="text-xs font-semibold mt-1.5" style={{ color: "#FF6B6B" }}>{errors.password}</p>}
                   </div>
 
                   {/* Confirm */}
                   <div>
-                    <label className="block text-xs font-medium text-white/50 mb-1.5">Confirmer</label>
+                    <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
+                      Confirmer
+                    </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 pointer-events-none" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
                       <input
                         type={showPw ? "text" : "password"}
                         value={confirm}
                         onChange={(e) => { setConfirm(e.target.value); setErrors(o => ({ ...o, confirm: "" })); }}
                         placeholder="Répète ton mot de passe"
                         autoComplete="new-password"
-                        className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white placeholder-white/20 outline-none transition"
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
                         style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: `1px solid ${errors.confirm ? "rgba(255,107,107,0.4)" : confirm && confirm === password ? "rgba(93,214,110,0.4)" : "rgba(255,255,255,0.09)"}`,
+                          background: "var(--qa-active)",
+                          border: `1px solid ${errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)"}`,
+                          color: "var(--qa-text)",
                         }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = `${AMBER}60`)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.confirm ? "rgba(255,107,107,0.4)" : "rgba(255,255,255,0.09)")}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)")}
                       />
                     </div>
-                    {errors.confirm && <p className="text-[11px] mt-1.5" style={{ color: "#FF6B6B" }}>{errors.confirm}</p>}
+                    {errors.confirm && <p className="text-xs font-semibold mt-1.5" style={{ color: "#FF6B6B" }}>{errors.confirm}</p>}
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 rounded-xl text-sm font-semibold transition disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
-                    style={{ background: AMBER, color: "#07070F" }}
+                    className="w-full py-4 rounded-2xl text-base font-bold transition disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+                    style={{
+                      background: AMBER,
+                      color: "#07070F",
+                      boxShadow: !loading ? `0 12px 28px -12px ${AMBER}66` : "none",
+                    }}
                   >
-                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Enregistrement…</> : "Réinitialiser le mot de passe"}
+                    {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Enregistrement…</> : "Réinitialiser"}
                   </button>
                 </form>
               </motion.div>
@@ -168,19 +188,25 @@ export default function ResetPassword() {
                 className="text-center"
               >
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                  style={{ background: "rgba(93,214,110,0.12)", border: "1px solid rgba(93,214,110,0.25)" }}
+                  className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6"
+                  style={{ background: "rgba(93,214,110,0.15)", border: "1px solid rgba(93,214,110,0.35)" }}
                 >
-                  <CheckCircle className="w-8 h-8 text-[#5DD66E]" />
+                  <CheckCircle className="w-10 h-10" style={{ color: "#5DD66E" }} />
                 </div>
-                <h2 className="text-lg font-bold text-white mb-2">Mot de passe mis à jour !</h2>
-                <p className="text-sm text-white/40 mb-8">
+                <h2 className="font-display font-bold text-2xl mb-2" style={{ color: "var(--qa-text)" }}>
+                  Mot de passe mis à jour !
+                </h2>
+                <p className="text-sm mb-8" style={{ color: "var(--qa-text-sub)" }}>
                   Tu peux maintenant te connecter avec ton nouveau mot de passe.
                 </p>
                 <button
                   onClick={() => navigate("/login")}
-                  className="w-full py-3 rounded-xl text-sm font-semibold transition hover:opacity-90"
-                  style={{ background: AMBER, color: "#07070F" }}
+                  className="w-full py-4 rounded-2xl text-base font-bold transition hover:opacity-90"
+                  style={{
+                    background: AMBER,
+                    color: "#07070F",
+                    boxShadow: `0 12px 28px -12px ${AMBER}66`,
+                  }}
                 >
                   Aller à la connexion
                 </button>

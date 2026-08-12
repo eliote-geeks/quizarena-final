@@ -1,225 +1,184 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import {
-  CATEGORIES, ONLINE_PLAYERS, LIVE_MATCHES, CATEGORY_COLORS,
-} from "../data/mockData";
 import { getRank } from "../lib/eloEngine";
 import { formatMoney } from "../lib/currency";
 import CurrencyBadge from "./CurrencyBadge";
-import { Link } from "react-router-dom";
 import {
-  Trophy, BarChart2, Wallet, User, Star, CheckCircle,
-  RotateCcw, LogOut, BookOpen,
+  Home, Trophy, BarChart2, Wallet, User, Crown,
+  LogOut, Sun, Moon, ChevronRight,
 } from "lucide-react";
 
-const AMBER = "#E5A800";
-
-const BOTTOM_NAV = [
-  { to: "/tournaments", icon: Trophy,     label: "Tournois"     },
-  { to: "/replays",     icon: RotateCcw,  label: "Replays"      },
-  { to: "/leaderboard", icon: BarChart2,  label: "Classement"   },
-  { to: "/wallet",      icon: Wallet,     label: "Portefeuille" },
-  { to: "/profile",     icon: User,       label: "Profil"       },
-  { to: "/rules",       icon: BookOpen,   label: "Règles"       },
+const NAV = [
+  { to: "/",            icon: Home,      label: "Accueil"    },
+  { to: "/tournaments", icon: Trophy,    label: "Tournois"   },
+  { to: "/leaderboard", icon: BarChart2, label: "Classement" },
+  { to: "/vip",         icon: Crown,     label: "VIP"        },
+  { to: "/wallet",      icon: Wallet,    label: "Wallet"     },
+  { to: "/profile",     icon: User,      label: "Profil"     },
 ];
+
+function isActive(pathname, to) {
+  if (to === "/") return pathname === "/";
+  return pathname.startsWith(to);
+}
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { coins, elo, dailyDone, user, logout, currency } = useApp();
+  const { coins, elo, user, logout, currency, theme, toggleTheme } = useApp();
   const rank = getRank(elo);
-
-  const roomMatch = location.pathname.match(/^\/room\/(.+)/);
-  const activeRoom = roomMatch ? roomMatch[1] : null;
 
   return (
     <aside
-      className="flex flex-col h-full shrink-0 border-r border-white/[0.06] overflow-y-auto no-scrollbar"
-      style={{ width: 210, background: "#06060E" }}
+      className="flex flex-col h-full shrink-0"
+      style={{
+        width: 248,
+        background: "var(--sidebar)",
+        borderRight: "1px solid var(--border)",
+      }}
     >
-      {/* ── Logo ── */}
-      <div className="px-4 pt-5 pb-4 border-b border-white/[0.06]">
+      {/* Logo */}
+      <div className="px-5 pt-6 pb-6">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 mb-4 hover:opacity-80 transition w-full text-left"
+          className="flex items-center gap-3 w-full text-left transition hover:opacity-90"
         >
           <div
-            className="w-7 h-7 rounded-md flex items-center justify-center font-pixel text-[8px] text-black flex-shrink-0"
-            style={{ background: AMBER }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-semibold"
+            style={{
+              background: "var(--accent)",
+              color: "var(--accent-fg)",
+              boxShadow: "0 8px 24px -6px var(--accent-glow)",
+            }}
           >
-            QA
+            Q
           </div>
-          <span className="font-display font-black text-sm tracking-tight">
-            Quiz<span style={{ color: AMBER }}>Arena</span>
-          </span>
+          <div className="min-w-0">
+            <div className="font-display font-semibold text-base leading-none" style={{ color: "var(--text)" }}>
+              QuizArena
+            </div>
+            <div className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
+              Culture · Skill
+            </div>
+          </div>
         </button>
+      </div>
 
-        <div className="flex gap-1.5">
-          <div className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-black/40 border border-white/[0.07] flex-1 min-w-0">
-            <span className="font-arcade text-xs leading-none truncate" style={{ color: AMBER }}>
-              {formatMoney(coins, currency)}
-            </span>
+      {/* Balance */}
+      <div className="mx-3 mb-5">
+        <button
+          onClick={() => navigate("/wallet")}
+          className="w-full rounded-2xl p-4 text-left transition hover:opacity-95"
+          style={{
+            background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div className="text-xs font-medium mb-1" style={{ color: "var(--text-faint)" }}>
+            Solde
           </div>
-          <div className="flex items-center gap-1 px-2 py-1.5 rounded-md bg-black/40 border border-white/[0.07]">
-            <span className="text-[10px] leading-none">{rank.emoji}</span>
-            <span className="font-arcade text-xs leading-none" style={{ color: rank.color }}>
-              {elo}
-            </span>
+          <div className="font-display font-semibold text-2xl leading-none tracking-tight" style={{ color: "var(--text)" }}>
+            {formatMoney(coins, currency)}
           </div>
-        </div>
+          <div className="flex items-center gap-2 mt-3">
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: rank.color }}
+            />
+            <span className="text-xs font-medium" style={{ color: "var(--text-sub)" }}>
+              {rank.name}
+            </span>
+            <span className="text-xs" style={{ color: "var(--text-faint)" }}>· {elo}</span>
+            <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "var(--text-faint)" }} />
+          </div>
+        </button>
         <div className="mt-2">
           <CurrencyBadge />
         </div>
       </div>
 
-      {/* ── Daily challenge ── */}
-      <button
-        onClick={() => !dailyDone && navigate("/play/sciences?daily=1")}
-        className="mx-3 mt-3 mb-1 flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition-all"
-        style={{
-          background: dailyDone ? "rgba(255,255,255,0.02)" : `${AMBER}0C`,
-          borderColor: dailyDone ? "rgba(255,255,255,0.06)" : `${AMBER}30`,
-          cursor: dailyDone ? "default" : "pointer",
-        }}
-      >
-        <div
-          className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-          style={{
-            background: dailyDone ? "rgba(255,255,255,0.05)" : `${AMBER}20`,
-            color: dailyDone ? "#5DD66E" : AMBER,
-          }}
-        >
-          {dailyDone ? <CheckCircle className="w-3 h-3" /> : <Star className="w-3 h-3" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-semibold text-white/70">Défi du Jour</div>
-          <div
-            className="text-[9px] font-semibold"
-            style={{ color: dailyDone ? "#5DD66E" : AMBER }}
-          >
-            {dailyDone ? "Complété ✓" : "+500 bonus"}
-          </div>
-        </div>
-      </button>
-
-      {/* ── Rooms label ── */}
-      <div className="px-4 pt-4 pb-1.5">
-        <span className="text-[9px] uppercase tracking-[0.14em] text-white/20 font-semibold">
-          Salles
-        </span>
-      </div>
-
-      {/* ── Category rooms ── */}
-      <div className="flex-1 px-2 space-y-0.5 pb-2">
-        {CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const color = CATEGORY_COLORS[cat.id] || AMBER;
-          const isActive = activeRoom === cat.id;
-          const inRoom = ONLINE_PLAYERS.filter(
-            (p) => p.room === cat.id && p.status !== "away"
-          ).length;
-          const hasLive = LIVE_MATCHES.some((m) => m.category === cat.id);
-
-          return (
-            <button
-              key={cat.id}
-              onClick={() => navigate("/room/" + cat.id)}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all hover:bg-white/[0.03]"
-              style={{
-                background: isActive ? `${color}10` : "transparent",
-                borderLeft: `2px solid ${isActive ? color : "transparent"}`,
-              }}
-            >
-              <div
-                className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: isActive ? `${color}22` : "rgba(255,255,255,0.05)",
-                  color: isActive ? color : "rgba(255,255,255,0.3)",
-                }}
-              >
-                <Icon className="w-3 h-3" />
-              </div>
-              <span
-                className="text-xs font-medium flex-1 truncate"
-                style={{ color: isActive ? "#fff" : "rgba(255,255,255,0.45)" }}
-              >
-                {cat.name.fr}
-              </span>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {hasLive && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#FF5555] animate-pulse"
-                  />
-                )}
-                {inRoom > 0 && (
-                  <span
-                    className="text-[9px] font-bold px-1.5 py-0.5 rounded leading-none"
-                    style={{ background: `${color}18`, color }}
-                  >
-                    {inRoom}
-                  </span>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Divider ── */}
-      <div className="mx-3 border-t border-white/[0.05]" />
-
-      {/* ── Bottom nav ── */}
-      <div className="px-2 py-2 space-y-0.5">
-        {BOTTOM_NAV.map((item) => {
+      {/* Nav */}
+      <nav className="flex-1 px-3 space-y-0.5">
+        {NAV.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname.startsWith(item.to);
+          const active = isActive(location.pathname, item.to);
           return (
             <button
               key={item.to}
               onClick={() => navigate(item.to)}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition hover:bg-white/[0.03]"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
               style={{
-                background: isActive ? "rgba(255,255,255,0.06)" : "transparent",
-                color: isActive ? "#fff" : "rgba(255,255,255,0.35)",
+                background: active ? "var(--active)" : "transparent",
+                color: active ? "var(--text)" : "var(--text-sub)",
               }}
+              onMouseEnter={(e) => !active && (e.currentTarget.style.background = "var(--hover)")}
+              onMouseLeave={(e) => !active && (e.currentTarget.style.background = "transparent")}
             >
-              <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="text-xs">{item.label}</span>
+              <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={active ? 2.2 : 1.8} />
+              <span className="text-sm font-medium">{item.label}</span>
+              {active && (
+                <span
+                  className="ml-auto w-1 h-1 rounded-full"
+                  style={{ background: "var(--accent)" }}
+                />
+              )}
             </button>
           );
         })}
+      </nav>
 
-        {/* User + logout */}
-        <div className="pt-2 mt-1 border-t border-white/[0.05]">
-          <div className="flex items-center gap-2 px-2.5 py-2">
-            <div
-              className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-              style={{ background: `${AMBER}20`, color: AMBER }}
-            >
-              {user?.avatar || "??"}
+      {/* User */}
+      <div className="p-3" style={{ borderTop: "1px solid var(--divider)" }}>
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+            style={{
+              background: "var(--surface-2)",
+              color: "var(--text)",
+              border: "1px solid var(--border)",
+            }}
+          >
+            {user?.avatar || "??"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
+              {user?.name || "Invité"}
             </div>
-            <span className="text-[11px] text-white/50 truncate flex-1">{user?.name || "Invité"}</span>
-            <button
-              onClick={() => { logout(); navigate("/login"); }}
-              className="text-white/20 hover:text-[#FF6B6B] transition flex-shrink-0"
-              title="Se déconnecter"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            <div className="text-xs truncate" style={{ color: "var(--text-faint)" }}>
+              {user?.email || "Compte local"}
+            </div>
           </div>
 
-          {/* Legal links */}
-          <div className="flex items-center justify-center gap-2 px-2.5 pb-3">
-            {[["CGU", "/terms"], ["Vie privée", "/privacy"], ["Remb.", "/refund"]].map(([label, to]) => (
-              <Link
-                key={to}
-                to={to}
-                className="text-[8px] text-white/15 hover:text-white/35 transition leading-none"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg transition"
+            style={{ color: "var(--text-faint)" }}
+            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          >
+            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          <button
+            onClick={() => { logout(); navigate("/login"); }}
+            className="p-2 rounded-lg transition"
+            style={{ color: "var(--text-faint)" }}
+            title="Se déconnecter"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-center gap-3 pt-2">
+          {[["CGU", "/terms"], ["Vie privée", "/privacy"], ["Remb.", "/refund"]].map(([label, to]) => (
+            <Link
+              key={to}
+              to={to}
+              className="text-xs transition hover:opacity-80"
+              style={{ color: "var(--text-faint)" }}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
       </div>
     </aside>

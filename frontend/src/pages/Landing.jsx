@@ -56,7 +56,7 @@ export default function Landing() {
               className="mt-10 flex flex-wrap gap-4"
             >
               <Link
-                to="/lobby"
+                to="/"
                 data-testid="landing-cta-play"
                 className="group inline-flex items-center gap-2 text-black font-bold uppercase tracking-wider px-7 py-4 rounded-md hover:shadow-[0_0_28px_rgba(229,168,0,0.5)] transition-all"
                 style={{ background: AMBER }}
@@ -243,7 +243,7 @@ export default function Landing() {
             6 Univers <span style={{ color: AMBER }}>·</span> 6 Animations
           </h2>
           <Link
-            to="/categories"
+            to="/"
             className="text-sm uppercase tracking-widest hover:text-white transition inline-flex items-center gap-1"
             style={{ color: AMBER }}
           >
@@ -256,7 +256,7 @@ export default function Landing() {
             return (
               <Link
                 key={c.id}
-                to="/categories"
+                to="/"
                 className="relative rounded-xl border border-white/10 overflow-hidden hover:-translate-y-1 hover:border-[#E5A800]/40 transition-all bg-[#0B0B14]"
               >
                 <PixelScene category={c.id} idx={i} />

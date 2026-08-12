@@ -37,7 +37,7 @@ export default function PlayerProfileModal({ playerName, onClose }) {
           transition={{ type: "spring", stiffness: 360, damping: 34 }}
           onClick={e => e.stopPropagation()}
           className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-white/[0.08] overflow-hidden"
-          style={{ background: "#0B0B14" }}
+          style={{ background: "var(--qa-surface)" }}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">

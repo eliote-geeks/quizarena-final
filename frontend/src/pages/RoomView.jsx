@@ -8,28 +8,29 @@ import {
   LIVE_MATCHES,
   ACTIVE_DUELS,
   ALL_REPLAYS,
-  CATEGORY_COLORS,
   getCategory,
 } from "../data/mockData";
 import { getRank } from "../lib/eloEngine";
+import { formatMoney } from "../lib/currency";
 import SpectateModal from "../components/SpectateModal";
 import ReplayModal from "../components/ReplayModal";
 import {
-  Play, Swords, Eye, Clock, Radio, User, ChevronRight, X,
+  Play, Swords, Eye, Clock, Radio, Users, ChevronRight, X,
 } from "lucide-react";
 
 const AMBER = "#E5A800";
+const GREEN = "#5DD66E";
 
 const STATUS = {
-  lobby:  { color: "#5DD66E", label: "Disponible" },
-  ingame: { color: AMBER,     label: "En partie"  },
-  away:   { color: "#505060", label: "Absent"     },
+  lobby:  { color: GREEN, label: "Dispo" },
+  ingame: { color: AMBER, label: "En jeu" },
+  away:   { color: "var(--qa-text-faint)", label: "Absent" },
 };
 
 export default function RoomView() {
   const { categoryId } = useParams();
   const navigate = useNavigate();
-  const { lang } = useApp();
+  const { lang, currency } = useApp();
 
   const [spectating, setSpectating]   = useState(null);
   const [replayModal, setReplayModal] = useState(null);
@@ -38,430 +39,313 @@ export default function RoomView() {
   const cat = getCategory(categoryId);
   if (!cat) return <Navigate to="/room/histoire" replace />;
 
-  const color  = CATEGORY_COLORS[categoryId] || AMBER;
-  const Icon   = cat.icon;
+  const Icon = cat.icon;
 
   const liveMatches  = LIVE_MATCHES.filter((m) => m.category === categoryId);
   const waitingDuels = ACTIVE_DUELS.filter((d) => d.category === categoryId);
   const replays      = ALL_REPLAYS.filter((r) => r.category === categoryId);
   const roomPlayers  = ONLINE_PLAYERS.filter((p) => p.room === categoryId);
+  const activePlayers = roomPlayers.filter(p => p.status !== "away").length;
 
   return (
     <>
-      {/* ── Mobile: category pill switcher ── */}
+      {/* Mobile: category pill switcher */}
       <div
-        className="lg:hidden sticky top-[48px] z-40 flex overflow-x-auto no-scrollbar border-b border-white/[0.06] px-3 py-2 gap-1.5"
-        style={{ background: "#06060E" }}
+        className="lg:hidden sticky top-[54px] z-30 flex overflow-x-auto no-scrollbar px-3 py-2.5 gap-2"
+        style={{
+          background: "var(--qa-topbar)",
+          borderBottom: "1px solid var(--qa-border)",
+        }}
       >
         {CATEGORIES.map((c) => {
           const CIcon = c.icon;
-          const cColor = CATEGORY_COLORS[c.id] || AMBER;
           const isA = c.id === categoryId;
           return (
             <button
               key={c.id}
               onClick={() => navigate("/room/" + c.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] whitespace-nowrap flex-shrink-0 font-medium border transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0 font-bold transition"
               style={isA
-                ? { background: `${cColor}20`, color: cColor, borderColor: `${cColor}40` }
-                : { color: "rgba(255,255,255,0.35)", borderColor: "rgba(255,255,255,0.07)" }}
+                ? { background: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }
+                : { color: "var(--qa-text-sub)", border: "1px solid var(--qa-border)" }}
             >
-              <CIcon className="w-3 h-3" />
-              {c.name.fr}
+              <CIcon className="w-3.5 h-3.5" />
+              {c.name[lang]}
             </button>
           );
         })}
       </div>
 
-      {/* ── Main 2-column layout ── */}
-      <div className="flex">
+      <div className="min-h-full px-4 sm:px-6 py-6 max-w-2xl mx-auto space-y-6">
 
-        {/* ────────────── CENTER CONTENT ────────────── */}
-        <div className="flex-1 min-w-0">
+        {/* Header + CTAs */}
+        <motion.header
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${AMBER}22`, color: AMBER }}
+            >
+              <Icon className="w-6 h-6" strokeWidth={2.2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display font-bold text-2xl leading-tight" style={{ color: "var(--qa-text)" }}>
+                {cat.name[lang]}
+              </h1>
+              <p className="text-sm mt-0.5" style={{ color: "var(--qa-text-sub)" }}>
+                {cat.description[lang]}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mt-3">
+            <div className="flex items-center gap-1.5" style={{ color: "var(--qa-text-sub)" }}>
+              <Users className="w-4 h-4" />
+              <span className="text-sm font-semibold">{activePlayers} joueurs</span>
+            </div>
+            {liveMatches.length > 0 && (
+              <div className="flex items-center gap-1.5" style={{ color: "#FF6B6B" }}>
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span className="text-sm font-bold">{liveMatches.length} live</span>
+              </div>
+            )}
+          </div>
+        </motion.header>
 
-          {/* Room header */}
-          <div
-            className="px-5 py-5 border-b"
+        {/* CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <button
+            onClick={() => navigate("/play/" + categoryId)}
+            className="flex flex-col items-start gap-2 p-4 rounded-2xl text-left transition-all hover:scale-[1.02]"
             style={{
-              borderColor: `${color}18`,
-              background: `linear-gradient(120deg, ${color}0E 0%, transparent 60%)`,
+              background: `linear-gradient(160deg, ${AMBER} 0%, #C99500 100%)`,
+              color: "#07070F",
+              boxShadow: `0 12px 28px -12px ${AMBER}55`,
             }}
           >
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${color}20`, color }}
-                >
-                  <Icon className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <h1 className="text-sm font-semibold text-white leading-tight">
-                    Salle&nbsp;
-                    <span style={{ color }}>{cat.name[lang]}</span>
-                  </h1>
-                  <p className="text-[11px] text-white/35 mt-0.5">{cat.description[lang]}</p>
-                </div>
-              </div>
-
-              {/* Counters */}
-              <div className="flex items-center gap-3 flex-shrink-0 pt-0.5">
-                <div className="flex items-center gap-1 text-[10px] text-white/30">
-                  <User className="w-3 h-3" />
-                  <span>{roomPlayers.filter(p => p.status !== "away").length}</span>
-                </div>
-                {liveMatches.length > 0 && (
-                  <div className="flex items-center gap-1 text-[10px]" style={{ color: "#FF6B6B" }}>
-                    <Radio className="w-2.5 h-2.5 animate-pulse" />
-                    <span>{liveMatches.length} live</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* CTAs */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => navigate("/play/" + categoryId)}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition hover:opacity-90"
-                style={{ background: color, color: "#07070F" }}
-              >
-                <Play className="w-3 h-3" /> Jouer Solo
-              </button>
-              <button
-                onClick={() => navigate("/duel", { state: { defaultCategory: categoryId } })}
-                className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg border transition hover:border-white/20 text-white/60 hover:text-white"
-                style={{ borderColor: "rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)" }}
-              >
-                <Swords className="w-3 h-3" /> Créer un défi
-              </button>
-            </div>
-          </div>
-
-          {/* Sections */}
-          <div className="p-4 space-y-6">
-
-            {/* ── LIVE MATCHES ── */}
-            <Section
-              icon={<Radio className="w-3 h-3 animate-pulse" style={{ color: "#FF6B6B" }} />}
-              title="En direct"
-              count={liveMatches.length}
-              countColor="#FF6B6B"
-            >
-              {liveMatches.length === 0 ? (
-                <EmptyState text="Aucun match en direct" />
-              ) : (
-                liveMatches.map((m, i) => (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:border-white/[0.12] transition group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Arc progress */}
-                      <div className="relative w-9 h-9 flex-shrink-0">
-                        <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
-                          <circle cx="18" cy="18" r="13" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
-                          <circle
-                            cx="18" cy="18" r="13" fill="none"
-                            stroke={color} strokeWidth="3"
-                            strokeDasharray={`${(m.round / m.total) * 82} 82`}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <span className="absolute inset-0 flex items-center justify-center font-arcade text-[9px]" style={{ color }}>
-                          {m.round}
-                        </span>
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium text-white/80 truncate">
-                          <button
-                            onClick={() => navigate("/player/" + m.players[0])}
-                            className="hover:text-white hover:underline transition"
-                          >
-                            {m.players[0]}
-                          </button>
-                          <span className="text-white/25 mx-1.5">vs</span>
-                          <button
-                            onClick={() => navigate("/player/" + m.players[1])}
-                            className="hover:text-white hover:underline transition"
-                          >
-                            {m.players[1]}
-                          </button>
-                        </div>
-                        <div className="font-arcade text-[11px] mt-0.5" style={{ color }}>
-                          {m.pool.toLocaleString()} pts · Q{m.round}/{m.total}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setSpectating(m)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition opacity-0 group-hover:opacity-100 flex-shrink-0"
-                      style={{ background: `${color}15`, color }}
-                    >
-                      <Eye className="w-3 h-3" /> Regarder
-                    </button>
-                  </motion.div>
-                ))
-              )}
-            </Section>
-
-            {/* ── WAITING DUELS ── */}
-            <Section
-              icon={<Swords className="w-3 h-3 text-white/30" />}
-              title="Duels en attente"
-              count={waitingDuels.length}
-            >
-              {waitingDuels.length === 0 ? (
-                <EmptyState text="Aucun défi ouvert — sois le premier !" />
-              ) : (
-                waitingDuels.map((d, i) => (
-                  <motion.div
-                    key={d.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:border-white/[0.12] transition"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 border"
-                        style={{ background: `${color}12`, color, borderColor: `${color}22` }}
-                      >
-                        {d.host.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <button
-                          onClick={() => navigate("/player/" + d.host)}
-                          className="text-xs font-medium text-white/80 hover:text-white hover:underline transition truncate block text-left"
-                        >
-                          {d.host}
-                        </button>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="font-arcade text-[11px]" style={{ color }}>
-                            {d.stake.toLocaleString()} pts
-                          </span>
-                          <span className="text-white/15">·</span>
-                          <Clock className="w-2.5 h-2.5 text-white/20" />
-                          <span className="text-[10px] text-white/30">{d.startsIn}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        navigate("/duel", {
-                          state: {
-                            quickOpponent: { name: d.host, elo: 1050 },
-                            defaultCategory: categoryId,
-                            defaultStake: d.stake,
-                          },
-                        })
-                      }
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition flex-shrink-0 hover:opacity-90"
-                      style={{ background: color, color: "#07070F" }}
-                    >
-                      Rejoindre
-                    </button>
-                  </motion.div>
-                ))
-              )}
-            </Section>
-
-            {/* ── REPLAYS ── */}
-            <Section
-              icon={<Play className="w-3 h-3 text-white/30" />}
-              title="Replays récents"
-              count={replays.length}
-              right={
-                <button
-                  onClick={() => navigate("/replays")}
-                  className="flex items-center gap-0.5 text-[10px] text-white/25 hover:text-white/50 transition"
-                >
-                  Tous <ChevronRight className="w-3 h-3" />
-                </button>
-              }
-            >
-              {replays.length === 0 ? (
-                <EmptyState text="Aucun replay disponible" />
-              ) : (
-                replays.slice(0, 4).map((r, i) => {
-                  const aWon = r.scoreA > r.scoreB;
-                  return (
-                    <motion.div
-                      key={r.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/[0.06] bg-[#0D0D1A] hover:border-white/[0.12] transition group"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 text-xs flex-wrap">
-                          <button
-                            onClick={() => navigate("/player/" + r.playerA)}
-                            className="font-medium hover:underline transition"
-                            style={{ color: aWon ? color : "rgba(255,255,255,0.65)" }}
-                          >
-                            {r.playerA}
-                          </button>
-                          <span
-                            className="font-arcade text-base px-1 leading-none"
-                            style={{ color: aWon ? color : "rgba(255,255,255,0.3)" }}
-                          >
-                            {r.scoreA}
-                          </span>
-                          <span className="text-white/20 text-[10px]">—</span>
-                          <span
-                            className="font-arcade text-base px-1 leading-none"
-                            style={{ color: !aWon ? color : "rgba(255,255,255,0.3)" }}
-                          >
-                            {r.scoreB}
-                          </span>
-                          <button
-                            onClick={() => navigate("/player/" + r.playerB)}
-                            className="font-medium hover:underline transition"
-                            style={{ color: !aWon ? color : "rgba(255,255,255,0.65)" }}
-                          >
-                            {r.playerB}
-                          </button>
-                        </div>
-                        <div className="text-[10px] text-white/25 mt-0.5">
-                          {r.tournament} · {r.round} · {r.date}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setReplayModal(r)}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition opacity-0 group-hover:opacity-100 flex-shrink-0"
-                        style={{ background: `${color}15`, color }}
-                      >
-                        <Play className="w-2.5 h-2.5" /> Revoir
-                      </button>
-                    </motion.div>
-                  );
-                })
-              )}
-            </Section>
-
-          </div>
-        </div>
-
-        {/* ────────────── RIGHT: PLAYERS PANEL ────────────── */}
-        <div
-          className="hidden lg:flex flex-col shrink-0 border-l border-white/[0.06]"
-          style={{
-            width: 220,
-            position: "sticky",
-            top: 0,
-            height: "100vh",
-            overflowY: "auto",
-            background: "#07070F",
-          }}
-        >
-          {/* Panel header */}
-          <div
-            className="px-4 py-3 border-b border-white/[0.06]"
-            style={{ background: `${color}08` }}
+            <Play className="w-5 h-5" strokeWidth={2.4} />
+            <div className="font-display font-bold text-base">Jouer en solo</div>
+          </button>
+          <button
+            onClick={() => navigate("/duel", { state: { defaultCategory: categoryId } })}
+            className="flex flex-col items-start gap-2 p-4 rounded-2xl text-left transition-all hover:scale-[1.02]"
+            style={{
+              background: "var(--qa-surface)",
+              border: "1px solid var(--qa-border-md)",
+              color: "var(--qa-text)",
+            }}
           >
-            <div className="text-[9px] uppercase tracking-[0.12em] text-white/20 font-semibold mb-0.5">
-              Dans cette salle
-            </div>
-            <div className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.55)" }}>
-              {roomPlayers.filter(p => p.status !== "away").length} joueurs · {cat.name[lang]}
-            </div>
-          </div>
+            <Swords className="w-5 h-5" style={{ color: AMBER }} strokeWidth={2.4} />
+            <div className="font-display font-bold text-base">Lancer un duel</div>
+          </button>
+        </motion.div>
 
-          {/* Players list */}
-          <div className="flex-1 p-2 space-y-px overflow-y-auto no-scrollbar">
-            {roomPlayers.length === 0 ? (
-              <div className="py-10 text-center text-[11px] text-white/20">
-                Aucun joueur ici
+        {/* LIVE */}
+        {liveMatches.length > 0 && (
+          <Section
+            icon={<Radio className="w-4 h-4 animate-pulse" style={{ color: "#FF6B6B" }} />}
+            title="En direct"
+            count={liveMatches.length}
+            countColor="#FF6B6B"
+            delay={0.08}
+          >
+            {liveMatches.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSpectating(m)}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl text-left transition hover:opacity-95"
+                style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
+              >
+                <div className="relative w-10 h-10 flex-shrink-0">
+                  <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="var(--qa-border-md)" strokeWidth="3" />
+                    <circle
+                      cx="18" cy="18" r="14" fill="none"
+                      stroke={AMBER} strokeWidth="3"
+                      strokeDasharray={`${(m.round / m.total) * 88} 88`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span
+                    className="absolute inset-0 flex items-center justify-center font-display font-bold text-xs"
+                    style={{ color: AMBER }}
+                  >
+                    Q{m.round}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold truncate" style={{ color: "var(--qa-text)" }}>
+                    {m.players[0]} vs {m.players[1]}
+                  </div>
+                  <div className="text-xs mt-0.5 font-semibold" style={{ color: AMBER }}>
+                    {formatMoney(m.pool, currency)}
+                  </div>
+                </div>
+                <div
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold"
+                  style={{ background: `${AMBER}22`, color: AMBER }}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Regarder
+                </div>
+              </button>
+            ))}
+          </Section>
+        )}
+
+        {/* WAITING DUELS */}
+        <Section
+          icon={<Swords className="w-4 h-4" style={{ color: AMBER }} />}
+          title="Duels ouverts"
+          count={waitingDuels.length}
+          delay={0.11}
+        >
+          {waitingDuels.length === 0 ? (
+            <EmptyState text="Aucun défi ouvert — sois le premier !" />
+          ) : (
+            waitingDuels.map((d) => (
+              <div
+                key={d.id}
+                className="flex items-center gap-3 p-4 rounded-2xl"
+                style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ background: `${AMBER}22`, color: AMBER }}
+                >
+                  {d.host.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => navigate("/player/" + d.host)}
+                    className="text-sm font-bold hover:underline text-left truncate block"
+                    style={{ color: "var(--qa-text)" }}
+                  >
+                    {d.host}
+                  </button>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: "var(--qa-text-sub)" }}>
+                    <span className="font-bold" style={{ color: AMBER }}>{formatMoney(d.stake, currency)}</span>
+                    <span>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {d.startsIn}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() =>
+                    navigate("/duel", {
+                      state: {
+                        quickOpponent: { name: d.host, elo: 1050 },
+                        defaultCategory: categoryId,
+                        defaultStake: d.stake,
+                      },
+                    })
+                  }
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition hover:opacity-90 flex-shrink-0"
+                  style={{ background: AMBER, color: "#07070F" }}
+                >
+                  Rejoindre
+                </button>
               </div>
-            ) : (
-              roomPlayers.map((p, i) => {
+            ))
+          )}
+        </Section>
+
+        {/* PLAYERS ONLINE */}
+        <Section
+          icon={<Users className="w-4 h-4" style={{ color: GREEN }} />}
+          title="Joueurs en ligne"
+          count={activePlayers}
+          delay={0.14}
+        >
+          {roomPlayers.length === 0 ? (
+            <EmptyState text="Aucun joueur ici" />
+          ) : (
+            <div className="grid gap-2">
+              {roomPlayers.slice(0, 6).map((p) => {
                 const pRank = getRank(p.elo);
                 const st = STATUS[p.status];
                 const isOpen = challenged === p.name;
 
                 return (
                   <div key={p.name}>
-                    <motion.div
-                      initial={{ opacity: 0, x: 8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="flex items-center gap-2 px-2.5 py-2.5 rounded-lg transition cursor-pointer group hover:bg-white/[0.03]"
+                    <button
                       onClick={() => setChallenged(isOpen ? null : p.name)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl text-left transition hover:opacity-95"
+                      style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
                     >
-                      {/* Avatar + status dot */}
                       <div className="relative flex-shrink-0">
                         <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-bold border"
-                          style={{ background: `${color}10`, color, borderColor: `${color}18` }}
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold"
+                          style={{ background: `${AMBER}22`, color: AMBER }}
                         >
                           {p.avatar}
                         </div>
                         <div
-                          className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#07070F]"
-                          style={{ background: st.color }}
+                          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
+                          style={{
+                            background: st.color,
+                            border: "2px solid var(--qa-surface)",
+                          }}
                         />
                       </div>
-                      {/* Name + ELO */}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-medium text-white/80 group-hover:text-white truncate transition">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold truncate" style={{ color: "var(--qa-text)" }}>
                           {p.name}
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span className="text-[8px]" style={{ color: pRank.color }}>{pRank.emoji}</span>
-                          <span className="font-arcade text-[9px]" style={{ color: pRank.color }}>{p.elo}</span>
-                          <span className="text-[7px] text-white/15">·</span>
-                          <span className="text-[8px]" style={{ color: st.color }}>{st.label}</span>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: "var(--qa-text-sub)" }}>
+                          <span style={{ color: pRank.color }}>{pRank.emoji} {p.elo}</span>
+                          <span>·</span>
+                          <span style={{ color: st.color === "var(--qa-text-faint)" ? "var(--qa-text-faint)" : st.color }}>
+                            {st.label}
+                          </span>
                         </div>
                       </div>
-                      <ChevronRight
-                        className="w-3 h-3 flex-shrink-0 opacity-0 group-hover:opacity-100 transition"
-                        style={{ color: "rgba(255,255,255,0.3)" }}
-                      />
-                    </motion.div>
+                      <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "var(--qa-text-faint)" }} />
+                    </button>
 
-                    {/* Inline challenge popup */}
                     <AnimatePresence>
                       {isOpen && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.16 }}
+                          transition={{ duration: 0.18 }}
                           className="overflow-hidden"
                         >
                           <div
-                            className="mx-2 mb-1 p-3 rounded-xl border"
-                            style={{ background: `${color}08`, borderColor: `${color}25` }}
+                            className="mt-2 p-4 rounded-2xl"
+                            style={{
+                              background: `${AMBER}10`,
+                              border: `1px solid ${AMBER}30`,
+                            }}
                           >
-                            {/* Close */}
-                            <div className="flex items-center justify-between mb-2.5">
-                              <div className="text-[10px] text-white/50">
-                                Défier <span className="text-white font-semibold">{p.name}</span>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="text-sm font-bold" style={{ color: "var(--qa-text)" }}>
+                                Défier {p.name}
                               </div>
                               <button
-                                onClick={(e) => { e.stopPropagation(); setChallenged(null); }}
-                                className="text-white/20 hover:text-white/60 transition"
+                                onClick={() => setChallenged(null)}
+                                className="p-1 rounded-lg"
+                                style={{ color: "var(--qa-text-faint)" }}
                               >
-                                <X className="w-3 h-3" />
+                                <X className="w-4 h-4" />
                               </button>
                             </div>
-
-                            {/* Stake quick-select */}
-                            <div className="text-[9px] text-white/30 mb-1.5 uppercase tracking-wider">
-                              Mise
+                            <div className="text-xs font-bold mb-2" style={{ color: "var(--qa-text-sub)" }}>
+                              Choisis la mise
                             </div>
-                            <div className="grid grid-cols-2 gap-1 mb-2.5">
+                            <div className="grid grid-cols-4 gap-2 mb-3">
                               {[100, 250, 500, 1000].map((amt) => (
                                 <button
                                   key={amt}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                                  onClick={() => {
                                     setChallenged(null);
                                     navigate("/duel", {
                                       state: {
@@ -471,26 +355,23 @@ export default function RoomView() {
                                       },
                                     });
                                   }}
-                                  className="py-1.5 text-[10px] font-semibold rounded-lg border transition hover:opacity-90 text-center"
-                                  style={{
-                                    borderColor: `${color}30`,
-                                    color,
-                                    background: `${color}10`,
-                                  }}
+                                  className="py-2 rounded-xl text-sm font-bold transition hover:opacity-90"
+                                  style={{ background: AMBER, color: "#07070F" }}
                                 >
-                                  {amt.toLocaleString()}
+                                  {amt >= 1000 ? `${amt / 1000}k` : amt}
                                 </button>
                               ))}
                             </div>
-
-                            {/* Profile link */}
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={() => {
                                 setChallenged(null);
                                 navigate("/player/" + p.name);
                               }}
-                              className="w-full py-1.5 text-[10px] rounded-lg border border-white/[0.08] text-white/40 hover:text-white/70 transition text-center"
+                              className="w-full py-2 rounded-xl text-sm font-bold transition"
+                              style={{
+                                background: "var(--qa-active)",
+                                color: "var(--qa-text)",
+                              }}
                             >
                               Voir le profil
                             </button>
@@ -500,10 +381,67 @@ export default function RoomView() {
                     </AnimatePresence>
                   </div>
                 );
-              })
-            )}
-          </div>
-        </div>
+              })}
+            </div>
+          )}
+        </Section>
+
+        {/* REPLAYS */}
+        <Section
+          icon={<Play className="w-4 h-4" style={{ color: AMBER }} />}
+          title="Replays récents"
+          count={replays.length}
+          delay={0.17}
+          right={
+            <button
+              onClick={() => navigate("/replays")}
+              className="text-xs font-bold hover:underline flex items-center gap-0.5"
+              style={{ color: AMBER }}
+            >
+              Tous <ChevronRight className="w-3 h-3" />
+            </button>
+          }
+        >
+          {replays.length === 0 ? (
+            <EmptyState text="Aucun replay disponible" />
+          ) : (
+            replays.slice(0, 4).map((r) => {
+              const aWon = r.scoreA > r.scoreB;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => setReplayModal(r)}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl text-left transition hover:opacity-95"
+                  style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold flex items-center flex-wrap gap-1" style={{ color: "var(--qa-text)" }}>
+                      <span style={{ color: aWon ? AMBER : "var(--qa-text)" }}>{r.playerA}</span>
+                      <span className="font-display font-bold" style={{ color: aWon ? AMBER : "var(--qa-text-sub)" }}>
+                        {r.scoreA}
+                      </span>
+                      <span style={{ color: "var(--qa-text-faint)" }}>—</span>
+                      <span className="font-display font-bold" style={{ color: !aWon ? AMBER : "var(--qa-text-sub)" }}>
+                        {r.scoreB}
+                      </span>
+                      <span style={{ color: !aWon ? AMBER : "var(--qa-text)" }}>{r.playerB}</span>
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: "var(--qa-text-sub)" }}>
+                      {r.tournament} · {r.round} · {r.date}
+                    </div>
+                  </div>
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold flex-shrink-0"
+                    style={{ background: `${AMBER}22`, color: AMBER }}
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Revoir
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </Section>
 
       </div>
 
@@ -513,20 +451,24 @@ export default function RoomView() {
   );
 }
 
-function Section({ icon, title, count, countColor, right, children }) {
+function Section({ icon, title, count, countColor, right, children, delay = 0 }) {
   return (
-    <section>
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+    >
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <span className="text-[11px] uppercase tracking-wider font-semibold text-white/40">
+        <h2 className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
           {title}
-        </span>
+        </h2>
         {count > 0 && (
           <span
-            className="text-[9px] px-1.5 py-0.5 rounded font-bold leading-none"
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
             style={{
-              background: countColor ? `${countColor}20` : "rgba(255,255,255,0.06)",
-              color: countColor || "rgba(255,255,255,0.35)",
+              background: countColor ? `${countColor}22` : `${AMBER}22`,
+              color: countColor || AMBER,
             }}
           >
             {count}
@@ -535,15 +477,19 @@ function Section({ icon, title, count, countColor, right, children }) {
         {right && <div className="ml-auto">{right}</div>}
       </div>
       <div className="space-y-2">{children}</div>
-    </section>
+    </motion.section>
   );
 }
 
 function EmptyState({ text }) {
   return (
     <div
-      className="py-7 text-center text-[11px] text-white/20 rounded-xl border border-white/[0.04]"
-      style={{ background: "rgba(255,255,255,0.01)" }}
+      className="py-8 text-center text-sm rounded-2xl"
+      style={{
+        background: "var(--qa-surface)",
+        border: "1px dashed var(--qa-border)",
+        color: "var(--qa-text-sub)",
+      }}
     >
       {text}
     </div>

@@ -58,3 +58,163 @@ export const SFX = {
     );
   },
 };
+
+/* ── Zen ambient music ──
+ * A minor pentatonic pad + slow bell arpeggios.
+ * Genuinely calming, procedurally generated.
+ */
+
+// A minor pentatonic notes (Hz) — universally calming scale
+const ZEN_PAD_FREQS = [
+  110,    // A2 — root drone
+  164.81, // E3 — fifth
+  220,    // A3 — root octave
+  329.63, // E4 — fifth octave
+];
+
+const ZEN_BELL_FREQS = [
+  440,    // A4
+  523.25, // C5
+  659.25, // E5
+  783.99, // G5
+  880,    // A5
+];
+
+class ZenMusicPlayer {
+  constructor() {
+    this.playing = false;
+    this.padOscs = [];
+    this.padGains = [];
+    this.masterGain = null;
+    this.filter = null;
+    this.bellInterval = null;
+    this.lfo = null;
+    this.lfoGain = null;
+    this.volume = 0.35;
+  }
+
+  start() {
+    if (this.playing) return;
+    try {
+      const c = getCtx();
+      const now = c.currentTime;
+
+      // Master gain — starts silent and fades in
+      this.masterGain = c.createGain();
+      this.masterGain.gain.setValueAtTime(0, now);
+      this.masterGain.gain.linearRampToValueAtTime(this.volume, now + 2.5);
+
+      // Warm low-pass filter
+      this.filter = c.createBiquadFilter();
+      this.filter.type = "lowpass";
+      this.filter.frequency.value = 1400;
+      this.filter.Q.value = 0.7;
+
+      this.filter.connect(this.masterGain);
+      this.masterGain.connect(c.destination);
+
+      // Slow LFO for gentle breathing motion
+      this.lfo = c.createOscillator();
+      this.lfo.frequency.value = 0.15;
+      this.lfoGain = c.createGain();
+      this.lfoGain.gain.value = 200;
+      this.lfo.connect(this.lfoGain);
+      this.lfoGain.connect(this.filter.frequency);
+      this.lfo.start(now);
+
+      // Pad — 4 sine oscillators forming a warm A minor chord
+      ZEN_PAD_FREQS.forEach((freq, i) => {
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        // Slight detune for chorus effect
+        osc.detune.value = (i % 2 === 0 ? 3 : -3) + Math.random() * 2;
+
+        // Each voice at low volume
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.12, now + 3);
+
+        osc.connect(gain);
+        gain.connect(this.filter);
+        osc.start(now);
+
+        this.padOscs.push(osc);
+        this.padGains.push(gain);
+      });
+
+      // Bell arpeggios — soft occasional notes
+      this.bellInterval = setInterval(() => {
+        if (!this.playing) return;
+        const freq = ZEN_BELL_FREQS[Math.floor(Math.random() * ZEN_BELL_FREQS.length)];
+        this.playBell(freq);
+      }, 4200);
+
+      this.playing = true;
+    } catch (_) {}
+  }
+
+  playBell(freq) {
+    try {
+      const c = getCtx();
+      const now = c.currentTime;
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      // Bell envelope: quick attack, long decay
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
+
+      osc.connect(gain);
+      gain.connect(this.filter);
+      osc.start(now);
+      osc.stop(now + 3.6);
+    } catch (_) {}
+  }
+
+  stop() {
+    if (!this.playing) return;
+    try {
+      const c = getCtx();
+      const now = c.currentTime;
+      if (this.masterGain) {
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+        this.masterGain.gain.linearRampToValueAtTime(0, now + 1.2);
+      }
+      setTimeout(() => {
+        this.padOscs.forEach(o => { try { o.stop(); } catch (_) {} });
+        if (this.lfo) { try { this.lfo.stop(); } catch (_) {} }
+        this.padOscs = [];
+        this.padGains = [];
+        this.masterGain = null;
+        this.filter = null;
+        this.lfo = null;
+        this.lfoGain = null;
+      }, 1400);
+      if (this.bellInterval) {
+        clearInterval(this.bellInterval);
+        this.bellInterval = null;
+      }
+      this.playing = false;
+    } catch (_) {}
+  }
+
+  setVolume(v) {
+    this.volume = Math.max(0, Math.min(1, v));
+    if (this.masterGain) {
+      try {
+        const c = getCtx();
+        const now = c.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+        this.masterGain.gain.linearRampToValueAtTime(this.volume, now + 0.3);
+      } catch (_) {}
+    }
+  }
+}
+
+export const ZenMusic = new ZenMusicPlayer();

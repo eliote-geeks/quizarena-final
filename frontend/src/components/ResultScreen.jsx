@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { formatMoney } from "../lib/currency";
-import { Zap, Swords, TrendingUp, TrendingDown, Home } from "lucide-react";
+import { Banknote, CircleEqual, Skull, Trophy, Zap, Swords, TrendingUp, TrendingDown, Home } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -18,28 +18,28 @@ const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
 
 const CONFIGS = {
   win: {
-    emoji:      "🏆",
+    Icon:       Trophy,
     title:      "VICTOIRE !",
     glow:       AMBER,
     titleColor: AMBER,
     particles:  true,
   },
   cashout: {
-    emoji:      "💰",
+    Icon:       Banknote,
     title:      "CASH-OUT !",
     glow:       "#5DD66E",
     titleColor: "#5DD66E",
     particles:  true,
   },
   draw: {
-    emoji:      "🤝",
+    Icon:       CircleEqual,
     title:      "ÉGALITÉ",
     glow:       "#6C6C7A",
     titleColor: "#ACACBE",
     particles:  false,
   },
   loss: {
-    emoji:      "💀",
+    Icon:       Skull,
     title:      "DÉFAITE",
     glow:       "#FF5555",
     titleColor: "#FF6B6B",
@@ -58,27 +58,35 @@ export default function ResultScreen({
   streak,       // number (for solo)
   isDaily,      // bool
   opponentName, // string | undefined (duel only)
+  modeLabel,    // string | undefined
   onReplay,     // fn
   onLobby,      // fn
 }) {
   const { currency } = useApp();
   const cfg = CONFIGS[result] || CONFIGS.loss;
+  const ResultIcon = cfg.Icon;
   const isWin = result === "win" || result === "cashout";
   const isLoss = result === "loss";
 
   const subtitle = useMemo(() => {
+    if (opponentName !== undefined) {
+      if (result === "win") return `Tu gagnes le duel ${myScore}-${oppScore} contre ${opponentName}.`;
+      if (result === "loss") return `Tu perds le duel ${myScore}-${oppScore} contre ${opponentName}.`;
+      if (result === "draw") return `Égalité ${myScore}-${oppScore} contre ${opponentName}.`;
+      if (result === "cashout") return `Cash-out validé contre ${opponentName}.`;
+    }
     if (isDaily && isWin) return "Défi du Jour validé — +500 bonus inclus !";
     if (isWin)  return myScore !== undefined ? `${myScore}/${total} bonnes réponses` : "Tu as dominé l'arène !";
     if (isLoss) return myScore !== undefined ? `${myScore}/${total} bonnes réponses — continue de t'entraîner.` : "La prochaine sera la bonne !";
     return "Tes coins sont remboursés.";
-  }, [myScore, total, isDaily, isWin, isLoss]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myScore, oppScore, total, isDaily, isWin, isLoss, opponentName, result]);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-10"
-      style={{ background: "#05050A" }}
+      style={{ background: "var(--qa-page)" }}
     >
       {/* Ambient radial glow */}
       <div
@@ -101,14 +109,15 @@ export default function ResultScreen({
 
       <div className="relative z-10 w-full max-w-md mx-auto text-center">
 
-        {/* Emoji icon */}
+        {/* Result icon */}
         <motion.div
           initial={{ scale: 0, rotate: -20 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 220, damping: 14, delay: 0.08 }}
-          style={{ fontSize: 72, lineHeight: 1, marginBottom: 16, userSelect: "none" }}
+          className="mx-auto mb-4 w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: `${cfg.glow}16`, border: `1px solid ${cfg.glow}35`, color: cfg.titleColor }}
         >
-          {cfg.emoji}
+          <ResultIcon className="w-8 h-8" />
         </motion.div>
 
         {/* Title */}
@@ -136,6 +145,18 @@ export default function ResultScreen({
           {subtitle}
         </motion.p>
 
+        {modeLabel && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.36 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold mb-6"
+            style={{ background: `${AMBER}14`, border: `1px solid ${AMBER}35`, color: AMBER }}
+          >
+            {modeLabel}
+          </motion.div>
+        )}
+
         {/* ── Coins amount ── */}
         <motion.div
           initial={{ scale: 0.7, opacity: 0 }}
@@ -144,10 +165,10 @@ export default function ResultScreen({
           className="mb-8"
         >
           <div
-            className="inline-flex flex-col items-center gap-1 px-8 py-5 rounded-2xl border"
+            className="inline-flex flex-col items-center gap-1 px-6 py-4 rounded-xl border"
             style={{
-              background:   isLoss ? "rgba(255,107,107,0.07)" : isWin ? `${AMBER}09` : "rgba(255,255,255,0.03)",
-              borderColor:  isLoss ? "rgba(255,107,107,0.25)" : isWin ? `${AMBER}35` : "rgba(255,255,255,0.08)",
+              background:   isLoss ? "rgba(255,107,107,0.07)" : isWin ? `${AMBER}09` : "var(--qa-text-faint)",
+              borderColor:  isLoss ? "rgba(255,107,107,0.25)" : isWin ? `${AMBER}35` : "var(--qa-text-faint)",
               boxShadow:    isWin ? `0 0 30px ${AMBER}18` : isLoss ? "0 0 30px rgba(255,107,107,0.12)" : "none",
             }}
           >
@@ -183,7 +204,7 @@ export default function ResultScreen({
             <StatCard
               label="Score"
               value={`${myScore}/${total}`}
-              color={myScore >= Math.ceil(total * 0.7) ? "#5DD66E" : myScore >= Math.ceil(total * 0.5) ? AMBER : "#FF6B6B"}
+              color={opponentName !== undefined ? (result === "win" ? "#5DD66E" : result === "draw" ? AMBER : "#FF6B6B") : myScore >= Math.ceil(total * 0.7) ? "#5DD66E" : myScore >= Math.ceil(total * 0.5) ? AMBER : "#FF6B6B"}
             />
           )}
           {eloDelta !== undefined && (
@@ -199,7 +220,7 @@ export default function ResultScreen({
             <StatCard
               label="Série"
               value={`×${streak >= 5 ? "2.0" : "1.5"}`}
-              sub={streak >= 5 ? "🔥 En feu" : "⚡ Streak"}
+              sub={streak >= 5 ? "En feu" : "Streak"}
               color={AMBER}
             />
           )}
@@ -215,12 +236,12 @@ export default function ResultScreen({
           >
             <div className="text-center">
               <div className="text-[10px] text-white/25 mb-1">Toi</div>
-              <div className="font-arcade text-4xl" style={{ color: isWin ? AMBER : "#FF6B6B" }}>{myScore}</div>
+              <div className="font-arcade text-4xl" style={{ color: result === "win" ? "#5DD66E" : result === "draw" ? AMBER : "#FF6B6B" }}>{myScore}</div>
             </div>
             <div className="font-arcade text-lg text-white/15">VS</div>
             <div className="text-center">
               <div className="text-[10px] text-white/25 mb-1">{opponentName}</div>
-              <div className="font-arcade text-4xl text-white/35">{oppScore ?? (total - myScore)}</div>
+              <div className="font-arcade text-4xl" style={{ color: result === "loss" ? "#5DD66E" : "rgba(255,255,255,0.35)" }}>{oppScore ?? (total - myScore)}</div>
             </div>
           </motion.div>
         )}

@@ -7,6 +7,23 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Instrument Serif', 'ui-serif', 'Georgia', 'serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      fontSize: {
+        '2xs':  ['0.75rem',  { lineHeight: '1.05rem', letterSpacing: '-0.005em' }],
+        'xs':   ['0.8125rem',{ lineHeight: '1.15rem', letterSpacing: '-0.005em' }],
+        'sm':   ['0.9375rem',{ lineHeight: '1.35rem', letterSpacing: '-0.005em' }],
+        'base': ['1rem',     { lineHeight: '1.55rem', letterSpacing: '-0.005em' }],
+        'lg':   ['1.125rem', { lineHeight: '1.7rem',  letterSpacing: '-0.01em' }],
+        'xl':   ['1.25rem',  { lineHeight: '1.85rem', letterSpacing: '-0.015em' }],
+        '2xl':  ['1.5rem',   { lineHeight: '2rem',    letterSpacing: '-0.02em' }],
+        '3xl':  ['1.875rem', { lineHeight: '2.25rem', letterSpacing: '-0.02em' }],
+        '4xl':  ['2.25rem',  { lineHeight: '2.5rem',  letterSpacing: '-0.025em' }],
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

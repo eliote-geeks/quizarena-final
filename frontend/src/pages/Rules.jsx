@@ -14,7 +14,7 @@ const PAYOUT_ROWS = [
   { score: "7 / 10",     mult: "×1.20", net: "+20%",   win: true,  note: "Bénéfice" },
   { score: "8 / 10",     mult: "×1.60", net: "+60%",   win: true,  note: "Bénéfice" },
   { score: "9 / 10",     mult: "×2.20", net: "+120%",  win: true,  note: "Bénéfice" },
-  { score: "10 / 10",    mult: "×3.00", net: "+200%",  win: true,  note: "Jackpot 🎯" },
+  { score: "10 / 10",    mult: "×3.00", net: "+200%",  win: true,  note: "Jackpot" },
 ];
 
 function Section({ icon: Icon, title, color = AMBER, children }) {
@@ -23,15 +23,15 @@ function Section({ icon: Icon, title, color = AMBER, children }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-white/[0.07] overflow-hidden"
-      style={{ background: "#0B0B16" }}
+      style={{ background: "var(--qa-surface)" }}
     >
       <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]" style={{ background: `${color}08` }}>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}18`, color }}>
           <Icon className="w-4 h-4" />
         </div>
-        <h2 className="text-sm font-bold text-white">{title}</h2>
+        <h2 className="text-sm font-bold" style={{ color: "var(--qa-text)" }}>{title}</h2>
       </div>
-      <div className="px-5 py-5 space-y-3 text-sm text-white/60 leading-relaxed">
+      <div className="px-5 py-5 space-y-3 text-sm leading-relaxed" style={{ color: "var(--qa-text-sub)" }}>
         {children}
       </div>
     </motion.section>
@@ -41,8 +41,8 @@ function Section({ icon: Icon, title, color = AMBER, children }) {
 function Row({ label, value, highlight }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-white/[0.04] last:border-0">
-      <span className="text-white/40 text-xs">{label}</span>
-      <span className="text-xs font-semibold" style={{ color: highlight || "rgba(255,255,255,0.8)" }}>{value}</span>
+      <span className="text-xs" style={{ color: "var(--qa-text-faint)" }}>{label}</span>
+      <span className="text-xs font-semibold" style={{ color: highlight || "var(--qa-text)" }}>{value}</span>
     </div>
   );
 }
@@ -50,7 +50,7 @@ function Row({ label, value, highlight }) {
 function Rule({ icon: Icon = ChevronRight, text, color }) {
   return (
     <li className="flex items-start gap-2.5">
-      <Icon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: color || "rgba(255,255,255,0.3)" }} />
+      <Icon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: color || "var(--qa-text-faint)" }} />
       <span>{text}</span>
     </li>
   );
@@ -91,9 +91,9 @@ export default function Rules() {
         <Section icon={BookOpen} title="Solo Libre — Sans risque" color="#5DD66E">
           <p>Le mode d'entraînement. Aucune mise, aucun risque. Tu gagnes toujours quelque chose.</p>
           <ul className="space-y-2">
-            <Rule icon={CheckCircle} text="+10 pts par bonne réponse (max +100 pts par partie)." color="#5DD66E" />
-            <Rule icon={CheckCircle} text="Défi du Jour : +500 pts bonus si tu complètes la question du jour (une fois par 24h)." color="#5DD66E" />
-            <Rule icon={CheckCircle} text="L'ELO est quand même mis à jour selon ta performance." color="#5DD66E" />
+            <Rule icon={CheckCircle} text="+10 FCFA par bonne réponse (max +100 FCFA par partie)." color="#5DD66E" />
+            <Rule icon={CheckCircle} text="Défi du Jour : +500 FCFA bonus si tu complètes la question du jour (une fois par 24h)." color="#5DD66E" />
+            <Rule icon={CheckCircle} text="Ton ELO et ton XP sont mis à jour selon ta performance." color="#5DD66E" />
             <Rule icon={AlertTriangle} text="Ce mode ne permet pas de gains importants — utilise le Challenge pour miser." />
           </ul>
         </Section>
@@ -101,7 +101,7 @@ export default function Rules() {
         {/* ── Mode Challenge ── */}
         <Section icon={Zap} title="Solo Challenge — Mise & Payout" color={AMBER}>
           <p>
-            Tu choisis une mise (100, 250, 500, 1 000 ou 2 500 pts).
+            Tu choisis une mise (100, 250, 500, 1 000 ou 2 500 FCFA).
             Ton payout dépend entièrement de ton score final selon cette grille :
           </p>
 
@@ -127,12 +127,12 @@ export default function Rules() {
           </div>
 
           <p className="text-[11px] text-white/30 mt-1">
-            Exemple avec une mise de 500 pts : score 8/10 → tu reçois 800 pts (net +300 pts).
-            Score 5/10 → tu reçois 300 pts (net −200 pts).
+            Exemple avec une mise de 500 FCFA : score 8/10 → tu reçois 800 FCFA (net +300 FCFA).
+            Score 5/10 → tu reçois 300 FCFA (net −200 FCFA).
           </p>
 
           <div className="rounded-xl p-3.5 border mt-2" style={{ background: "rgba(229,168,0,0.06)", borderColor: `${AMBER}25` }}>
-            <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>⚡ Point clé</p>
+            <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>Point clé</p>
             <p className="text-xs text-white/50">
               Le seuil de rentabilité est à <strong className="text-white/70">7/10</strong>.
               En dessous, tu perds une partie de ta mise.
