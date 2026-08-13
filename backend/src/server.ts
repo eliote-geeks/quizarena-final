@@ -9,6 +9,7 @@ import { authRoutes } from "./modules/auth/routes.js";
 import { walletRoutes } from "./modules/wallet/routes.js";
 import { webhookRoutes } from "./modules/wallet/webhook.js";
 import { quizRoutes } from "./modules/quiz/routes.js";
+import { playerRoutes } from "./modules/players/routes.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -45,6 +46,7 @@ await app.register(authRoutes);
 await app.register(walletRoutes);
 await app.register(webhookRoutes);
 await app.register(quizRoutes);
+await app.register(playerRoutes);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);

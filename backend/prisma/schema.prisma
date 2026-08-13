@@ -105,6 +105,7 @@ model Category {
   nameEn     String
   difficulty String     @default("moyen")
   questions  Question[]
+  sessions   QuizSession[]
 }
 
 model Question {
@@ -142,6 +143,7 @@ model QuizSession {
   userId        String
   user          User          @relation(fields: [userId], references: [id])
   categoryId    String
+  category      Category      @relation(fields: [categoryId], references: [id])
   mode          QuizMode
   stakeCoins    Int           @default(0)
   daily         Boolean       @default(false) // partie du jour (LIBRE) — bonus 500 F, une fois/24h, vérifié serveur
