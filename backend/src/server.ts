@@ -7,7 +7,9 @@ import { ZodError } from "zod";
 import { env, corsOrigins } from "./lib/env.js";
 import { authRoutes } from "./modules/auth/routes.js";
 import { walletRoutes } from "./modules/wallet/routes.js";
+import { webhookRoutes } from "./modules/wallet/webhook.js";
 import { quizRoutes } from "./modules/quiz/routes.js";
+import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
   logger: { transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty" } : undefined },
@@ -41,9 +43,22 @@ app.get("/api/health", async () => ({ ok: true, service: "quizarena-backend" }))
 
 await app.register(authRoutes);
 await app.register(walletRoutes);
+await app.register(webhookRoutes);
 await app.register(quizRoutes);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);
   process.exit(1);
 });
+
+// Filet de sécurité webhook (§reconcile.ts) — un dépôt réel du 13/08/2026
+// a réussi côté SharePay sans jamais notifier notre webhook. Toutes les
+// 20s, on interroge directement l'état des transactions PENDING oubliées
+// au lieu d'attendre indéfiniment une notification qui peut ne jamais venir.
+setInterval(() => {
+  sweepPendingTransactions()
+    .then((n) => {
+      if (n > 0) app.log.info(`[reconcile] ${n} transaction(s) en attente vérifiée(s)`);
+    })
+    .catch((err) => app.log.error(err, "[reconcile] balayage échoué"));
+}, 20_000);

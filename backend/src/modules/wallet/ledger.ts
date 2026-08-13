@@ -31,6 +31,7 @@ type RecordTxInput = {
   status?: TransactionStatus;
   provider?: string;
   providerRef?: string;
+  relatedTransactionId?: string;
   quizSessionId?: string;
   duelMatchId?: string;
   metadata?: Prisma.InputJsonValue;
@@ -46,11 +47,30 @@ export async function credit(input: RecordTxInput) {
       status: input.status ?? TransactionStatus.COMPLETED,
       provider: input.provider,
       providerRef: input.providerRef,
+      relatedTransactionId: input.relatedTransactionId,
       quizSessionId: input.quizSessionId,
       duelMatchId: input.duelMatchId,
       metadata: input.metadata,
     },
   });
+}
+
+/** Trouve la transaction créée pour un dépôt/retrait à partir de la
+ * référence SharePay reçue dans le webhook — c'est le seul lien entre
+ * les deux systèmes. */
+export async function findByProviderRef(providerRef: string) {
+  return prisma.transaction.findFirst({ where: { providerRef } });
+}
+
+/** Un REFUND existe-t-il déjà pour cette transaction ? Empêche un
+ * remboursement en double si SharePay livre le même webhook deux fois
+ * (comportement standard des webhooks : "au moins une fois", jamais
+ * garanti "exactement une fois"). */
+export async function hasRefundFor(transactionId: string) {
+  const existing = await prisma.transaction.findFirst({
+    where: { relatedTransactionId: transactionId, type: TransactionType.REFUND },
+  });
+  return existing !== null;
 }
 
 /**

@@ -5,14 +5,14 @@ import { credit, debit, getBalance, InsufficientBalanceError } from "../wallet/l
 import { pickQuestions, shuffledOptions, QUESTIONS_PER_SESSION, TIME_PER_QUESTION_MS } from "./questions.js";
 import { scoreSession, applyHistoricalSignals, actionForScore } from "./anticheat.js";
 import { updatePlayerStats } from "./stats.js";
-
-const CHALLENGE_MULTIPLIER = 2; // gain = stake × 2 si score >= target, cohérent avec le front v2
+import { challengePayout, resultOf, LIBRE_POINTS_PER_CORRECT, DAILY_BONUS_COINS } from "./payout.js";
+import { calcNewElo } from "../../lib/elo.js";
 
 const startSchema = z.object({
   categoryId: z.string().min(1),
   mode: z.enum(["LIBRE", "CHALLENGE"]),
   stakeCoins: z.number().int().min(0).max(50_000).optional(),
-  targetScore: z.number().int().min(1).max(QUESTIONS_PER_SESSION).optional(),
+  daily: z.boolean().optional().default(false), // LIBRE uniquement — cf. QuizPlay.jsx ?daily=1
 });
 
 const submitSchema = z.object({
@@ -44,9 +44,7 @@ export async function quizRoutes(app: FastifyInstance) {
 
     let stakeCoins = 0;
     if (body.mode === "CHALLENGE") {
-      if (!body.stakeCoins || !body.targetScore) {
-        return reply.badRequest("stakeCoins et targetScore requis en mode CHALLENGE");
-      }
+      if (!body.stakeCoins) return reply.badRequest("stakeCoins requis en mode CHALLENGE");
       stakeCoins = body.stakeCoins;
       const cap = user.accountStatus === "RESTRICTED" ? 250 : 50_000;
       if (stakeCoins > cap) return reply.forbidden(`Mise plafonnée à ${cap} F pour ce compte`);
@@ -83,7 +81,7 @@ export async function quizRoutes(app: FastifyInstance) {
         categoryId: body.categoryId,
         mode: body.mode,
         stakeCoins,
-        targetScore: body.targetScore,
+        daily: body.mode === "LIBRE" && body.daily,
         questionIds: sessionQuestions,
         expiresAt,
       },
@@ -167,6 +165,12 @@ export async function quizRoutes(app: FastifyInstance) {
     const { score: suspicionScore, flags } = await applyHistoricalSignals(session.userId, base, session.mode);
     const action = actionForScore(suspicionScore);
 
+    // ELO — même règle des deux côtés (résultat déduit du score, pas du
+    // mode) : voir QuizPlay.jsx finalize(), la mise Challenge ne change
+    // rien à l'ELO.
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
+    const { newElo, delta: eloDelta } = calcNewElo(user.eloRating, 1050, resultOf(scoreServer));
+
     await prisma.$transaction([
       ...body.answers.map((a, i) =>
         prisma.quizAnswer.create({
@@ -185,12 +189,14 @@ export async function quizRoutes(app: FastifyInstance) {
           status: "SUBMITTED",
           submittedAt: new Date(),
           scoreServer,
+          eloDelta,
           tabSwitches: body.tabSwitches,
           totalDurationMs: body.totalDurationMs,
           suspicionScore,
           suspicionFlags: flags,
         },
       }),
+      prisma.user.update({ where: { id: user.id }, data: { eloRating: newElo } }),
     ]);
 
     if (action === "quarantine_hard") {
@@ -199,17 +205,38 @@ export async function quizRoutes(app: FastifyInstance) {
       });
     }
 
-    // Paiement — uniquement en mode CHALLENGE, uniquement si l'objectif est atteint.
+    // Paiement — copie exacte de QuizPlay.jsx finalize() :
+    // CHALLENGE : table de gains graduée (payout.ts), peut être un gain
+    //   partiel ou une perte totale de la mise (déjà débitée au start).
+    // LIBRE : 10 F par bonne réponse + bonus quotidien 500 F, vérifié
+    //   serveur (le champ client `isDaily` ne suffit pas — voir §10 du
+    //   spec anti-triche, ne jamais faire confiance à une déclaration client).
     let payoutCoins = 0;
-    if (session.mode === "CHALLENGE" && session.targetScore != null && scoreServer >= session.targetScore) {
-      payoutCoins = session.stakeCoins * CHALLENGE_MULTIPLIER;
+    let dailyBonusGranted = false;
+
+    if (session.mode === "CHALLENGE") {
+      payoutCoins = challengePayout(session.stakeCoins, scoreServer);
+    } else {
+      payoutCoins = scoreServer * LIBRE_POINTS_PER_CORRECT;
+      if (session.daily) {
+        const last = user.lastDailyBonusAt;
+        const eligible = !last || Date.now() - last.getTime() > 24 * 60 * 60 * 1000;
+        if (eligible) {
+          payoutCoins += DAILY_BONUS_COINS;
+          dailyBonusGranted = true;
+          await prisma.user.update({ where: { id: user.id }, data: { lastDailyBonusAt: new Date() } });
+        }
+      }
+    }
+
+    if (payoutCoins > 0) {
       await credit({
         userId: session.userId,
         type: "PAYOUT",
         amountCoins: payoutCoins,
         status: action === "credit" ? "COMPLETED" : "QUARANTINED",
         quizSessionId: session.id,
-        metadata: { suspicionScore, flags },
+        metadata: { suspicionScore, flags, dailyBonusGranted },
       });
     }
 
@@ -220,6 +247,9 @@ export async function quizRoutes(app: FastifyInstance) {
       totalQuestions: sessionQuestions.length,
       correctness,
       payoutCoins,
+      dailyBonusGranted,
+      eloRating: newElo,
+      eloDelta,
       suspicionAction: action, // le score lui-même n'est jamais renvoyé (§10 : ne pas révéler ce qui flague)
       balanceCoins: await getBalance(session.userId),
     });

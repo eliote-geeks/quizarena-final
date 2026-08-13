@@ -5,6 +5,7 @@
 // — elles arrivent avec ces briques (voir README « Prochaines phases »).
 
 import { prisma } from "../../lib/prisma.js";
+import { QUESTIONS_PER_SESSION } from "./payout.js";
 
 export type AnswerInput = { questionId: string; chosenIndex: number; responseMs: number };
 
@@ -84,7 +85,7 @@ export function scoreSession(input: {
   }
 
   // Validation temporelle globale (§3.2)
-  const expectedMs = totalQuestions * 10_000;
+  const expectedMs = totalQuestions * 8_000; // aligné sur TIME_PER_QUESTION_MS (questions.ts)
   if (totalDurationMs < expectedMs * 0.4) {
     score += 25;
     flags.push("SESSION_TOO_SHORT");
@@ -129,10 +130,11 @@ export async function applyHistoricalSignals(
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recentChallenges = await prisma.quizSession.findMany({
       where: { userId, mode: "CHALLENGE", status: "SUBMITTED", startedAt: { gte: thirtyDaysAgo } },
-      select: { scoreServer: true, targetScore: true },
+      select: { scoreServer: true },
     });
     if (recentChallenges.length > 10) {
-      const wins = recentChallenges.filter((s) => (s.scoreServer ?? 0) >= (s.targetScore ?? Infinity)).length;
+      // "win" ici = paiement net positif, c-à-d PAYOUT_MULT[score] >= 1 → score >= 7 (§payout.ts)
+      const wins = recentChallenges.filter((s) => (s.scoreServer ?? 0) >= 7).length;
       const winRate = wins / recentChallenges.length;
       if (winRate > 0.85) {
         score += 15;
@@ -140,7 +142,7 @@ export async function applyHistoricalSignals(
       }
     }
 
-    // R03 — 3 scores parfaits consécutifs en Challenge
+    // R03 — 3 scores parfaits (10/10) consécutifs en Challenge
     const lastThree = await prisma.quizSession.findMany({
       where: { userId, mode: "CHALLENGE", status: "SUBMITTED" },
       orderBy: { startedAt: "desc" },
@@ -148,7 +150,7 @@ export async function applyHistoricalSignals(
       select: { scoreServer: true },
     });
     const currentIsPerfect = flags.includes("PERFECT_AND_FAST") || base.score >= 20; // approximation locale
-    if (lastThree.length === 2 && lastThree.every((s) => s.scoreServer === QUESTIONS_PER_SESSION_HINT)) {
+    if (lastThree.length === 2 && lastThree.every((s) => s.scoreServer === QUESTIONS_PER_SESSION)) {
       if (currentIsPerfect) {
         score += 20;
         flags.push("REPEATED_PERFECT_SCORE"); // R03
@@ -158,9 +160,6 @@ export async function applyHistoricalSignals(
 
   return { score: Math.min(100, score), flags };
 }
-
-// Évite une dépendance circulaire avec questions.ts pour une seule constante.
-const QUESTIONS_PER_SESSION_HINT = 7;
 
 export function actionForScore(score: number): SubmitVerdict["action"] {
   if (score >= 70) return "quarantine_hard"; // §4.2 : gains en quarantaine 24h, alerte admin

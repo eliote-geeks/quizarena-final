@@ -29,6 +29,7 @@ CREATE TABLE "User" (
     "riskScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastLoginAt" TIMESTAMP(3),
+    "lastDailyBonusAt" TIMESTAMP(3),
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -81,13 +82,14 @@ CREATE TABLE "QuizSession" (
     "categoryId" TEXT NOT NULL,
     "mode" "QuizMode" NOT NULL,
     "stakeCoins" INTEGER NOT NULL DEFAULT 0,
-    "targetScore" INTEGER,
+    "daily" BOOLEAN NOT NULL DEFAULT false,
     "questionIds" JSONB NOT NULL,
     "status" "SessionStatus" NOT NULL DEFAULT 'STARTED',
     "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "submittedAt" TIMESTAMP(3),
     "scoreServer" INTEGER,
+    "eloDelta" INTEGER,
     "tabSwitches" INTEGER NOT NULL DEFAULT 0,
     "totalDurationMs" INTEGER,
     "suspicionScore" DOUBLE PRECISION,

@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { QUESTIONS_PER_SESSION } from "./questions.js";
+import { resultOf, QUESTIONS_PER_SESSION } from "./payout.js";
 
 /**
  * Recalcule PlayerStats après chaque partie (§5.1 du spec). Fait ici en
@@ -25,8 +25,11 @@ export async function updatePlayerStats(userId: string) {
     }),
   ]);
 
-  const isWin = (s: (typeof all)[number]) =>
-    s.mode === "CHALLENGE" ? (s.scoreServer ?? 0) >= (s.targetScore ?? Infinity) : (s.scoreServer ?? 0) >= Math.ceil(QUESTIONS_PER_SESSION / 2);
+  // Même définition de "win" que côté front (§QuizPlay.jsx : correct >= 7),
+  // valable pour les deux modes — le paiement Challenge est gradué, pas
+  // binaire, donc "win" ici sert l'ELO et le profilage anti-triche, pas le
+  // paiement (voir payout.ts).
+  const isWin = (s: (typeof all)[number]) => resultOf(s.scoreServer ?? 0) === "win";
 
   const winRate = (arr: typeof all) => (arr.length ? arr.filter(isWin).length / arr.length : 0);
   const avg = (arr: number[]) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
@@ -94,7 +97,7 @@ export async function updatePlayerStats(userId: string) {
   await prisma.user.update({ where: { id: userId }, data: { riskScore } });
 }
 
-const sel = { mode: true, scoreServer: true, targetScore: true, tabSwitches: true, suspicionScore: true } as const;
+const sel = { mode: true, scoreServer: true, tabSwitches: true, suspicionScore: true } as const;
 
 function stddev(values: number[]): number {
   const mean = values.reduce((a, b) => a + b, 0) / values.length;

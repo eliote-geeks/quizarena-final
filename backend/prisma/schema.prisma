@@ -37,6 +37,7 @@ model User {
   riskScore    Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
   createdAt    DateTime      @default(now())
   lastLoginAt  DateTime?
+  lastDailyBonusAt DateTime? // gate serveur du bonus quotidien (§ QuizPlay.jsx isDaily) — le client ne peut pas le déclarer deux fois
 
   transactions Transaction[]
   quizSessions QuizSession[]
@@ -79,8 +80,9 @@ model Transaction {
   type          TransactionType
   amountCoins   Int                // signé : dépôt/gain positif, retrait/mise négatif
   status        TransactionStatus  @default(COMPLETED)
-  provider      String?            // "orange_money" | "mtn_momo" | "system"
-  providerRef   String?            // référence opérateur, pour rapprochement
+  provider      String?            // "sharepay" | "simulated"
+  providerRef   String?            // référence SharePay, pour rapprochement + idempotence webhook
+  relatedTransactionId String?     // ex : REFUND → pointe vers le WITHDRAWAL remboursé (évite un double remboursement si le webhook est livré deux fois)
   quizSessionId String?
   quizSession   QuizSession?       @relation(fields: [quizSessionId], references: [id])
   duelMatchId   String?
@@ -142,7 +144,7 @@ model QuizSession {
   categoryId    String
   mode          QuizMode
   stakeCoins    Int           @default(0)
-  targetScore   Int?          // seuil de gain en mode challenge
+  daily         Boolean       @default(false) // partie du jour (LIBRE) — bonus 500 F, une fois/24h, vérifié serveur
   questionIds   Json          // string[] — ordre figé au démarrage (§3.4 : anti-refresh)
   status        SessionStatus @default(STARTED)
   startedAt     DateTime      @default(now())
@@ -151,6 +153,7 @@ model QuizSession {
 
   // Résultat, rempli uniquement par submit() côté serveur
   scoreServer      Int?
+  eloDelta         Int?
   tabSwitches      Int      @default(0) // rapporté par le client, indicatif (§2.2 : pas une preuve seule)
   totalDurationMs  Int?
   suspicionScore   Float?

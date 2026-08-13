@@ -1,13 +1,14 @@
 import { prisma } from "../../lib/prisma.js";
+import { QUESTIONS_PER_SESSION } from "./payout.js";
 
-export const QUESTIONS_PER_SESSION = 7;
-export const TIME_PER_QUESTION_MS = 10_000; // aligné sur le front (Duel.jsx ROUND_MS)
+export { QUESTIONS_PER_SESSION };
+export const TIME_PER_QUESTION_MS = 8_000; // aligné sur QuizPlay.jsx / DuelPlay.jsx TIME_PER_Q = 8
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [a[i], a[j]] = [a[j]!, a[i]!]; // i, j toujours < a.length par construction
   }
   return a;
 }
