@@ -59,9 +59,16 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/auth/me", { preHandler: [app.authenticate] }, async (req, reply) => {
-    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId }, include: { stats: true } });
     if (!user) return reply.notFound();
-    return reply.send({ user: toPublicUser(user) });
+    return reply.send({
+      user: toPublicUser(user),
+      stats: user.stats && {
+        totalGames: user.stats.totalGames,
+        winRateGlobal: user.stats.winRateGlobal,
+        avgScore: user.stats.avgScore,
+      },
+    });
   });
 }
 

@@ -2,6 +2,16 @@ import { env } from "../../lib/env.js";
 
 export type MobileMoneyMethod = "MTN_MOMO_CM" | "ORANGE_MONEY_CM";
 
+/** SharePay attend le préfixe pays (§SharePay.pdf, exemples "237690000000") ;
+ * le champ téléphone du compte peut avoir été saisi en format local
+ * ("690000000"). Normalise plutôt que de faire confiance au format saisi. */
+function normalizeCmPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("237")) return digits;
+  if (digits.length === 9) return `237${digits}`;
+  return digits;
+}
+
 /**
  * Interface commune. `SharePayProvider` est le vrai fournisseur (agrégateur
  * Orange Money / MTN MoMo, https://sharepay-api.te-sea.com — même
@@ -94,7 +104,7 @@ class SharePayProvider implements PaymentProvider {
       amount: input.amountCoins,
       currency: "XAF",
       paymentMethod: input.method,
-      payerAccount: input.phone,
+      payerAccount: normalizeCmPhone(input.phone),
       payerName: input.payerName,
       merchantReference: input.merchantReference,
       description: "Dépôt QuizArena",
@@ -114,7 +124,7 @@ class SharePayProvider implements PaymentProvider {
       amount: input.amountCoins,
       currency: "XAF",
       paymentMethod: input.method,
-      beneficiaryAccount: input.phone,
+      beneficiaryAccount: normalizeCmPhone(input.phone),
       beneficiaryName: input.beneficiaryName,
       merchantReference: input.merchantReference,
       description: "Retrait QuizArena",

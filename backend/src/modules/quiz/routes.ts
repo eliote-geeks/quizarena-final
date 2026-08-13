@@ -34,6 +34,22 @@ const submitSchema = z.object({
 type SessionQuestion = { questionId: string; permutation: number[] };
 
 export async function quizRoutes(app: FastifyInstance) {
+  // Public — la liste de catégories n'a rien de sensible, et le front en
+  // a besoin avant que l'utilisateur soit connecté (écran Catégories).
+  app.get("/api/categories", async (_req, reply) => {
+    const categories = await prisma.category.findMany({
+      include: { _count: { select: { questions: { where: { active: true } } } } },
+    });
+    return reply.send({
+      categories: categories.map((c) => ({
+        id: c.id,
+        name: c.nameFr,
+        difficulty: c.difficulty,
+        questionCount: c._count.questions,
+      })),
+    });
+  });
+
   app.post("/api/quiz/start", { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = startSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
