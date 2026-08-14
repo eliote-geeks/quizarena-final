@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
+import websocket from "@fastify/websocket";
 import { ZodError } from "zod";
 import { env, corsOrigins } from "./lib/env.js";
 import { authRoutes } from "./modules/auth/routes.js";
@@ -10,6 +11,7 @@ import { walletRoutes } from "./modules/wallet/routes.js";
 import { webhookRoutes } from "./modules/wallet/webhook.js";
 import { quizRoutes } from "./modules/quiz/routes.js";
 import { playerRoutes } from "./modules/players/routes.js";
+import { duelWsRoutes } from "./modules/duel/ws.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -19,6 +21,7 @@ const app = Fastify({
 await app.register(sensible);
 await app.register(cors, { origin: corsOrigins.length ? corsOrigins : true, credentials: true });
 await app.register(jwt, { secret: env.JWT_SECRET });
+await app.register(websocket);
 
 // Anti-bourrinage générique sur toute l'API — les endpoits sensibles
 // (submit, withdraw) ont en plus leur propre logique métier de garde-fou.
@@ -47,6 +50,7 @@ await app.register(walletRoutes);
 await app.register(webhookRoutes);
 await app.register(quizRoutes);
 await app.register(playerRoutes);
+await app.register(duelWsRoutes);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);

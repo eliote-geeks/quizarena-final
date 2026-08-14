@@ -182,17 +182,19 @@ model QuizAnswer {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Duel — squelette de données pour le moteur temps réel (Phase suivante,
-// non branché ici : voir README « Prochaines phases »). Les colonnes
-// existent déjà pour que PlayerStats puisse agréger dès que le moteur
-// WebSocket écrit ici.
+// Duel — moteur temps réel (WebSocket, src/modules/duel/). Une ligne
+// est créée dès qu'un adversaire est trouvé, avant même le débit des
+// mises (status MATCHING) ; questionIds ne se remplit qu'une fois les
+// deux mises débitées avec succès et la partie réellement lancée
+// (IN_PROGRESS). Mêmes principes que QuizSession : le serveur est seul
+// à écrire scoreA/scoreB/winnerId, jamais le client.
 // ────────────────────────────────────────────────────────────────────
 
 enum DuelStatus {
   MATCHING
   IN_PROGRESS
   COMPLETED
-  CANCELLED
+  CANCELLED   // adversaire perdu avant le début, ou solde insuffisant au débit → mises remboursées
 }
 
 model DuelMatch {
@@ -204,18 +206,36 @@ model DuelMatch {
   playerBId    String
   playerB      User         @relation("DuelPlayerB", fields: [playerBId], references: [id])
   status       DuelStatus   @default(MATCHING)
+  questionIds  Json?        // string[] — même liste, même ordre pour les deux joueurs
   scoreA       Int          @default(0)
   scoreB       Int          @default(0)
-  winnerId     String?
+  winnerId     String?      // null si égalité ou annulé
+  forfeitedBy  String?      // userId qui a abandonné/déconnecté après le début (§R08 anti-triche)
   eloDeltaA    Int?
   eloDeltaB    Int?
   startedAt    DateTime     @default(now())
   completedAt  DateTime?
 
   transactions Transaction[]
+  answers      DuelAnswer[]
 
   @@index([playerAId])
   @@index([playerBId])
+}
+
+model DuelAnswer {
+  id           String    @id @default(uuid())
+  duelMatchId  String
+  duelMatch    DuelMatch @relation(fields: [duelMatchId], references: [id])
+  userId       String
+  questionId   String
+  chosenIndex  Int       // -1 = timeout, aucune réponse reçue à temps
+  correct      Boolean
+  responseMs   Int       // calculé serveur : réception - envoi de la question, jamais déclaré par le client
+  createdAt    DateTime  @default(now())
+
+  @@index([duelMatchId])
+  @@index([userId])
 }
 
 // ────────────────────────────────────────────────────────────────────

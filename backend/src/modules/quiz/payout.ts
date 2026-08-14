@@ -23,3 +23,33 @@ export function resultOf(correctCount: number): "win" | "draw" | "loss" {
   if (correctCount >= 5) return "draw";
   return "loss";
 }
+
+// ────────────────────────────────────────────────────────────────────
+// Duel — copie exacte de frontend/src/pages/DuelPlay.jsx finalizeResult().
+// Le pot est 2×stake (une mise de chaque côté, déjà débitée au moment du
+// lancement du duel — voir duel/engine.ts). Contrairement au Challenge,
+// pas de table graduée : c'est juste qui a le plus de bonnes réponses.
+// ────────────────────────────────────────────────────────────────────
+
+export const DUEL_ROUND_SIZE = QUESTIONS_PER_SESSION; // même volume qu'un solo (10)
+export const DUEL_WIN_HOUSE_CUT = 0.10; // le vainqueur reçoit 90% du pot
+export const DUEL_DRAW_HOUSE_CUT = 0.05; // égalité : chacun récupère 95% de sa mise
+
+/** Montant TOTAL crédité au vainqueur (le pot moins la commission). Net
+ * pour lui = duelWinnerPayout(stake) - stake, soit +0.80×stake. */
+export function duelWinnerPayout(stakeCoins: number): number {
+  return Math.round(stakeCoins * 2 * (1 - DUEL_WIN_HOUSE_CUT));
+}
+
+/** Montant crédité à CHAQUE joueur en cas d'égalité (remboursement partiel). */
+export function duelDrawPayout(stakeCoins: number): number {
+  return Math.round(stakeCoins * (1 - DUEL_DRAW_HOUSE_CUT));
+}
+
+/** win/draw/loss du duel lui-même — comparaison directe des scores, pas
+ * le seuil resultOf() (qui sert l'ELO solo). */
+export function duelResultOf(myScore: number, oppScore: number): "win" | "draw" | "loss" {
+  if (myScore > oppScore) return "win";
+  if (myScore < oppScore) return "loss";
+  return "draw";
+}
