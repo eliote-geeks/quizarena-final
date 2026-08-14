@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma.js";
 import { clientMessageSchema } from "./protocol.js";
-import { enqueue, cancelQueue, handleAnswer, attachSocket, detachSocket } from "./engine.js";
+import {
+  enqueue, startBotDuel, cancelQueue, handleAnswer, handleForfeit, attachSocket, detachSocket,
+  createInvite, joinInvite, cancelInvite,
+} from "./engine.js";
 
 /**
  * Un seul canal WebSocket (/ws/duel). Le navigateur ne peut pas fixer
@@ -53,11 +56,29 @@ export async function duelWsRoutes(app: FastifyInstance) {
         case "queue":
           void enqueue({ userId, username, eloRating, send, categoryId: msg.categoryId, stakeCoins: msg.stakeCoins });
           break;
+        case "bot_duel":
+          void startBotDuel({
+            userId, username, eloRating, send,
+            categoryId: msg.categoryId, stakeCoins: msg.stakeCoins, difficulty: msg.difficulty,
+          });
+          break;
         case "cancel_queue":
           cancelQueue(userId);
           break;
+        case "create_invite":
+          void createInvite({ userId, username, eloRating, send, categoryId: msg.categoryId, stakeCoins: msg.stakeCoins });
+          break;
+        case "join_invite":
+          void joinInvite({ userId, username, eloRating, send }, msg.code);
+          break;
+        case "cancel_invite":
+          cancelInvite(userId);
+          break;
         case "answer":
           handleAnswer(userId, msg.questionId, msg.chosenIndex);
+          break;
+        case "forfeit":
+          handleForfeit(userId);
           break;
         case "ping":
           send({ type: "pong" });

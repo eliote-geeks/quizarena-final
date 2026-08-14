@@ -22,6 +22,7 @@ import { credit, debit, getBalance, InsufficientBalanceError } from "../wallet/l
 import { pickQuestions, shuffledOptions, TIME_PER_QUESTION_MS } from "../quiz/questions.js";
 import { DUEL_ROUND_SIZE, duelWinnerPayout, duelDrawPayout, duelResultOf } from "../quiz/payout.js";
 import { calcNewElo } from "../../lib/elo.js";
+import { BOT_PARAMS, getBotUserId, botUsername, type BotDifficulty } from "./bot.js";
 
 const QUEUE_TIMEOUT_MS = 45_000;
 const ROUND_GRACE_MS = 2_800; // temps d'affichage du "reveal" avant la question suivante (§ceremony côté v1)
@@ -74,11 +75,19 @@ type Match = {
   players: [MatchPlayer, MatchPlayer];
   cancelled: boolean;
   awaitingReconnect: boolean;
+  botDifficulty: BotDifficulty | null; // non-null => players[1] est l'ordinateur
 };
 
 const queues = new Map<string, QueueEntry[]>(); // clé "categoryId:stakeCoins"
 const activeMatchByUser = new Map<string, Match>();
 const matches = new Map<string, Match>();
+
+// Verrou synchrone couvrant la fenêtre entre "reçu un message queue" et
+// "poussé dans la file / apparié" — sans ça, deux messages "queue" pour
+// le MÊME joueur arrivant avant la fin de l'await getBalance() pouvaient
+// tous les deux passer les vérifications, et le second se retrouvait à
+// s'apparier avec la première entrée... c'est-à-dire lui-même.
+const reserving = new Set<string>();
 
 function queueKey(categoryId: string, stakeCoins: number) {
   return `${categoryId}:${stakeCoins}`;
@@ -102,7 +111,7 @@ export async function enqueue(entry: {
   categoryId: string;
   stakeCoins: number;
 }) {
-  if (activeMatchByUser.has(entry.userId)) {
+  if (activeMatchByUser.has(entry.userId) || reserving.has(entry.userId)) {
     entry.send({ type: "error", message: "Déjà en duel" });
     return;
   }
@@ -112,9 +121,14 @@ export async function enqueue(entry: {
       return;
     }
   }
+  // Réservation synchrone AVANT le premier await : ferme la fenêtre de
+  // course décrite plus haut. Toujours retirée avant de sortir de la
+  // fonction, quelle que soit l'issue.
+  reserving.add(entry.userId);
 
   const balance = await getBalance(entry.userId);
   if (balance < entry.stakeCoins) {
+    reserving.delete(entry.userId);
     entry.send({ type: "error", message: "Solde insuffisant pour cette mise" });
     return;
   }
@@ -132,18 +146,28 @@ export async function enqueue(entry: {
     }
   }, QUEUE_TIMEOUT_MS);
 
-  const opponent = list.shift(); // FIFO : le premier arrivé sur cette clé est apparié en premier
+  // Garde-fou défensif en plus du verrou ci-dessus : ne jamais apparier
+  // quelqu'un avec sa propre entrée, même si un futur changement de code
+  // réintroduisait une fenêtre de course.
+  let opponent = list.shift();
+  if (opponent && opponent.userId === entry.userId) {
+    list.push(opponent);
+    opponent = undefined;
+  }
+
   if (!opponent) {
     list.push({ ...entry, timeoutHandle });
     queues.set(key, list);
+    reserving.delete(entry.userId);
     entry.send({ type: "queued" });
     return;
   }
 
   clearTimeout(opponent.timeoutHandle);
   queues.set(key, list);
+  reserving.delete(entry.userId);
   entry.send({ type: "queued" }); // suivi immédiatement de "matched" une fois le débit confirmé
-  await createMatch(opponent, { ...entry, timeoutHandle });
+  await createMatch(opponent, entry);
 }
 
 export function cancelQueue(userId: string) {
@@ -158,9 +182,216 @@ export function cancelQueue(userId: string) {
   }
 }
 
+// ── Invitation entre amis ────────────────────────────────────────────────
+// Alternative au matchmaking public : un joueur génère un code, le
+// partage par un lien externe (WhatsApp…), l'ami qui l'ouvre est apparié
+// directement avec lui — sans passer par la file d'attente publique.
+
+const INVITE_TTL_MS = 5 * 60_000;
+const INVITE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // sans 0/O/1/I/L, ambigus à l'oral/à l'écrit
+
+type PendingInvite = MatchSeed & { code: string; timeoutHandle: ReturnType<typeof setTimeout> };
+
+const invites = new Map<string, PendingInvite>();
+const pendingInviteByUser = new Map<string, string>(); // userId -> code
+
+function generateInviteCode(): string {
+  let code: string;
+  do {
+    code = Array.from({ length: 6 }, () => INVITE_CHARS[Math.floor(Math.random() * INVITE_CHARS.length)]).join("");
+  } while (invites.has(code));
+  return code;
+}
+
+export function cancelInvite(userId: string) {
+  const code = pendingInviteByUser.get(userId);
+  if (!code) return;
+  const invite = invites.get(code);
+  if (invite) clearTimeout(invite.timeoutHandle);
+  invites.delete(code);
+  pendingInviteByUser.delete(userId);
+}
+
+export async function createInvite(entry: MatchSeed) {
+  if (activeMatchByUser.has(entry.userId) || reserving.has(entry.userId)) {
+    entry.send({ type: "error", message: "Déjà en duel" });
+    return;
+  }
+  if (pendingInviteByUser.has(entry.userId)) {
+    entry.send({ type: "error", message: "Invitation déjà en attente" });
+    return;
+  }
+
+  const balance = await getBalance(entry.userId);
+  if (balance < entry.stakeCoins) {
+    entry.send({ type: "error", message: "Solde insuffisant pour cette mise" });
+    return;
+  }
+
+  const code = generateInviteCode();
+  const timeoutHandle = setTimeout(() => {
+    if (invites.has(code)) {
+      invites.delete(code);
+      pendingInviteByUser.delete(entry.userId);
+      entry.send({ type: "invite_expired" });
+    }
+  }, INVITE_TTL_MS);
+
+  invites.set(code, { ...entry, code, timeoutHandle });
+  pendingInviteByUser.set(entry.userId, code);
+  entry.send({ type: "invite_created", code, expiresInMs: INVITE_TTL_MS });
+}
+
+export async function joinInvite(
+  entry: { userId: string; username: string; eloRating: number; send: Send },
+  rawCode: string
+) {
+  if (activeMatchByUser.has(entry.userId) || reserving.has(entry.userId)) {
+    entry.send({ type: "error", message: "Déjà en duel" });
+    return;
+  }
+  const code = rawCode.trim().toUpperCase();
+  const invite = invites.get(code);
+  if (!invite) {
+    entry.send({ type: "error", message: "Invitation invalide ou expirée" });
+    return;
+  }
+  if (invite.userId === entry.userId) {
+    entry.send({ type: "error", message: "Impossible de rejoindre sa propre invitation" });
+    return;
+  }
+  if (activeMatchByUser.has(invite.userId) || reserving.has(invite.userId)) {
+    // L'hôte s'est engagé ailleurs entre-temps (queue publique, autre
+    // invitation acceptée en double onglet…) — l'invitation est caduque.
+    clearTimeout(invite.timeoutHandle);
+    invites.delete(code);
+    pendingInviteByUser.delete(invite.userId);
+    entry.send({ type: "error", message: "Invitation invalide ou expirée" });
+    return;
+  }
+
+  clearTimeout(invite.timeoutHandle);
+  invites.delete(code);
+  pendingInviteByUser.delete(invite.userId);
+
+  entry.send({ type: "queued" });
+  await createMatch(invite, entry);
+}
+
+// ── Contre l'ordinateur ─────────────────────────────────────────────────
+// Même moteur que le PvP (mêmes messages, mêmes règles de paiement, même
+// anti-triche temps réel) — seul le joueur humain a un vrai débit, voir
+// finalizeMatch pour la raison de ne jamais créditer l'ordinateur.
+
+export async function startBotDuel(entry: {
+  userId: string;
+  username: string;
+  eloRating: number;
+  send: Send;
+  categoryId: string;
+  stakeCoins: number;
+  difficulty: BotDifficulty;
+}) {
+  if (activeMatchByUser.has(entry.userId) || reserving.has(entry.userId)) {
+    entry.send({ type: "error", message: "Déjà en duel" });
+    return;
+  }
+  for (const list of queues.values()) {
+    if (list.some((e) => e.userId === entry.userId)) {
+      entry.send({ type: "error", message: "Déjà en recherche d'adversaire" });
+      return;
+    }
+  }
+  reserving.add(entry.userId);
+
+  const balance = await getBalance(entry.userId);
+  if (balance < entry.stakeCoins) {
+    reserving.delete(entry.userId);
+    entry.send({ type: "error", message: "Solde insuffisant pour cette mise" });
+    return;
+  }
+  reserving.delete(entry.userId);
+
+  const botUserId = getBotUserId(entry.difficulty);
+  const row = await prisma.duelMatch.create({
+    data: { categoryId: entry.categoryId, stakeCoins: entry.stakeCoins, playerAId: entry.userId, playerBId: botUserId },
+  });
+
+  const match: Match = {
+    id: row.id,
+    categoryId: entry.categoryId,
+    stakeCoins: entry.stakeCoins,
+    questions: [],
+    index: -1,
+    status: "debiting",
+    startedAnyQuestion: false,
+    questionSentAt: 0,
+    roundTimer: null,
+    cancelled: false,
+    awaitingReconnect: false,
+    botDifficulty: entry.difficulty,
+    players: [
+      { userId: entry.userId, username: entry.username, eloRating: entry.eloRating, send: entry.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+      { userId: botUserId, username: botUsername(entry.difficulty), eloRating: 1000, send: null, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+    ],
+  };
+  matches.set(match.id, match);
+  activeMatchByUser.set(entry.userId, match);
+
+  entry.send({
+    type: "matched",
+    duelMatchId: match.id,
+    categoryId: match.categoryId,
+    stakeCoins: match.stakeCoins,
+    opponent: { username: match.players[1].username, eloRating: match.players[1].eloRating },
+  });
+
+  let debitTx: { id: string } | null = null;
+  try {
+    debitTx = await debit({ userId: entry.userId, type: "STAKE", amountCoins: match.stakeCoins, duelMatchId: match.id });
+  } catch (err) {
+    if (!(err instanceof InsufficientBalanceError)) throw err;
+    await prisma.duelMatch.update({ where: { id: match.id }, data: { status: "CANCELLED", completedAt: new Date() } });
+    cleanupMatch(match);
+    entry.send({ type: "duel_cancelled", reason: "solde_insuffisant" });
+    return;
+  }
+
+  if (match.cancelled) {
+    // Le joueur s'est déconnecté pendant le débit — personne à notifier,
+    // mais on rembourse quand même (le débit, lui, a bien eu lieu).
+    await credit({ userId: entry.userId, type: "REFUND", amountCoins: match.stakeCoins, duelMatchId: match.id, relatedTransactionId: debitTx.id, metadata: { reason: "left_before_start" } });
+    await prisma.duelMatch.update({ where: { id: match.id }, data: { status: "CANCELLED", completedAt: new Date() } });
+    cleanupMatch(match);
+    return;
+  }
+
+  const rawQuestions = await pickQuestions(match.categoryId, entry.userId, DUEL_ROUND_SIZE);
+  match.questions = rawQuestions.map((q) => {
+    const { text, permutation } = shuffledOptions(q.options);
+    return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
+  });
+
+  await prisma.duelMatch.update({
+    where: { id: match.id },
+    data: { status: "IN_PROGRESS", questionIds: match.questions.map((q) => q.questionId) },
+  });
+
+  match.status = "countdown";
+  entry.send({ type: "countdown", seconds: 3 });
+  setTimeout(() => {
+    if (!match.cancelled) sendQuestion(match, 0);
+  }, 3_200);
+}
+
 // ── Création du match : débit des deux mises AVANT toute question ─────
 
-async function createMatch(a: QueueEntry, b: QueueEntry) {
+type MatchSeed = { userId: string; username: string; eloRating: number; send: Send; categoryId: string; stakeCoins: number };
+
+// `b` n'a pas besoin de categoryId/stakeCoins : c'est toujours `a` (le
+// joueur qui a initié — file d'attente publique ou hôte d'invitation) qui
+// fixe la catégorie et la mise du match.
+async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "categoryId" | "stakeCoins">) {
   const row = await prisma.duelMatch.create({
     data: { categoryId: a.categoryId, stakeCoins: a.stakeCoins, playerAId: a.userId, playerBId: b.userId },
   });
@@ -177,6 +408,7 @@ async function createMatch(a: QueueEntry, b: QueueEntry) {
     roundTimer: null,
     cancelled: false,
     awaitingReconnect: false,
+    botDifficulty: null,
     players: [
       { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
       { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
@@ -262,6 +494,40 @@ function sendQuestion(match: Match, index: number) {
   match.players[1].send?.(payload);
 
   match.roundTimer = setTimeout(() => resolveRound(match), TIME_PER_QUESTION_MS + ANSWER_GRACE_MS);
+
+  if (match.botDifficulty) scheduleBotAnswer(match, q);
+}
+
+/** L'ordinateur "répond" après un délai qui dépend de la difficulté —
+ * jamais instantané (§ANTICHEAT_SPEC.md : un temps de réponse nul est le
+ * signe d'un bot... ce qu'il est, mais rien ne doit le trahir côté
+ * protocole, le client ne fait aucune différence avec un humain). */
+function scheduleBotAnswer(match: Match, q: MatchQuestion) {
+  const bot = match.players[1];
+  const params = BOT_PARAMS[match.botDifficulty!];
+  const thinkMs = params.minMs + Math.random() * (params.maxMs - params.minMs);
+
+  setTimeout(() => {
+    if (match.status !== "question" || match.questions[match.index] !== q) return; // round déjà résolu
+    const correct = Math.random() < params.accuracy;
+    let chosenIndex: number;
+    if (correct) {
+      chosenIndex = q.permutation.indexOf(q.answerIndex);
+    } else {
+      const wrongPositions = q.permutation.map((_, i) => i).filter((i) => q.permutation[i] !== q.answerIndex);
+      chosenIndex = wrongPositions[Math.floor(Math.random() * wrongPositions.length)]!;
+    }
+    recordAnswer(match, bot, chosenIndex);
+  }, thinkMs);
+}
+
+/** Départ volontaire ("← quitter" en cours de partie) : défaite
+ * immédiate, sans attendre le délai de grâce réseau — contrairement à
+ * detachSocket(), un clic explicite n'est jamais une coupure accidentelle. */
+export function handleForfeit(userId: string) {
+  const match = activeMatchByUser.get(userId);
+  if (!match) return;
+  void finalizeMatch(match, userId);
 }
 
 export function handleAnswer(userId: string, questionId: string, chosenIndex: number) {
@@ -271,13 +537,20 @@ export function handleAnswer(userId: string, questionId: string, chosenIndex: nu
   if (!q || q.questionId !== questionId) return;
 
   const player = playerOf(match, userId);
+  recordAnswer(match, player, chosenIndex);
+}
+
+/** Enregistre la réponse d'UN joueur (humain via handleAnswer, ou
+ * ordinateur via scheduleBotAnswer) et déclenche la résolution du round
+ * dès que les deux ont répondu. */
+function recordAnswer(match: Match, player: MatchPlayer, chosenIndex: number) {
   if (player.answered) return;
 
   player.answered = true;
   player.chosenIndex = chosenIndex;
   player.answeredAt = Date.now();
 
-  otherPlayer(match, userId).send?.({ type: "opponent_answered" });
+  otherPlayer(match, player.userId).send?.({ type: "opponent_answered" });
 
   if (match.players[0].answered && match.players[1].answered) {
     if (match.roundTimer) clearTimeout(match.roundTimer);
@@ -391,8 +664,12 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
     payoutA = duelDrawPayout(match.stakeCoins);
     payoutB = duelDrawPayout(match.stakeCoins);
   }
+  // Contre l'ordinateur, seul le joueur humain a réellement misé (voir
+  // startBotDuel) : l'ordinateur ne reçoit jamais de crédit, gagner
+  // contre lui ne fait que ne rien débiter de plus au joueur (comme une
+  // défaite PvP : la mise déjà débitée n'est simplement pas remboursée).
   if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
-  if (payoutB > 0) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
+  if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
 
   const [balanceA, balanceB] = await Promise.all([getBalance(pa.userId), getBalance(pb.userId)]);
 
@@ -471,6 +748,7 @@ export function attachSocket(userId: string, send: Send): { resumed: boolean } {
 
 export function detachSocket(userId: string) {
   cancelQueue(userId);
+  cancelInvite(userId);
 
   const match = activeMatchByUser.get(userId);
   if (!match) return;

@@ -12,6 +12,7 @@ import { webhookRoutes } from "./modules/wallet/webhook.js";
 import { quizRoutes } from "./modules/quiz/routes.js";
 import { playerRoutes } from "./modules/players/routes.js";
 import { duelWsRoutes } from "./modules/duel/ws.js";
+import { ensureBotUsers } from "./modules/duel/bot.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -51,6 +52,11 @@ await app.register(webhookRoutes);
 await app.register(quizRoutes);
 await app.register(playerRoutes);
 await app.register(duelWsRoutes);
+
+// Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
+// toutes s'ils n'existent pas encore (§duel/bot.ts), nécessaire avant
+// d'accepter des duels contre l'ordinateur.
+await ensureBotUsers();
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);

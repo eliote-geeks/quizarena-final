@@ -13,12 +13,28 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     categoryId: z.string().min(1),
     stakeCoins: z.number().int().min(100).max(50_000),
   }),
+  z.object({
+    type: z.literal("bot_duel"),
+    categoryId: z.string().min(1),
+    stakeCoins: z.number().int().min(100).max(50_000),
+    difficulty: z.enum(["facile", "moyen", "difficile"]),
+  }),
   z.object({ type: z.literal("cancel_queue") }),
+  z.object({
+    type: z.literal("create_invite"),
+    categoryId: z.string().min(1),
+    stakeCoins: z.number().int().min(100).max(50_000),
+  }),
+  z.object({ type: z.literal("join_invite"), code: z.string().min(4).max(12) }),
+  z.object({ type: z.literal("cancel_invite") }),
   z.object({
     type: z.literal("answer"),
     questionId: z.string().min(1),
     chosenIndex: z.number().int().min(0).max(3),
   }),
+  // Départ volontaire en cours de duel : défaite immédiate, pas d'attente
+  // du délai de grâce réservé aux coupures réseau accidentelles.
+  z.object({ type: z.literal("forfeit") }),
   z.object({ type: z.literal("ping") }),
 ]);
 
