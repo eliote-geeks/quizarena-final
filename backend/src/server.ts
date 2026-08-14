@@ -11,6 +11,7 @@ import { walletRoutes } from "./modules/wallet/routes.js";
 import { webhookRoutes } from "./modules/wallet/webhook.js";
 import { quizRoutes } from "./modules/quiz/routes.js";
 import { playerRoutes } from "./modules/players/routes.js";
+import { publicRoutes } from "./modules/public/routes.js";
 import { duelWsRoutes } from "./modules/duel/ws.js";
 import { ensureBotUsers } from "./modules/duel/bot.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
@@ -51,6 +52,7 @@ await app.register(walletRoutes);
 await app.register(webhookRoutes);
 await app.register(quizRoutes);
 await app.register(playerRoutes);
+await app.register(publicRoutes);
 await app.register(duelWsRoutes);
 
 // Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
