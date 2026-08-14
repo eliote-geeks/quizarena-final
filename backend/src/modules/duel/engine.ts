@@ -658,16 +658,22 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
 
   let payoutA = 0;
   let payoutB = 0;
-  if (resultA === "win") payoutA = duelWinnerPayout(match.stakeCoins);
+  if (match.botDifficulty) {
+    // Contre l'ordinateur, seul le joueur humain a réellement misé (voir
+    // startBotDuel) : il n'y a pas de vraie seconde mise en face. Le
+    // paiement ne peut donc jamais dépasser ce qu'il a lui-même misé —
+    // sinon on crédite de l'argent qui ne vient de nulle part. Gagner
+    // rembourse la mise sans profit ; perdre la fait perdre entièrement,
+    // comme un vrai duel ; égalité suit la même règle que le PvP (95%).
+    if (resultA === "win") payoutA = match.stakeCoins;
+    else if (resultA === "draw") payoutA = duelDrawPayout(match.stakeCoins);
+    // resultA === "loss" : payoutA reste 0, mise perdue.
+  } else if (resultA === "win") payoutA = duelWinnerPayout(match.stakeCoins);
   else if (resultB === "win") payoutB = duelWinnerPayout(match.stakeCoins);
   else {
     payoutA = duelDrawPayout(match.stakeCoins);
     payoutB = duelDrawPayout(match.stakeCoins);
   }
-  // Contre l'ordinateur, seul le joueur humain a réellement misé (voir
-  // startBotDuel) : l'ordinateur ne reçoit jamais de crédit, gagner
-  // contre lui ne fait que ne rien débiter de plus au joueur (comme une
-  // défaite PvP : la mise déjà débitée n'est simplement pas remboursée).
   if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
   if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
 

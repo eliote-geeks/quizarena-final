@@ -8,8 +8,8 @@ export const QUESTIONS_PER_SESSION = 10;
 // 0 = mise perdue, >= 1.0 = gain net.
 export const PAYOUT_MULT = [0, 0, 0, 0, 0, 0.6, 0.85, 1.2, 1.6, 2.2, 3.0] as const;
 
-export const LIBRE_POINTS_PER_CORRECT = 10;
-export const DAILY_BONUS_COINS = 500;
+// LIBRE (sans mise) ne paie jamais rien — un jeu sans mise ne doit
+// jamais créer d'argent. Pas de points/bonus payés en coins ici.
 
 export function challengePayout(stakeCoins: number, correctCount: number): number {
   const mult = PAYOUT_MULT[correctCount] ?? 0;
