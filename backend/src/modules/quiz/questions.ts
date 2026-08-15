@@ -36,8 +36,19 @@ export async function pickQuestions(categoryId: string | null, userId: string, c
   const seenIds = new Set(recentlySeen.map((r) => r.questionId));
 
   const pool = await prisma.question.findMany({ where: { active: true, ...(categoryId ? { categoryId } : {}) } });
-  if (pool.length === 0) {
-    throw new Error(categoryId ? `Aucune question active pour la catégorie "${categoryId}"` : "Aucune question active");
+  if (pool.length < count) {
+    // Une partie plus courte que prévu casserait le barème de paiement
+    // (PAYOUT_MULT est indexé 0-10, pensé pour exactement
+    // QUESTIONS_PER_SESSION questions) — mieux vaut refuser que de
+    // lancer une session au barème faussé. En pratique ne devrait
+    // jamais arriver pour du PvP mélangé (445+ questions au total) ;
+    // pour une catégorie précise, §GET /api/categories filtre déjà les
+    // catégories trop courtes avant qu'un joueur puisse les choisir.
+    throw new Error(
+      categoryId
+        ? `Pas assez de questions actives pour la catégorie "${categoryId}" (${pool.length}/${count})`
+        : `Pas assez de questions actives (${pool.length}/${count})`
+    );
   }
 
   const fresh = pool.filter((q) => !seenIds.has(q.id));

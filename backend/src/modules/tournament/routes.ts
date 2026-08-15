@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { credit, debit, getBalance, InsufficientBalanceError } from "../wallet/ledger.js";
 import { TOURNAMENT_CAPACITIES, isTournamentCapacity } from "./payout.js";
 import { maybeStartTournament, withTournamentLock } from "./bracket.js";
+import { QUESTIONS_PER_SESSION } from "../quiz/questions.js";
 
 const createSchema = z.object({
   categoryId: z.string().min(1),
@@ -141,8 +142,16 @@ export async function tournamentRoutes(app: FastifyInstance) {
 
   app.post("/api/tournaments", { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = createSchema.parse(req.body);
-    const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
+    const category = await prisma.category.findUnique({
+      where: { id: body.categoryId },
+      include: { _count: { select: { questions: { where: { active: true } } } } },
+    });
     if (!category) return reply.badRequest("Catégorie inconnue");
+    // Chaque match du bracket pioche QUESTIONS_PER_SESSION questions
+    // dans cette catégorie (§duel/engine.ts createTournamentMatch) —
+    // sans assez de contenu vérifié, un round planterait en plein
+    // tournoi une fois les droits d'entrée déjà débités.
+    if (category._count.questions < QUESTIONS_PER_SESSION) return reply.badRequest("Catégorie pas encore assez fournie pour un tournoi");
 
     const balance = await getBalance(req.user.userId);
     if (balance < body.stakeCoins) return reply.badRequest("Solde insuffisant pour ce droit d'entrée");

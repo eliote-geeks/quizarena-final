@@ -40,12 +40,18 @@ export async function quizRoutes(app: FastifyInstance) {
       include: { _count: { select: { questions: { where: { active: true } } } } },
     });
     return reply.send({
-      categories: categories.map((c) => ({
-        id: c.id,
-        name: c.nameFr,
-        difficulty: c.difficulty,
-        questionCount: c._count.questions,
-      })),
+      // Une catégorie avec moins de QUESTIONS_PER_SESSION questions
+      // actives n'est pas jouable (le barème de paiement suppose
+      // exactement 10 questions, §pickQuestions) — pas la peine de la
+      // proposer avant qu'elle ait assez de contenu vérifié.
+      categories: categories
+        .filter((c) => c._count.questions >= QUESTIONS_PER_SESSION)
+        .map((c) => ({
+          id: c.id,
+          name: c.nameFr,
+          difficulty: c.difficulty,
+          questionCount: c._count.questions,
+        })),
     });
   });
 
