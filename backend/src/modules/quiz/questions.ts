@@ -14,23 +14,31 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Sélectionne N questions actives d'une catégorie, en excluant si
- * possible celles déjà vues par ce joueur dans les 7 derniers jours
- * (évite le par-cœur de session en session). Si le stock restant est
- * insuffisant, complète avec le reste de la catégorie.
+ * Sélectionne N questions actives, en excluant si possible celles déjà
+ * vues par ce joueur dans les 7 derniers jours (évite le par-cœur de
+ * session en session). Si le stock restant est insuffisant, complète
+ * avec le reste du pool.
+ *
+ * `categoryId = null` => pool mélangé sur TOUTES les catégories — c'est
+ * le mode des duels contre un vrai adversaire (le thème n'a plus de
+ * sens à choisir à l'avance vu que l'adversaire aussi doit être
+ * d'accord ; seul le mode solo et le mode "contre l'ordinateur" gardent
+ * un choix de catégorie explicite).
  */
-export async function pickQuestions(categoryId: string, userId: string, count = QUESTIONS_PER_SESSION) {
+export async function pickQuestions(categoryId: string | null, userId: string, count = QUESTIONS_PER_SESSION) {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const recentlySeen = await prisma.quizAnswer.findMany({
-    where: { session: { userId, categoryId, startedAt: { gte: sevenDaysAgo } } },
+    where: { session: { userId, ...(categoryId ? { categoryId } : {}), startedAt: { gte: sevenDaysAgo } } },
     select: { questionId: true },
     distinct: ["questionId"],
   });
   const seenIds = new Set(recentlySeen.map((r) => r.questionId));
 
-  const pool = await prisma.question.findMany({ where: { categoryId, active: true } });
-  if (pool.length === 0) throw new Error(`Aucune question active pour la catégorie "${categoryId}"`);
+  const pool = await prisma.question.findMany({ where: { active: true, ...(categoryId ? { categoryId } : {}) } });
+  if (pool.length === 0) {
+    throw new Error(categoryId ? `Aucune question active pour la catégorie "${categoryId}"` : "Aucune question active");
+  }
 
   const fresh = pool.filter((q) => !seenIds.has(q.id));
   const source = fresh.length >= count ? fresh : pool;

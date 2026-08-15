@@ -8,9 +8,12 @@
 import { z } from "zod";
 
 export const clientMessageSchema = z.discriminatedUnion("type", [
+  // Contre un vrai adversaire (queue publique ou invitation) : plus de
+  // catégorie à choisir, les questions viennent mélangées de tout le
+  // bank (§duel/questions.ts pickQuestions(null, ...)) — seul le mode
+  // "contre l'ordinateur" garde un thème choisi à l'avance.
   z.object({
     type: z.literal("queue"),
-    categoryId: z.string().min(1),
     stakeCoins: z.number().int().min(100).max(50_000),
   }),
   z.object({
@@ -22,7 +25,6 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("cancel_queue") }),
   z.object({
     type: z.literal("create_invite"),
-    categoryId: z.string().min(1),
     stakeCoins: z.number().int().min(100).max(50_000),
   }),
   z.object({ type: z.literal("join_invite"), code: z.string().min(4).max(12) }),

@@ -54,7 +54,7 @@ export async function duelWsRoutes(app: FastifyInstance) {
 
       switch (msg.type) {
         case "queue":
-          void enqueue({ userId, username, eloRating, send, categoryId: msg.categoryId, stakeCoins: msg.stakeCoins });
+          void enqueue({ userId, username, eloRating, send, stakeCoins: msg.stakeCoins });
           break;
         case "bot_duel":
           void startBotDuel({
@@ -66,7 +66,7 @@ export async function duelWsRoutes(app: FastifyInstance) {
           cancelQueue(userId);
           break;
         case "create_invite":
-          void createInvite({ userId, username, eloRating, send, categoryId: msg.categoryId, stakeCoins: msg.stakeCoins });
+          void createInvite({ userId, username, eloRating, send, stakeCoins: msg.stakeCoins });
           break;
         case "join_invite":
           void joinInvite({ userId, username, eloRating, send }, msg.code);

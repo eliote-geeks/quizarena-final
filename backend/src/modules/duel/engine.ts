@@ -33,12 +33,18 @@ export const TOURNAMENT_WALKOVER_MS = 3 * 60_000; // délai pour rejoindre son m
 
 type Send = (msg: object) => void;
 
+// Sentinelle stockée en base pour un duel PvP (en ligne ou par
+// invitation) : le thème n'est plus choisi à l'avance côté joueur (voir
+// pickQuestions(null, ...)), pas de vraie ligne Category derrière — pas
+// de contrainte de clé étrangère sur DuelMatch.categoryId, donc rien à
+// migrer pour ce changement.
+const MIXED_CATEGORY = "mixed";
+
 type QueueEntry = {
   userId: string;
   username: string;
   eloRating: number;
   send: Send;
-  categoryId: string;
   stakeCoins: number;
   timeoutHandle: ReturnType<typeof setTimeout>;
 };
@@ -92,8 +98,8 @@ const matches = new Map<string, Match>();
 // s'apparier avec la première entrée... c'est-à-dire lui-même.
 const reserving = new Set<string>();
 
-function queueKey(categoryId: string, stakeCoins: number) {
-  return `${categoryId}:${stakeCoins}`;
+function queueKey(stakeCoins: number) {
+  return String(stakeCoins);
 }
 
 function otherPlayer(match: Match, userId: string): MatchPlayer {
@@ -111,7 +117,6 @@ export async function enqueue(entry: {
   username: string;
   eloRating: number;
   send: Send;
-  categoryId: string;
   stakeCoins: number;
 }) {
   if (activeMatchByUser.has(entry.userId) || reserving.has(entry.userId)) {
@@ -136,7 +141,7 @@ export async function enqueue(entry: {
     return;
   }
 
-  const key = queueKey(entry.categoryId, entry.stakeCoins);
+  const key = queueKey(entry.stakeCoins);
   const list = queues.get(key) ?? [];
 
   const timeoutHandle = setTimeout(() => {
@@ -390,19 +395,22 @@ export async function startBotDuel(entry: {
 
 // ── Création du match : débit des deux mises AVANT toute question ─────
 
-type MatchSeed = { userId: string; username: string; eloRating: number; send: Send; categoryId: string; stakeCoins: number };
+type MatchSeed = { userId: string; username: string; eloRating: number; send: Send; stakeCoins: number };
 
-// `b` n'a pas besoin de categoryId/stakeCoins : c'est toujours `a` (le
-// joueur qui a initié — file d'attente publique ou hôte d'invitation) qui
-// fixe la catégorie et la mise du match.
-async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "categoryId" | "stakeCoins">) {
+// `b` n'a pas besoin de stakeCoins : c'est toujours `a` (le joueur qui a
+// initié — file d'attente publique ou hôte d'invitation) qui fixe la
+// mise du match. Plus de catégorie à convenir entre les deux : contre un
+// vrai adversaire, les questions sont toujours mélangées sur tout le
+// bank (§MIXED_CATEGORY) — seul le mode "contre l'ordinateur" garde un
+// choix de thème (§startBotDuel).
+async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "stakeCoins">) {
   const row = await prisma.duelMatch.create({
-    data: { categoryId: a.categoryId, stakeCoins: a.stakeCoins, playerAId: a.userId, playerBId: b.userId },
+    data: { categoryId: MIXED_CATEGORY, stakeCoins: a.stakeCoins, playerAId: a.userId, playerBId: b.userId },
   });
 
   const match: Match = {
     id: row.id,
-    categoryId: a.categoryId,
+    categoryId: MIXED_CATEGORY,
     stakeCoins: a.stakeCoins,
     questions: [],
     index: -1,
@@ -453,7 +461,7 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "categoryId" | "stak
     return;
   }
 
-  const rawQuestions = await pickQuestions(match.categoryId, a.userId, DUEL_ROUND_SIZE);
+  const rawQuestions = await pickQuestions(null, a.userId, DUEL_ROUND_SIZE);
   match.questions = rawQuestions.map((q) => {
     const { text, permutation } = shuffledOptions(q.options);
     return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
