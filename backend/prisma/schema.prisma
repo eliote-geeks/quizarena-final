@@ -120,8 +120,11 @@ model Question {
   options     Json     // string[4], ordre canonique — le shuffle se fait à l'envoi (§3.4)
   answerIndex Int      // index dans `options`, jamais envoyé au client avant submit
   active      Boolean  @default(true)
+  source      String   @default("manual") // "manual" | "ai" — généré hors ligne par un modèle local (§scripts/generate-questions.mjs), jamais en direct pendant une partie
+  createdAt   DateTime @default(now())
 
   @@index([categoryId, active])
+  @@index([source])
 }
 
 // ────────────────────────────────────────────────────────────────────
