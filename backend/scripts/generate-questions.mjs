@@ -73,7 +73,12 @@ async function generateBatch(categoryName, n, existingTexts) {
       prompt: buildPrompt(categoryName, n, existingTexts),
       stream: false,
       format: SCHEMA,
-      options: { temperature: 0.8 },
+      // num_thread plafonné : le serveur est PARTAGÉ avec d'autres
+      // projets (k3s, bases de données...) — sans ce plafond, Ollama
+      // prend tous les cœurs disponibles et le reste des services en a
+      // pâti en test (load average > 12 sur 12 cœurs). 6 cœurs laisse
+      // de la marge, quitte à générer un peu plus lentement.
+      options: { temperature: 0.8, num_thread: 6 },
     }),
   });
   if (!res.ok) throw new Error(`Ollama ${res.status}: ${await res.text()}`);
