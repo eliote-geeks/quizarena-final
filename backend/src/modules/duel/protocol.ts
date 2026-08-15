@@ -27,6 +27,9 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("join_invite"), code: z.string().min(4).max(12) }),
   z.object({ type: z.literal("cancel_invite") }),
+  // Rejoint son match de tournoi (bracket déjà généré côté REST, §tournament/) —
+  // pas de mise à envoyer, elle a déjà été débitée à l'inscription.
+  z.object({ type: z.literal("tournament_enter"), tournamentMatchId: z.string().min(1) }),
   z.object({
     type: z.literal("answer"),
     questionId: z.string().min(1),

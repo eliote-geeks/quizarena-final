@@ -3,7 +3,7 @@ import { prisma } from "../../lib/prisma.js";
 import { clientMessageSchema } from "./protocol.js";
 import {
   enqueue, startBotDuel, cancelQueue, handleAnswer, handleForfeit, attachSocket, detachSocket,
-  createInvite, joinInvite, cancelInvite,
+  createInvite, joinInvite, cancelInvite, enterTournamentMatch,
 } from "./engine.js";
 
 /**
@@ -73,6 +73,9 @@ export async function duelWsRoutes(app: FastifyInstance) {
           break;
         case "cancel_invite":
           cancelInvite(userId);
+          break;
+        case "tournament_enter":
+          void enterTournamentMatch({ userId, username, eloRating, send }, msg.tournamentMatchId);
           break;
         case "answer":
           handleAnswer(userId, msg.questionId, msg.chosenIndex);

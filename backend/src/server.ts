@@ -14,6 +14,9 @@ import { playerRoutes } from "./modules/players/routes.js";
 import { publicRoutes } from "./modules/public/routes.js";
 import { duelWsRoutes } from "./modules/duel/ws.js";
 import { ensureBotUsers } from "./modules/duel/bot.js";
+import { setTournamentMatchDoneHandler } from "./modules/duel/hooks.js";
+import { tournamentRoutes } from "./modules/tournament/routes.js";
+import { advanceBracket } from "./modules/tournament/bracket.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -53,12 +56,18 @@ await app.register(webhookRoutes);
 await app.register(quizRoutes);
 await app.register(playerRoutes);
 await app.register(publicRoutes);
+await app.register(tournamentRoutes);
 await app.register(duelWsRoutes);
 
 // Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
 // toutes s'ils n'existent pas encore (§duel/bot.ts), nécessaire avant
 // d'accepter des duels contre l'ordinateur.
 await ensureBotUsers();
+
+// Branche le moteur de duel (générique) sur le bracket de tournoi —
+// voir duel/hooks.ts pour la raison de ce registre plutôt qu'un import
+// direct (duel/engine.ts ne doit rien savoir des tournois).
+setTournamentMatchDoneHandler(advanceBracket);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);

@@ -23,11 +23,13 @@ import { pickQuestions, shuffledOptions, TIME_PER_QUESTION_MS } from "../quiz/qu
 import { DUEL_ROUND_SIZE, duelWinnerPayout, duelDrawPayout, duelResultOf } from "../quiz/payout.js";
 import { calcNewElo } from "../../lib/elo.js";
 import { BOT_PARAMS, getBotUserId, botUsername, type BotDifficulty } from "./bot.js";
+import { notifyTournamentMatchDone } from "./hooks.js";
 
 const QUEUE_TIMEOUT_MS = 45_000;
 const ROUND_GRACE_MS = 2_800; // temps d'affichage du "reveal" avant la question suivante (§ceremony côté v1)
 const ANSWER_GRACE_MS = 1_500; // marge réseau au-delà du temps théorique avant de forcer la résolution du round
 const RECONNECT_GRACE_MS = 20_000;
+export const TOURNAMENT_WALKOVER_MS = 3 * 60_000; // délai pour rejoindre son match de tournoi avant forfait
 
 type Send = (msg: object) => void;
 
@@ -76,6 +78,7 @@ type Match = {
   cancelled: boolean;
   awaitingReconnect: boolean;
   botDifficulty: BotDifficulty | null; // non-null => players[1] est l'ordinateur
+  tournamentMatchId: string | null; // non-null => match de bracket, pas de paiement direct (§tournament/)
 };
 
 const queues = new Map<string, QueueEntry[]>(); // clé "categoryId:stakeCoins"
@@ -330,6 +333,7 @@ export async function startBotDuel(entry: {
     cancelled: false,
     awaitingReconnect: false,
     botDifficulty: entry.difficulty,
+    tournamentMatchId: null,
     players: [
       { userId: entry.userId, username: entry.username, eloRating: entry.eloRating, send: entry.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
       { userId: botUserId, username: botUsername(entry.difficulty), eloRating: 1000, send: null, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
@@ -409,6 +413,7 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "categoryId" | "stak
     cancelled: false,
     awaitingReconnect: false,
     botDifficulty: null,
+    tournamentMatchId: null,
     players: [
       { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
       { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
@@ -460,6 +465,152 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "categoryId" | "stak
   });
 
   match.status = "countdown";
+  match.players[0].send?.({ type: "countdown", seconds: 3 });
+  match.players[1].send?.({ type: "countdown", seconds: 3 });
+  setTimeout(() => {
+    if (!match.cancelled) sendQuestion(match, 0);
+  }, 3_200);
+}
+
+// ── Match de tournoi ──────────────────────────────────────────────────
+// Les deux joueurs d'un TournamentMatch sont connus à l'avance (bracket
+// déjà généré, §tournament/engine.ts) : pas de file d'attente, on attend
+// juste que les deux ouvrent l'écran et se signalent ("tournament_enter").
+// Une fois les deux là, on lance EXACTEMENT le même moteur qu'un duel
+// PvP normal (question/reveal/finalize identiques), mais stakeCoins=0 —
+// le droit d'entrée a déjà été débité une seule fois à l'inscription.
+
+type TournamentWaiter = { userId: string; username: string; eloRating: number; send: Send };
+
+const tournamentPending = new Map<string, TournamentWaiter>(); // tournamentMatchId -> premier joueur arrivé
+const walkoverTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function scheduleTournamentWalkover(tournamentMatchId: string, delayMs: number) {
+  clearTournamentWalkover(tournamentMatchId);
+  walkoverTimers.set(
+    tournamentMatchId,
+    setTimeout(() => void resolveTournamentWalkover(tournamentMatchId), delayMs)
+  );
+}
+
+export function clearTournamentWalkover(tournamentMatchId: string) {
+  const t = walkoverTimers.get(tournamentMatchId);
+  if (t) {
+    clearTimeout(t);
+    walkoverTimers.delete(tournamentMatchId);
+  }
+}
+
+/** Un des deux joueurs (ou aucun) ne s'est pas présenté dans le délai —
+ * l'autre gagne par forfait sans jouer, ou si personne n'est venu, les
+ * deux sont éliminés (le bracket gère la suite, y compris la cascade en
+ * "bye" si ça se reproduit au tour suivant). */
+async function resolveTournamentWalkover(tournamentMatchId: string) {
+  walkoverTimers.delete(tournamentMatchId);
+  const row = await prisma.tournamentMatch.findUnique({ where: { id: tournamentMatchId } });
+  if (!row || row.status !== "READY") return; // déjà démarré ou déjà résolu entre-temps
+
+  const waiter = tournamentPending.get(tournamentMatchId);
+  tournamentPending.delete(tournamentMatchId);
+  const winnerId = waiter?.userId ?? null;
+
+  if (waiter) {
+    const balance = await getBalance(waiter.userId);
+    waiter.send({
+      type: "duel_result", result: "win", forfeit: null,
+      scoreYou: 0, scoreOpponent: 0, payoutCoins: 0, eloDelta: 0, eloRating: waiter.eloRating, balanceCoins: balance,
+    });
+  }
+
+  await notifyTournamentMatchDone(tournamentMatchId, winnerId);
+}
+
+export async function enterTournamentMatch(entry: TournamentWaiter, tournamentMatchId: string) {
+  if (activeMatchByUser.has(entry.userId)) {
+    entry.send({ type: "error", message: "Déjà en duel" });
+    return;
+  }
+
+  const row = await prisma.tournamentMatch.findUnique({ where: { id: tournamentMatchId }, include: { tournament: true } });
+  if (!row || (row.playerAId !== entry.userId && row.playerBId !== entry.userId)) {
+    entry.send({ type: "error", message: "Match de tournoi introuvable" });
+    return;
+  }
+  if (row.status === "IN_PROGRESS" || row.status === "COMPLETED") {
+    // Déjà lancé (reconnexion) : attachSocket() s'en charge déjà à la
+    // connexion du socket, rien à faire de plus ici.
+    return;
+  }
+  if (row.status !== "READY") {
+    entry.send({ type: "error", message: "En attente du tour précédent" });
+    return;
+  }
+
+  const waiter = tournamentPending.get(tournamentMatchId);
+  if (waiter && waiter.userId === entry.userId) {
+    // Reconnexion pendant l'attente de l'adversaire.
+    tournamentPending.set(tournamentMatchId, entry);
+    entry.send({ type: "tournament_waiting" });
+    return;
+  }
+  if (!waiter) {
+    tournamentPending.set(tournamentMatchId, entry);
+    entry.send({ type: "tournament_waiting" });
+    return;
+  }
+
+  // L'adversaire attendait déjà : on lance le match tout de suite.
+  tournamentPending.delete(tournamentMatchId);
+  clearTournamentWalkover(tournamentMatchId);
+  await createTournamentMatch(tournamentMatchId, row.tournament.categoryId, waiter, entry);
+}
+
+async function createTournamentMatch(tournamentMatchId: string, categoryId: string, a: TournamentWaiter, b: TournamentWaiter) {
+  const dbRow = await prisma.duelMatch.create({
+    data: { categoryId, stakeCoins: 0, playerAId: a.userId, playerBId: b.userId },
+  });
+  await prisma.tournamentMatch.update({
+    where: { id: tournamentMatchId },
+    data: { status: "IN_PROGRESS", duelMatchId: dbRow.id },
+  });
+
+  const match: Match = {
+    id: dbRow.id,
+    categoryId,
+    stakeCoins: 0,
+    questions: [],
+    index: -1,
+    status: "countdown",
+    startedAnyQuestion: false,
+    questionSentAt: 0,
+    roundTimer: null,
+    cancelled: false,
+    awaitingReconnect: false,
+    botDifficulty: null,
+    tournamentMatchId,
+    players: [
+      { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+      { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+    ],
+  };
+  matches.set(match.id, match);
+  activeMatchByUser.set(a.userId, match);
+  activeMatchByUser.set(b.userId, match);
+
+  match.players[0].send?.({ type: "matched", duelMatchId: match.id, categoryId, stakeCoins: 0, opponent: { username: b.username, eloRating: b.eloRating } });
+  match.players[1].send?.({ type: "matched", duelMatchId: match.id, categoryId, stakeCoins: 0, opponent: { username: a.username, eloRating: a.eloRating } });
+
+  const rawQuestions = await pickQuestions(categoryId, a.userId, DUEL_ROUND_SIZE);
+  match.questions = rawQuestions.map((q) => {
+    const { text, permutation } = shuffledOptions(q.options);
+    return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
+  });
+
+  await prisma.duelMatch.update({
+    where: { id: match.id },
+    data: { status: "IN_PROGRESS", questionIds: match.questions.map((q) => q.questionId) },
+  });
+
   match.players[0].send?.({ type: "countdown", seconds: 3 });
   match.players[1].send?.({ type: "countdown", seconds: 3 });
   setTimeout(() => {
@@ -658,7 +809,12 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
 
   let payoutA = 0;
   let payoutB = 0;
-  if (match.botDifficulty) {
+  if (match.tournamentMatchId) {
+    // Match de bracket : le droit d'entrée a déjà été débité une seule
+    // fois à l'inscription au tournoi, et stakeCoins vaut 0 ici — aucun
+    // paiement par match, seule la fin du tournoi distribue les gains
+    // (§tournament/payout.ts). On se contente de faire avancer le bracket.
+  } else if (match.botDifficulty) {
     // Contre l'ordinateur, seul le joueur humain a réellement misé (voir
     // startBotDuel) : il n'y a pas de vraie seconde mise en face. Le
     // paiement ne peut donc jamais dépasser ce qu'il a lui-même misé —
@@ -676,6 +832,8 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
   }
   if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
   if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
+
+  if (match.tournamentMatchId) await notifyTournamentMatchDone(match.tournamentMatchId, winnerId);
 
   const [balanceA, balanceB] = await Promise.all([getBalance(pa.userId), getBalance(pb.userId)]);
 
@@ -762,9 +920,13 @@ export function detachSocket(userId: string) {
   player.connected = false;
   player.send = null;
 
-  if (!match.startedAnyQuestion) {
+  if (!match.startedAnyQuestion && !match.tournamentMatchId) {
     // Déconnexion avant la première question : aléa réseau, pas un
     // abandon. On annule et on remboursera dans createMatch/ailleurs.
+    // Ne s'applique pas à un match de tournoi : il n'y a pas de mise à
+    // rembourser par match (déjà payée à l'inscription, irrévocable —
+    // §schema.prisma Tournament), une déconnexion à ce stade est donc
+    // traitée comme n'importe quel abandon en cours de partie ci-dessous.
     match.cancelled = true;
     if (match.status !== "debiting") {
       // Le débit était déjà fait (entre countdown et 1ère question) :

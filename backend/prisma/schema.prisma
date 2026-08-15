@@ -46,6 +46,7 @@ model User {
   stats        PlayerStats?
   duelsAsA     DuelMatch[]   @relation("DuelPlayerA")
   duelsAsB     DuelMatch[]   @relation("DuelPlayerB")
+  tournamentEntries TournamentEntry[]
 
   @@index([riskScore])
   @@index([accountStatus])
@@ -107,6 +108,7 @@ model Category {
   difficulty String     @default("moyen")
   questions  Question[]
   sessions   QuizSession[]
+  tournaments Tournament[]
 }
 
 model Question {
@@ -219,6 +221,7 @@ model DuelMatch {
 
   transactions Transaction[]
   answers      DuelAnswer[]
+  tournamentMatch TournamentMatch? // non-null si ce duel est un match de tournoi (§tournament/)
 
   @@index([playerAId])
   @@index([playerBId])
@@ -237,6 +240,84 @@ model DuelAnswer {
 
   @@index([duelMatchId])
   @@index([userId])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Tournoi — bracket à élimination directe, capacité fixe (4/8/16,
+// puissance de 2 : jamais de bye à gérer au tirage initial). Les
+// inscriptions débitent le droit d'entrée immédiatement (comme une mise
+// de duel) ; le bracket ne se génère et le statut ne passe IN_PROGRESS
+// qu'une fois la capacité entièrement atteinte — pas de tournoi à moitié
+// rempli qui démarre. Chaque TournamentMatch est rejoué comme un duel
+// normal via le même moteur temps réel (src/modules/duel/engine.ts,
+// stakeCoins=0 : l'argent a déjà été collecté à l'inscription, aucun
+// paiement par match) ; seule la fin du tournoi distribue les gains
+// (voir src/modules/tournament/payout.ts). Un joueur qui ne se présente
+// pas à son match dans le délai imparti perd par forfait (walkover) —
+// voir scheduleTournamentWalkover dans duel/engine.ts.
+// ────────────────────────────────────────────────────────────────────
+
+enum TournamentStatus {
+  REGISTERING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TournamentMatchStatus {
+  PENDING     // vainqueurs du tour précédent pas encore tous connus
+  READY       // les deux joueurs sont fixés, en attente qu'ils rejoignent
+  IN_PROGRESS // les deux ont rejoint, DuelMatch en cours (voir duelMatchId)
+  COMPLETED
+}
+
+model Tournament {
+  id          String           @id @default(uuid())
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id])
+  stakeCoins  Int              // droit d'entrée, débité à l'inscription
+  capacity    Int              // 4, 8 ou 16
+  status      TournamentStatus @default(REGISTERING)
+  createdAt   DateTime         @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  entries TournamentEntry[]
+  matches TournamentMatch[]
+
+  @@index([status])
+}
+
+model TournamentEntry {
+  id              String     @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id])
+  userId          String
+  user            User       @relation(fields: [userId], references: [id])
+  seed            Int        @default(0) // position dans le bracket, tirée au hasard à la clôture des inscriptions
+  eliminatedRound Int?       // round où éliminé ; null tant qu'en course
+  placement       Int?       // rang final : 1=vainqueur, 2=finaliste, 3=demi-finaliste, 0=éliminé plus tôt ; null tant que le tournoi n'est pas terminé
+  payoutCoins     Int?       // gain réellement crédité (0 si non placé)
+  joinedAt        DateTime   @default(now())
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+}
+
+model TournamentMatch {
+  id           String                 @id @default(uuid())
+  tournamentId String
+  tournament   Tournament             @relation(fields: [tournamentId], references: [id])
+  round        Int                    // 1 = premier tour
+  slot         Int                    // position dans le round, pour apparier le round suivant (slot i et i+1 -> slot i/2)
+  playerAId    String?                // null tant que le vainqueur du tour précédent n'est pas encore connu
+  playerBId    String?
+  winnerId     String?                // null si personne ne s'est présenté (double défaut, cascade en bye)
+  status       TournamentMatchStatus  @default(PENDING)
+  duelMatchId  String?                @unique
+  duelMatch    DuelMatch?             @relation(fields: [duelMatchId], references: [id])
+  completedAt  DateTime?
+
+  @@index([tournamentId, round])
 }
 
 // ────────────────────────────────────────────────────────────────────
