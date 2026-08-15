@@ -36,6 +36,7 @@ model User {
   accountStatus AccountStatus @default(ACTIVE)
   riskScore    Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
   isBot        Boolean       @default(false) // compte "Ordinateur" (§duel/bot.ts) — jamais crédité, jamais classé
+  isAdmin      Boolean       @default(false) // accès au dashboard admin (§modules/admin/) — jamais via l'inscription publique, uniquement scripts/make-admin.mjs
   createdAt    DateTime      @default(now())
   lastLoginAt  DateTime?
   lastDailyBonusAt DateTime? // gate serveur du bonus quotidien (§ QuizPlay.jsx isDaily) — le client ne peut pas le déclarer deux fois

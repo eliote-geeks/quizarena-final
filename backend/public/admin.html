@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>QuizArena — Admin</title>
+<meta name="robots" content="noindex, nofollow" />
+<style>
+  :root {
+    --ink: #0d0e10; --ink2: #17181b; --ink3: #212226; --ink4: #2c2d32;
+    --bone: #f3f1ea; --bone3: #a9a6a0; --bone4: #6d6a66;
+    --flare: #e8452b; --flare-hot: #ff5b3d;
+    --live: #3ea35a; --warn: #d9a441;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ink); color: var(--bone);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px; line-height: 1.4;
+  }
+  h1, h2 { font-weight: 700; letter-spacing: -0.01em; }
+  a { color: var(--flare); }
+  button {
+    font: inherit; cursor: pointer; border: none; padding: 7px 14px;
+    background: var(--ink4); color: var(--bone); border-radius: 3px;
+  }
+  button:hover { background: #3a3b40; }
+  button.primary { background: var(--flare); color: #fff; }
+  button.primary:hover { background: var(--flare-hot); }
+  button.danger { background: #5a2420; color: #ffb3a8; }
+  button.danger:hover { background: #7a2f28; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input, select {
+    font: inherit; background: var(--ink3); color: var(--bone); border: 1px solid var(--ink4);
+    border-radius: 3px; padding: 7px 10px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--ink3); vertical-align: top; }
+  th { color: var(--bone3); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.03em; }
+  tr:hover td { background: var(--ink2); }
+  .label { color: var(--bone4); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .money { font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+  .pill.ok { background: rgba(62,163,90,.18); color: var(--live); }
+  .pill.warn { background: rgba(217,164,65,.18); color: var(--warn); }
+  .pill.bad { background: rgba(232,69,43,.18); color: var(--flare); }
+  #login { max-width: 340px; margin: 15vh auto; padding: 24px; background: var(--ink2); border-radius: 6px; }
+  #login input { width: 100%; margin-bottom: 10px; }
+  #login button { width: 100%; padding: 10px; }
+  #app { display: none; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; border-bottom: 1px solid var(--ink3);
+  }
+  nav.tabs { display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--ink3); }
+  nav.tabs button { background: none; border-radius: 0; padding: 12px 14px; color: var(--bone3); }
+  nav.tabs button.active { color: var(--flare); border-bottom: 2px solid var(--flare); }
+  nav.tabs button:hover { background: var(--ink2); }
+  main { padding: 20px 24px 60px; max-width: 1200px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: var(--ink2); border-radius: 6px; padding: 14px 16px; }
+  .card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  section.panel { display: none; }
+  section.panel.active { display: block; }
+  .row-actions { display: flex; gap: 6px; }
+  .empty { color: var(--bone4); padding: 20px 0; }
+  .msg { padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; font-size: 13px; }
+  .msg.error { background: rgba(232,69,43,.15); color: #ff9483; }
+  .msg.ok { background: rgba(62,163,90,.15); color: #7fd196; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .small { font-size: 12px; color: var(--bone4); }
+  code { background: var(--ink3); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1 style="margin-top:0">QuizArena Admin</h1>
+  <input id="login-id" placeholder="téléphone ou e-mail" autocomplete="username" />
+  <input id="login-pw" type="password" placeholder="mot de passe" autocomplete="current-password" />
+  <button class="primary" onclick="doLogin()">Se connecter</button>
+  <p id="login-error" class="msg error" style="display:none"></p>
+</div>
+
+<div id="app">
+  <header class="top">
+    <strong>QuizArena — Admin</strong>
+    <div>
+      <span class="small" id="whoami"></span>
+      <button onclick="logout()" style="margin-left:10px">Déconnexion</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="overview" class="active">Vue d'ensemble</button>
+    <button data-tab="quarantine">Quarantaine</button>
+    <button data-tab="flags">Signalements</button>
+    <button data-tab="users">Joueurs</button>
+    <button data-tab="questions">Questions</button>
+  </nav>
+
+  <main>
+    <div id="msg-area"></div>
+
+    <section class="panel active" id="panel-overview">
+      <div class="cards" id="overview-cards"></div>
+    </section>
+
+    <section class="panel" id="panel-quarantine">
+      <p class="small">Gains bloqués par l'anti-triche (§ANTICHEAT_SPEC.md §4.2) — ne se libèrent jamais tout seuls. Libérer crédite le joueur ; rejeter garde l'argent côté maison (la mise, elle, a déjà été débitée séparément).</p>
+      <table id="table-quarantine"><thead></thead><tbody></tbody></table>
+      <p class="empty" id="empty-quarantine" style="display:none">Rien en quarantaine.</p>
+    </section>
+
+    <section class="panel" id="panel-flags">
+      <div class="toolbar">
+        <select id="flags-filter" onchange="loadFlags()">
+          <option value="false">Non résolus</option>
+          <option value="true">Résolus</option>
+          <option value="">Tous</option>
+        </select>
+      </div>
+      <table id="table-flags"><thead></thead><tbody></tbody></table>
+      <p class="empty" id="empty-flags" style="display:none">Rien à afficher.</p>
+    </section>
+
+    <section class="panel" id="panel-users">
+      <div class="toolbar">
+        <input id="users-search" placeholder="pseudo ou téléphone…" />
+        <button onclick="loadUsers()">Chercher</button>
+      </div>
+      <table id="table-users"><thead></thead><tbody></tbody></table>
+    </section>
+
+    <section class="panel" id="panel-questions">
+      <div class="toolbar">
+        <select id="questions-filter" onchange="loadQuestions()">
+          <option value="false">En attente de relecture</option>
+          <option value="true">Actives</option>
+          <option value="">Toutes</option>
+        </select>
+      </div>
+      <table id="table-questions"><thead></thead><tbody></tbody></table>
+      <p class="empty" id="empty-questions" style="display:none">Rien à afficher.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+const API = location.origin;
+const TOKEN_KEY = "qa_admin_token";
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); }
+
+async function api(method, path, body) {
+  const res = await fetch(API + path, {
+    method,
+    headers: {
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      Authorization: "Bearer " + getToken(),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const isJson = res.headers.get("content-type")?.includes("application/json");
+  const data = isJson ? await res.json().catch(() => null) : null;
+  if (!res.ok) throw new Error(data?.message || `Erreur ${res.status}`);
+  return data;
+}
+
+function money(n) { return (n ?? 0).toLocaleString("fr-FR") + " F"; }
+function dt(s) { return s ? new Date(s).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—"; }
+function flash(text, type) {
+  const el = document.getElementById("msg-area");
+  el.innerHTML = `<p class="msg ${type}">${text}</p>`;
+  setTimeout(() => (el.innerHTML = ""), 4000);
+}
+
+async function doLogin() {
+  const identifier = document.getElementById("login-id").value.trim();
+  const password = document.getElementById("login-pw").value;
+  const errEl = document.getElementById("login-error");
+  errEl.style.display = "none";
+  try {
+    const res = await fetch(API + "/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Échec de connexion");
+    setToken(data.token);
+    // Vérifie l'accès admin tout de suite plutôt que de laisser l'écran
+    // vide se planter au premier onglet.
+    await api("GET", "/api/admin/overview");
+    document.getElementById("whoami").textContent = data.user.username;
+    boot();
+  } catch (err) {
+    setToken(null);
+    errEl.textContent = err.message || "Échec de connexion";
+    errEl.style.display = "block";
+  }
+}
+
+function logout() {
+  setToken(null);
+  document.getElementById("app").style.display = "none";
+  document.getElementById("login").style.display = "block";
+}
+
+function boot() {
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  loadOverview();
+}
+
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-tab]");
+  if (!btn) return;
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+  document.querySelectorAll("section.panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + btn.dataset.tab));
+  ({ overview: loadOverview, quarantine: loadQuarantine, flags: loadFlags, users: loadUsers, questions: loadQuestions })[btn.dataset.tab]?.();
+});
+
+async function loadOverview() {
+  const d = await api("GET", "/api/admin/overview");
+  const cards = [
+    ["Joueurs", d.users.total, `+${d.users.newThisWeek} cette semaine · ${d.users.activeToday} actifs aujourd'hui`],
+    ["Solde total dû aux joueurs", money(d.balanceLiability), ""],
+    ["Dépôts", money(d.byType.deposits), ""],
+    ["Retraits", money(d.byType.withdrawals), ""],
+    ["Mises engagées", money(d.byType.stakes), ""],
+    ["Gains distribués", money(d.byType.payouts), ""],
+    ["En quarantaine", money(d.quarantine.amountCoins), `${d.quarantine.count} transaction(s)`],
+    ["En attente (paiement)", money(d.pending.amountCoins), `${d.pending.count} transaction(s)`],
+    ["Signalements non résolus", d.flagsUnresolved, ""],
+    ["Questions à relire", d.questionsPending, ""],
+    ["Tournois actifs", d.tournamentsActive, ""],
+    ["Duels aujourd'hui", d.duelsToday, ""],
+  ];
+  document.getElementById("overview-cards").innerHTML = cards
+    .map(([label, value, hint]) => `<div class="card"><div class="label">${label}</div><div class="value money">${value}</div>${hint ? `<div class="small">${hint}</div>` : ""}</div>`)
+    .join("");
+}
+
+async function loadQuarantine() {
+  const d = await api("GET", "/api/admin/quarantine");
+  const tbody = document.querySelector("#table-quarantine tbody");
+  document.querySelector("#table-quarantine thead").innerHTML =
+    "<tr><th>Joueur</th><th>Montant</th><th>Contexte</th><th>Depuis</th><th></th></tr>";
+  document.getElementById("empty-quarantine").style.display = d.transactions.length ? "none" : "block";
+  tbody.innerHTML = d.transactions
+    .map((t) => {
+      const ctx = t.quizSession
+        ? `Solo ${t.quizSession.mode} · score ${t.quizSession.scoreServer}/10 · suspicion ${Math.round(t.quizSession.suspicionScore ?? 0)} · ${(t.quizSession.suspicionFlags ?? []).join(", ")}`
+        : t.duelMatch
+        ? `Duel · ${t.duelMatch.scoreA}-${t.duelMatch.scoreB}`
+        : "—";
+      return `<tr>
+        <td>${t.user.username}<br><span class="small">${t.user.phone} · risque ${t.user.riskScore.toFixed(0)} · <span class="pill ${t.user.accountStatus === "ACTIVE" ? "ok" : "warn"}">${t.user.accountStatus}</span></span></td>
+        <td class="money">${money(t.amountCoins)}</td>
+        <td class="small">${ctx}</td>
+        <td class="small">${dt(t.createdAt)}</td>
+        <td class="row-actions">
+          <button class="primary" onclick="releaseQuarantine('${t.id}')">Libérer</button>
+          <button class="danger" onclick="rejectQuarantine('${t.id}')">Rejeter</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+}
+async function releaseQuarantine(id) {
+  if (!confirm("Créditer ce gain au joueur ?")) return;
+  await api("POST", `/api/admin/quarantine/${id}/release`);
+  flash("Gain libéré.", "ok");
+  loadQuarantine();
+  loadOverview();
+}
+async function rejectQuarantine(id) {
+  if (!confirm("Rejeter ce gain (le joueur ne le recevra jamais) ?")) return;
+  await api("POST", `/api/admin/quarantine/${id}/reject`);
+  flash("Gain rejeté.", "ok");
+  loadQuarantine();
+  loadOverview();
+}
+
+async function loadFlags() {
+  const resolved = document.getElementById("flags-filter").value;
+  const d = await api("GET", `/api/admin/flags${resolved !== "" ? `?resolved=${resolved}` : ""}`);
+  document.querySelector("#table-flags thead").innerHTML = "<tr><th>Joueur</th><th>Règle(s)</th><th>Détail</th><th>Depuis</th><th></th></tr>";
+  document.getElementById("empty-flags").style.display = d.flags.length ? "none" : "block";
+  document.querySelector("#table-flags tbody").innerHTML = d.flags
+    .map(
+      (f) => `<tr>
+        <td>${f.user.username}<br><span class="small">${f.user.phone} · <span class="pill ${f.user.accountStatus === "ACTIVE" ? "ok" : "warn"}">${f.user.accountStatus}</span></span></td>
+        <td>${f.rule}</td>
+        <td class="small"><code>${JSON.stringify(f.detail)}</code></td>
+        <td class="small">${dt(f.createdAt)}</td>
+        <td>${f.resolved ? '<span class="pill ok">résolu</span>' : `<button onclick="resolveFlag('${f.id}')">Marquer résolu</button>`}</td>
+      </tr>`
+    )
+    .join("");
+}
+async function resolveFlag(id) {
+  await api("POST", `/api/admin/flags/${id}/resolve`);
+  flash("Signalement résolu.", "ok");
+  loadFlags();
+  loadOverview();
+}
+
+async function loadUsers() {
+  const q = document.getElementById("users-search").value.trim();
+  const d = await api("GET", `/api/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  document.querySelector("#table-users thead").innerHTML = "<tr><th>Pseudo</th><th>Téléphone</th><th>Solde</th><th>Statut</th><th>Inscrit</th><th>Dernière connexion</th><th></th></tr>";
+  const statuses = ["ACTIVE", "WATCHED", "RESTRICTED", "SUSPENDED", "BANNED"];
+  document.querySelector("#table-users tbody").innerHTML = d.users
+    .map(
+      (u) => `<tr>
+        <td>${u.username}</td>
+        <td class="small">${u.phone}</td>
+        <td class="money">${money(u.balanceCoins)}</td>
+        <td><select onchange="setUserStatus('${u.id}', this.value)">${statuses.map((s) => `<option value="${s}" ${s === u.accountStatus ? "selected" : ""}>${s}</option>`).join("")}</select></td>
+        <td class="small">${dt(u.createdAt)}</td>
+        <td class="small">${dt(u.lastLoginAt)}</td>
+        <td class="small">risque ${u.riskScore.toFixed(0)}</td>
+      </tr>`
+    )
+    .join("");
+}
+async function setUserStatus(id, status) {
+  await api("POST", `/api/admin/users/${id}/status`, { status });
+  flash("Statut mis à jour.", "ok");
+}
+
+async function loadQuestions() {
+  const active = document.getElementById("questions-filter").value;
+  const d = await api("GET", `/api/admin/questions${active !== "" ? `?active=${active}` : ""}`);
+  document.querySelector("#table-questions thead").innerHTML = "<tr><th>Catégorie</th><th>Question</th><th>Bonne réponse</th><th>Source</th><th></th></tr>";
+  document.getElementById("empty-questions").style.display = d.questions.length ? "none" : "block";
+  document.querySelector("#table-questions tbody").innerHTML = d.questions
+    .map(
+      (q) => `<tr>
+        <td class="small">${q.categoryName}</td>
+        <td>${q.textFr}<div class="small">${q.options.map((o, i) => (i === q.answerIndex ? `<strong>${o}</strong>` : o)).join(" · ")}</div></td>
+        <td class="small">${q.options[q.answerIndex] ?? "—"}</td>
+        <td><span class="pill ${q.source === "manual" ? "ok" : q.source === "researched" ? "ok" : "warn"}">${q.source}</span></td>
+        <td class="row-actions">
+          ${q.active ? "" : `<button class="primary" onclick="activateQuestion('${q.id}')">Activer</button>`}
+          <button class="danger" onclick="deleteQuestion('${q.id}')">Supprimer</button>
+        </td>
+      </tr>`
+    )
+    .join("");
+}
+async function activateQuestion(id) {
+  await api("POST", `/api/admin/questions/${id}/activate`);
+  flash("Question activée.", "ok");
+  loadQuestions();
+  loadOverview();
+}
+async function deleteQuestion(id) {
+  if (!confirm("Supprimer définitivement cette question ?")) return;
+  await api("DELETE", `/api/admin/questions/${id}`);
+  flash("Question supprimée.", "ok");
+  loadQuestions();
+}
+
+// Reprend la session si un token existe déjà.
+(async () => {
+  if (!getToken()) return;
+  try {
+    await api("GET", "/api/admin/overview");
+    document.getElementById("whoami").textContent = "…";
+    boot();
+  } catch {
+    setToken(null);
+  }
+})();
+</script>
+</body>
+</html>

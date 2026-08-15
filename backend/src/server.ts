@@ -4,8 +4,12 @@ import sensible from "@fastify/sensible";
 import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { ZodError } from "zod";
 import { env, corsOrigins } from "./lib/env.js";
+import { prisma } from "./lib/prisma.js";
 import { authRoutes } from "./modules/auth/routes.js";
 import { walletRoutes } from "./modules/wallet/routes.js";
 import { webhookRoutes } from "./modules/wallet/webhook.js";
@@ -17,6 +21,7 @@ import { ensureBotUsers } from "./modules/duel/bot.js";
 import { setTournamentMatchDoneHandler } from "./modules/duel/hooks.js";
 import { tournamentRoutes } from "./modules/tournament/routes.js";
 import { advanceBracket } from "./modules/tournament/bracket.js";
+import { adminRoutes } from "./modules/admin/routes.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -40,6 +45,16 @@ app.decorate("authenticate", async (req: FastifyRequest, reply: FastifyReply) =>
   }
 });
 
+// Un admin est un User comme les autres (isAdmin=true, jamais via
+// l'inscription publique — §scripts/make-admin.mjs) : pas de second
+// système d'auth, juste une vérification DB en plus du JWT (le JWT ne
+// porte que userId, donc révoquer l'accès admin est immédiat, pas
+// besoin d'invalider un token).
+app.decorate("requireAdmin", async (req: FastifyRequest, reply: FastifyReply) => {
+  const user = await prisma.user.findUnique({ where: { id: req.user.userId }, select: { isAdmin: true } });
+  if (!user?.isAdmin) return reply.forbidden("Accès réservé aux administrateurs");
+});
+
 app.setErrorHandler((err, req, reply) => {
   if (err instanceof ZodError) {
     return reply.badRequest(err.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(" · "));
@@ -57,7 +72,19 @@ await app.register(quizRoutes);
 await app.register(playerRoutes);
 await app.register(publicRoutes);
 await app.register(tournamentRoutes);
+await app.register(adminRoutes);
 await app.register(duelWsRoutes);
+
+// Dashboard admin — une seule page HTML statique, servie directement
+// (pas de build front séparé pour un outil interne à un seul
+// utilisateur, §public/admin.html). Consomme /api/admin/* avec le même
+// JWT que le reste du produit.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const adminHtml = readFileSync(join(__dirname, "../public/admin.html"), "utf8");
+app.get("/admin", async (_req, reply) => {
+  reply.type("text/html");
+  return adminHtml;
+});
 
 // Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
 // toutes s'ils n'existent pas encore (§duel/bot.ts), nécessaire avant
