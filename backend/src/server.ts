@@ -78,10 +78,12 @@ await app.register(duelWsRoutes);
 // Dashboard admin — une seule page HTML statique, servie directement
 // (pas de build front séparé pour un outil interne à un seul
 // utilisateur, §public/admin.html). Consomme /api/admin/* avec le même
-// JWT que le reste du produit.
+// JWT que le reste du produit. Chemin volontairement non-devinable
+// (pas "/admin") : la vraie protection reste isAdmin+mot de passe côté
+// serveur, mais ça évite le scan/curiosité casuelle sur une URL connue.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const adminHtml = readFileSync(join(__dirname, "../public/admin.html"), "utf8");
-app.get("/admin", async (_req, reply) => {
+app.get("/ops-b92f2835255d", async (_req, reply) => {
   reply.type("text/html");
   return adminHtml;
 });
