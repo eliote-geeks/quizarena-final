@@ -15,6 +15,11 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
 export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/register", async (req, reply) => {
     const body = registerSchema.parse(req.body);
@@ -56,6 +61,19 @@ export async function authRoutes(app: FastifyInstance) {
 
     const token = app.jwt.sign({ userId: user.id }, { expiresIn: "30d" });
     return reply.send({ token, user: toPublicUser(user) });
+  });
+
+  app.post("/api/auth/change-password", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const body = changePasswordSchema.parse(req.body);
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
+
+    const ok = await bcrypt.compare(body.currentPassword, user.passwordHash);
+    if (!ok) return reply.unauthorized("Mot de passe actuel incorrect");
+
+    const passwordHash = await bcrypt.hash(body.newPassword, 12);
+    await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+
+    return reply.send({ ok: true });
   });
 
   app.get("/api/auth/me", { preHandler: [app.authenticate] }, async (req, reply) => {

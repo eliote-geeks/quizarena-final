@@ -97,6 +97,7 @@
     <button data-tab="flags">Signalements</button>
     <button data-tab="users">Joueurs</button>
     <button data-tab="questions">Questions</button>
+    <button data-tab="account">Compte</button>
   </nav>
 
   <main>
@@ -142,6 +143,19 @@
       </div>
       <table id="table-questions"><thead></thead><tbody></tbody></table>
       <p class="empty" id="empty-questions" style="display:none">Rien à afficher.</p>
+    </section>
+
+    <section class="panel" id="panel-account">
+      <div style="max-width:340px">
+        <h2 style="margin-top:0">Changer le mot de passe</h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="pw-current" type="password" placeholder="mot de passe actuel" autocomplete="current-password" />
+          <input id="pw-new" type="password" placeholder="nouveau mot de passe (8 caractères min.)" autocomplete="new-password" />
+          <input id="pw-new2" type="password" placeholder="confirmer le nouveau mot de passe" autocomplete="new-password" />
+          <button class="primary" onclick="changePassword()">Mettre à jour</button>
+        </div>
+        <p id="pw-msg" class="msg" style="display:none"></p>
+      </div>
     </section>
   </main>
 </div>
@@ -219,7 +233,7 @@ document.getElementById("tabs").addEventListener("click", (e) => {
   if (!btn) return;
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b === btn));
   document.querySelectorAll("section.panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + btn.dataset.tab));
-  ({ overview: loadOverview, quarantine: loadQuarantine, flags: loadFlags, users: loadUsers, questions: loadQuestions })[btn.dataset.tab]?.();
+  ({ overview: loadOverview, quarantine: loadQuarantine, flags: loadFlags, users: loadUsers, questions: loadQuestions, account: () => {} })[btn.dataset.tab]?.();
 });
 
 async function loadOverview() {
@@ -363,6 +377,40 @@ async function deleteQuestion(id) {
   await api("DELETE", `/api/admin/questions/${id}`);
   flash("Question supprimée.", "ok");
   loadQuestions();
+}
+
+async function changePassword() {
+  const currentPassword = document.getElementById("pw-current").value;
+  const newPassword = document.getElementById("pw-new").value;
+  const newPassword2 = document.getElementById("pw-new2").value;
+  const msgEl = document.getElementById("pw-msg");
+  msgEl.style.display = "none";
+
+  if (newPassword.length < 8) {
+    msgEl.className = "msg error";
+    msgEl.textContent = "Le nouveau mot de passe doit faire au moins 8 caractères.";
+    msgEl.style.display = "block";
+    return;
+  }
+  if (newPassword !== newPassword2) {
+    msgEl.className = "msg error";
+    msgEl.textContent = "Les deux mots de passe ne correspondent pas.";
+    msgEl.style.display = "block";
+    return;
+  }
+  try {
+    await api("POST", "/api/auth/change-password", { currentPassword, newPassword });
+    document.getElementById("pw-current").value = "";
+    document.getElementById("pw-new").value = "";
+    document.getElementById("pw-new2").value = "";
+    msgEl.className = "msg ok";
+    msgEl.textContent = "Mot de passe mis à jour.";
+    msgEl.style.display = "block";
+  } catch (err) {
+    msgEl.className = "msg error";
+    msgEl.textContent = err.message || "Échec de la mise à jour.";
+    msgEl.style.display = "block";
+  }
 }
 
 // Reprend la session si un token existe déjà.
