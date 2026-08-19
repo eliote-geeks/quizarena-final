@@ -47,13 +47,39 @@ export async function maybeStartTournament(tournamentId: string) {
 }
 
 /** Appelé par le moteur de duel (via duel/hooks.ts) quand un
- * TournamentMatch se termine — vraie partie jouée ou walkover. */
+ * TournamentMatch se termine — vraie partie jouée ou walkover. Acquiert
+ * le verrou puis délègue à `advanceBracketLocked` (§withTournamentLock
+ * plus bas : ne JAMAIS ré-acquérir le verrou depuis l'intérieur d'un
+ * appel déjà verrouillé — trouvé en test réel, voir le commentaire sur
+ * `advanceBracketLocked`). */
 export async function advanceBracket(tournamentMatchId: string, winnerId: string | null) {
   const match = await prisma.tournamentMatch.findUnique({ where: { id: tournamentMatchId } });
-  if (!match || match.status === "COMPLETED") return; // déjà traité (garde-fou double appel)
+  if (!match) return;
+  await withTournamentLock(match.tournamentId, () => advanceBracketLocked(match, winnerId));
+}
+
+/**
+ * Le corps réel d'`advanceBracket`, SANS acquisition de verrou — appelé
+ * soit par `advanceBracket` (qui vient d'acquérir le verrou), soit
+ * récursivement par `maybeAdvanceRound` dans le cas d'une cascade de
+ * walkover (ligne plus bas). Bug trouvé en test réel (19/08, tournoi
+ * avec un match nul en demi-finale) : la version précédente ré-appelait
+ * `advanceBracket` — donc `withTournamentLock` une seconde fois — depuis
+ * l'intérieur du callback déjà en cours d'exécution sous ce même verrou.
+ * Le verrou en mémoire est une simple chaîne de promesses (`prev.then(fn)`) :
+ * un second appel pour le même tournamentId se met en attente que le
+ * premier se termine — sauf que le premier ne peut pas se terminer tant
+ * qu'il attend ce second appel. Interblocage total, le tournoi restait
+ * bloqué en IN_PROGRESS pour toujours (jamais de completeTournament).
+ */
+async function advanceBracketLocked(
+  match: { id: string; tournamentId: string; round: number; playerAId: string | null; playerBId: string | null; status: string },
+  winnerId: string | null
+) {
+  if (match.status === "COMPLETED") return; // déjà traité (garde-fou double appel)
 
   await prisma.tournamentMatch.update({
-    where: { id: tournamentMatchId },
+    where: { id: match.id },
     data: { status: "COMPLETED", winnerId, completedAt: new Date() },
   });
 
@@ -65,15 +91,9 @@ export async function advanceBracket(tournamentMatchId: string, winnerId: string
     });
   }
 
-  // Les deux matches d'un même round finissent souvent à quelques
-  // millisecondes d'écart (deux WebSocket en parallèle) : sans
-  // sérialisation, les deux appels concurrents à advanceBracket peuvent
-  // chacun constater "round complet" et créer DEUX fois le round
-  // suivant (bug constaté en test — la finale se retrouvait dupliquée,
-  // une copie jamais jouée, et completeTournament() piochait au hasard
-  // laquelle des deux regarder). Un seul process Node (§engine.ts même
-  // principe que `reserving`) : un verrou en mémoire par tournoi suffit.
-  await withTournamentLock(match.tournamentId, () => maybeAdvanceRound(match.tournamentId, match.round));
+  // Pas de ré-acquisition du verrou ici : on est déjà dedans (appelant
+  // direct depuis `advanceBracket`, ou cascade depuis `maybeAdvanceRound`).
+  await maybeAdvanceRound(match.tournamentId, match.round);
 }
 
 const tournamentLocks = new Map<string, Promise<unknown>>();
@@ -140,7 +160,9 @@ async function maybeAdvanceRound(tournamentId: string, round: number) {
       // tour précédent) : le seul joueur restant avance sans jouer.
       // Cascade récursive possible jusqu'à la finale dans le pire des cas.
       const lone = row.playerAId ?? row.playerBId ?? null;
-      await advanceBracket(row.id, lone);
+      // advanceBracketLocked, PAS advanceBracket : on est déjà à
+      // l'intérieur du verrou de ce tournoi (§advanceBracketLocked).
+      await advanceBracketLocked(row, lone);
     }
   }
 }

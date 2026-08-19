@@ -22,6 +22,7 @@ import { setTournamentMatchDoneHandler } from "./modules/duel/hooks.js";
 import { tournamentRoutes } from "./modules/tournament/routes.js";
 import { advanceBracket } from "./modules/tournament/bracket.js";
 import { adminRoutes } from "./modules/admin/routes.js";
+import { avatarRoutes } from "./modules/avatar/routes.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -73,6 +74,7 @@ await app.register(playerRoutes);
 await app.register(publicRoutes);
 await app.register(tournamentRoutes);
 await app.register(adminRoutes);
+await app.register(avatarRoutes);
 await app.register(duelWsRoutes);
 
 // Dashboard admin — une seule page HTML statique, servie directement

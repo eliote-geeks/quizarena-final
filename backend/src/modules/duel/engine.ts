@@ -68,6 +68,11 @@ type MatchPlayer = {
   answered: boolean;
   chosenIndex: number | null;
   answeredAt: number | null;
+  // Somme des temps de réponse sur tout le match (ms) — sert UNIQUEMENT
+  // de départage pour un match de tournoi qui finit à score égal (§finalizeMatch,
+  // un bracket ne peut pas laisser passer un nul, contrairement au 1v1
+  // normal où l'égalité est un résultat valide).
+  totalResponseMs: number;
 };
 
 type Match = {
@@ -340,8 +345,8 @@ export async function startBotDuel(entry: {
     botDifficulty: entry.difficulty,
     tournamentMatchId: null,
     players: [
-      { userId: entry.userId, username: entry.username, eloRating: entry.eloRating, send: entry.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
-      { userId: botUserId, username: botUsername(entry.difficulty), eloRating: 1000, send: null, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+      { userId: entry.userId, username: entry.username, eloRating: entry.eloRating, send: entry.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
+      { userId: botUserId, username: botUsername(entry.difficulty), eloRating: 1000, send: null, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
     ],
   };
   matches.set(match.id, match);
@@ -423,8 +428,8 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "stakeCoins">) {
     botDifficulty: null,
     tournamentMatchId: null,
     players: [
-      { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
-      { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+      { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
+      { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
     ],
   };
   matches.set(match.id, match);
@@ -520,7 +525,12 @@ async function resolveTournamentWalkover(tournamentMatchId: string) {
 
   const waiter = tournamentPending.get(tournamentMatchId);
   tournamentPending.delete(tournamentMatchId);
-  const winnerId = waiter?.userId ?? null;
+  // Si PERSONNE ne s'est présenté (aucun des deux joueurs connecté avant
+  // l'expiration), `waiter` est undefined — on ne peut PAS renvoyer null
+  // ici (§advanceBracket/finalizeMatch : un match de tournoi doit
+  // toujours désigner un vainqueur). Choix déterministe entre les deux
+  // inscrits d'origine du match plutôt qu'un nul qui bloquerait le bracket.
+  const winnerId = waiter?.userId ?? (row.playerAId && row.playerBId ? (row.playerAId < row.playerBId ? row.playerAId : row.playerBId) : (row.playerAId ?? row.playerBId));
 
   if (waiter) {
     const balance = await getBalance(waiter.userId);
@@ -597,8 +607,8 @@ async function createTournamentMatch(tournamentMatchId: string, categoryId: stri
     botDifficulty: null,
     tournamentMatchId,
     players: [
-      { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
-      { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null },
+      { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
+      { userId: b.userId, username: b.username, eloRating: b.eloRating, send: b.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0 },
     ],
   };
   matches.set(match.id, match);
@@ -729,6 +739,7 @@ async function resolveRound(match: Match) {
     const correct = canonical === q.answerIndex;
     const responseMs = p.answered ? Math.max(0, p.answeredAt! - match.questionSentAt) : TIME_PER_QUESTION_MS;
     if (correct) p.score += 1;
+    p.totalResponseMs += responseMs;
     results[p.userId] = { correct, chosenIndex: chosen, responseMs };
   }
 
@@ -797,6 +808,28 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
 
   const winnerId = resultA === "win" ? pa.userId : resultA === "loss" ? pb.userId : null;
 
+  // Un match de tournoi DOIT désigner un vainqueur pour faire avancer le
+  // bracket — un nul y est une situation invalide, contrairement au 1v1
+  // normal où l'égalité (winnerId=null) est un résultat légitime (remboursement
+  // partiel des deux côtés, §payoutA/payoutB plus bas). Bug trouvé en test
+  // réel (19/08) : un winnerId=null envoyé à notifyTournamentMatchDone
+  // faisait éliminer les DEUX joueurs du match et bloquait le tournoi.
+  // Départage par temps de réponse total (plus rapide gagne, convention
+  // classique de quiz compétitif) — le résultat "draw" affiché aux deux
+  // joueurs (resultA/resultB, ELO) reste honnête et INCHANGÉ, seul le
+  // choix de qui avance dans le bracket utilise ce départage.
+  let bracketWinnerId = winnerId;
+  if (match.tournamentMatchId && bracketWinnerId === null) {
+    if (pa.totalResponseMs !== pb.totalResponseMs) {
+      bracketWinnerId = pa.totalResponseMs < pb.totalResponseMs ? pa.userId : pb.userId;
+    } else {
+      // Égalité parfaite jusque dans le temps de réponse (ex. 0-0, aucun
+      // des deux n'a jamais répondu) : dernier recours déterministe pour
+      // ne jamais laisser le bracket bloqué sans vainqueur.
+      bracketWinnerId = pa.userId < pb.userId ? pa.userId : pb.userId;
+    }
+  }
+
   await prisma.$transaction([
     prisma.user.update({ where: { id: pa.userId }, data: { eloRating: newEloA } }),
     prisma.user.update({ where: { id: pb.userId }, data: { eloRating: newEloB } }),
@@ -841,7 +874,7 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
   if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
   if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
 
-  if (match.tournamentMatchId) await notifyTournamentMatchDone(match.tournamentMatchId, winnerId);
+  if (match.tournamentMatchId) await notifyTournamentMatchDone(match.tournamentMatchId, bracketWinnerId);
 
   const [balanceA, balanceB] = await Promise.all([getBalance(pa.userId), getBalance(pb.userId)]);
 
