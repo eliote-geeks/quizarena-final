@@ -1,14 +1,32 @@
 import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES } from "../data/mockData";
 import { BadgeHelp, ChevronRight, Grid2X2, Headphones, Zap } from "lucide-react";
 import PixelScene from "../components/PixelScene";
+import * as api from "../lib/api";
 
 const AMBER = "#E5A800";
 
 export default function Categories() {
   const { t, lang } = useApp();
+  const [serverCategories, setServerCategories] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api.getCategories()
+      .then((result) => setServerCategories(result.categories || []))
+      .catch((requestError) => setError(requestError.message || "Catégories indisponibles"));
+  }, []);
+
+  // Ce second produit conserve volontairement les thèmes présents dans son
+  // frontend. Les compteurs et la disponibilité viennent toutefois du serveur.
+  const categories = useMemo(() => {
+    const byId = new Map(serverCategories.map((category) => [category.id, category]));
+    return CATEGORIES.map((category) => ({ ...category, server: byId.get(category.id) })).filter((category) => category.server);
+  }, [serverCategories]);
+  const questionCount = categories.reduce((sum, category) => sum + category.server.questionCount, 0);
 
   return (
     <div className="min-h-full px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-5">
@@ -35,14 +53,14 @@ export default function Categories() {
           className="grid grid-cols-3 gap-2 rounded-2xl p-2"
           style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
         >
-          <CategoryStat icon={BadgeHelp} label="Thèmes" value={CATEGORIES.length} />
+          <CategoryStat icon={BadgeHelp} label="Thèmes" value={categories.length || "—"} />
           <CategoryStat icon={Zap} label="Chrono" value="8s" />
-          <CategoryStat icon={Headphones} label="Formats" value="A/V" />
+          <CategoryStat icon={Headphones} label="Questions" value={questionCount ? questionCount.toLocaleString("fr-FR") : "—"} />
         </div>
       </motion.header>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {CATEGORIES.map((c, i) => {
+          {categories.map((c, i) => {
             const Icon = c.icon;
             return (
               <motion.div
@@ -75,7 +93,7 @@ export default function Categories() {
                     <p className="text-xs leading-relaxed mb-2" style={{ color: "var(--qa-text-sub)" }}>{c.description[lang]}</p>
                     <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid var(--qa-divider)" }}>
                       <span className="text-[10px]" style={{ color: "var(--qa-text-faint)" }}>{c.style[lang]}</span>
-                      <span className="text-[10px]" style={{ color: "var(--qa-text-faint)" }}>{c.questions} {t.categories.questions}</span>
+                      <span className="text-[10px]" style={{ color: "var(--qa-text-faint)" }}>{c.server.questionCount.toLocaleString("fr-FR")} {t.categories.questions}</span>
                     </div>
                   </div>
                 </Link>
@@ -83,6 +101,8 @@ export default function Categories() {
             );
           })}
         </div>
+        {error && <p className="rounded-xl p-4 text-center text-sm" style={{ color: "var(--danger)", background: "var(--qa-surface)" }}>{error}</p>}
+        {!error && serverCategories.length > 0 && categories.length === 0 && <p className="rounded-xl p-4 text-center text-sm" style={{ color: "var(--qa-text-sub)", background: "var(--qa-surface)" }}>Aucun thème de cette édition n’est encore jouable.</p>}
     </div>
   );
 }

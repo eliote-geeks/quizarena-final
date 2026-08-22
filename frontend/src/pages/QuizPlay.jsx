@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES, QUESTIONS, getCategory } from "../data/mockData";
-import { calcNewElo } from "../lib/eloEngine";
 import { SFX } from "../lib/soundEngine";
 import { formatMoney } from "../lib/currency";
 import { X, Flame, Zap, AlertTriangle, Volume2, VolumeX, ShieldQuestion, Image as ImageIcon, Type, BookOpen } from "lucide-react";
@@ -12,8 +11,8 @@ import QuestionIntro from "../components/QuestionIntro";
 import AmbientBackground from "../components/AmbientBackground";
 import Celebration from "../components/Celebration";
 import CountUp from "../components/CountUp";
+import * as api from "../lib/api";
 
-const ROUND_SIZE   = 10;
 const QUESTION_REVEAL_MS = 650;
 const AMBER        = "var(--accent)";
 
@@ -36,41 +35,6 @@ const SOLO_LEVELS = [
   { id: "hard", label: "Difficile", odd: 1.30, time: 7, text: "Risque", icon: Flame },
 ];
 const QUESTION_FORMATS = ["text", "audio", "image"];
-
-function shuffleOptions(q) {
-  const perm = [0, 1, 2, 3];
-  for (let i = perm.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [perm[i], perm[j]] = [perm[j], perm[i]];
-  }
-  return { ...q, options: perm.map(k => q.options[k]), answer: perm.indexOf(q.answer) };
-}
-
-function pickRandom(arr, n) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, n);
-}
-
-function buildQuestionPool(categoryId) {
-  if (categoryId && categoryId !== "random" && QUESTIONS[categoryId]) {
-    return QUESTIONS[categoryId].map((question) => ({ ...question, categoryId }));
-  }
-
-  return CATEGORIES.flatMap((cat) =>
-    (QUESTIONS[cat.id] || []).map((question) => ({ ...question, categoryId: cat.id }))
-  );
-}
-
-function withDisplayFormats(questions) {
-  return questions.map((question, index) => ({
-    ...question,
-    displayType: QUESTION_FORMATS[index % QUESTION_FORMATS.length],
-  }));
-}
 
 function getMult(streak) {
   if (streak >= 5) return 2.0;
@@ -134,18 +98,20 @@ function SetupStat({ label, value }) {
 export default function QuizPlay() {
   const { categoryId }    = useParams();
   const navigate          = useNavigate();
-  const { lang, coins, addCoins, elo, updateElo, currency } = useApp();
+  const { lang, coins, refreshWallet, updateElo, currency } = useApp();
 
-  const questions = useMemo(
-    () => withDisplayFormats(pickRandom(buildQuestionPool(categoryId), ROUND_SIZE).map(shuffleOptions)),
-    [categoryId],
-  );
+  // La banque locale ne sert plus à jouer. Le serveur choisit les questions,
+  // mélange les propositions et ne révèle jamais la réponse avant le clic.
+  const [questions, setQuestions] = useState([]);
+  const [session, setSession] = useState(null);
+  const [startLoading, setStartLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   // Solo challenge state
   const [selectedLevelId, setSelectedLevelId] = useState("medium");
   const [selectedStake,  setSelectedStake] = useState(500);
   const selectedLevel = SOLO_LEVELS.find((level) => level.id === selectedLevelId) || SOLO_LEVELS[1];
-  const currentTimeLimit = selectedLevel.time;
+  const currentTimeLimit = session ? Math.ceil(session.timePerQuestionMs / 1000) : selectedLevel.time;
 
   // Phase machine: setup → ready → playing → ceremony → done
   const [phase,        setPhase]        = useState("setup");
@@ -175,6 +141,11 @@ export default function QuizPlay() {
   const revealTimerRef = useRef(null);
   const phaseRef   = useRef("setup");
   const forfeitedRef = useRef(false);
+  const answersRef = useRef([]);
+  const questionShownAtRef = useRef(0);
+  const sessionStartedAtRef = useRef(0);
+  const tabSwitchesRef = useRef(0);
+  const submittingRef = useRef(false);
 
   const toggleMusic = useCallback(() => {
     setMuted((m) => {
@@ -195,13 +166,24 @@ export default function QuizPlay() {
   const speakQuestion = useCallback(() => {
     if (!q || typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(q.q[lang]);
+    const utterance = new SpeechSynthesisUtterance(q.q[lang] || q.q.fr);
     utterance.lang = lang === "fr" ? "fr-FR" : "en-US";
     utterance.rate = 1;
     window.speechSynthesis.speak(utterance);
   }, [q, lang]);
 
   useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  useEffect(() => {
+    const onVisibility = () => { if (document.hidden) tabSwitchesRef.current += 1; };
+    const onBlur = () => { tabSwitchesRef.current += 1; };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
 
   useEffect(() => {
     if (phase === "playing" && q?.displayType === "audio") speakQuestion();
@@ -228,6 +210,7 @@ export default function QuizPlay() {
   // Per-question timer
   useEffect(() => {
     if (phase !== "playing") return;
+    questionShownAtRef.current = performance.now();
     setTimeLeft(currentTimeLimit);
     setChosen(null);
     setFlash(null);
@@ -276,65 +259,65 @@ export default function QuizPlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, qIdx]);
 
-  const finalize = useCallback(() => {
+  const finalize = useCallback(async () => {
+    if (!session || submittingRef.current) return;
+    submittingRef.current = true;
     clearInterval(timerRef.current);
-    const correct = correctRef.current;
+    try {
+      const result = await api.submitQuiz({
+        sessionId: session.sessionId,
+        answers: answersRef.current,
+        tabSwitches: tabSwitchesRef.current,
+        totalDurationMs: Date.now() - sessionStartedAtRef.current,
+      });
+      const netCoins = result.payoutCoins - selectedStake;
+      setCorrectCount(result.scoreServer);
+      correctRef.current = result.scoreServer;
+      setTotalPoints(netCoins);
+      setEloResult({ newElo: result.eloRating, delta: result.eloDelta });
+      updateElo(result.eloRating);
+      await refreshWallet();
+      playSfx(result.scoreServer >= 7 ? SFX.victory : SFX.defeat);
+      setPhase("done");
+    } catch (error) {
+      setLoadError(error.message || "Impossible de valider la partie");
+      setPhase("setup");
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [playSfx, refreshWallet, selectedStake, session, updateElo]);
 
-    const won = correct >= 7;
-    const payout = won ? Math.round(selectedStake * selectedLevel.odd) : 0;
-    const netCoins = payout - selectedStake;
-    const quizResult = won ? "win" : "loss";
+  const revealAnswer = useCallback(async (chosenIndex) => {
+    const current = questions[qIdx];
+    if (!session || !current) return;
+    const responseMs = Math.max(0, Math.round(performance.now() - questionShownAtRef.current));
+    answersRef.current.push({ questionId: current.id, chosenIndex, responseMs });
+    try {
+      const reveal = await api.revealQuiz(session.sessionId, current.id);
+      setQuestions((items) => items.map((item, index) => index === qIdx ? { ...item, answer: reveal.shuffledCorrectIndex } : item));
+      return reveal.shuffledCorrectIndex;
+    } catch (error) {
+      setLoadError(error.message || "La réponse n'a pas pu être vérifiée");
+      return -2;
+    }
+  }, [qIdx, questions, session]);
 
-    // ELO always tracks performance regardless of mode
-    const { newElo, delta } = calcNewElo(elo, 1050, correct >= 7 ? "win" : correct >= 5 ? "draw" : "loss");
-    updateElo(newElo);
-    setEloResult({ newElo, delta });
-    addCoins(netCoins);
-    setTotalPoints(netCoins);
-    if (quizResult === "win") playSfx(SFX.victory); else playSfx(SFX.defeat);
-    setPhase("done");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStake, selectedLevel, elo]);
-
-  const forfeitGame = useCallback(() => {
-    if (forfeitedRef.current || phaseRef.current !== "playing") return;
-    forfeitedRef.current = true;
-    clearInterval(timerRef.current);
-    clearTimeout(revealTimerRef.current);
-    const { newElo, delta } = calcNewElo(elo, 1050, "loss");
-    updateElo(newElo);
-    setEloResult({ newElo, delta });
-    setTotalPoints(-selectedStake);
-    addCoins(-selectedStake);
-    playSfx(SFX.defeat);
-    setPhase("done");
-  }, [addCoins, elo, playSfx, selectedStake, updateElo]);
-
-  useEffect(() => {
-    if (phase !== "playing") return;
-    const onVisibility = () => { if (document.hidden) forfeitGame(); };
-    const onBlur = () => forfeitGame();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("blur", onBlur);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("blur", onBlur);
-    };
-  }, [phase, forfeitGame]);
-
-  const onTimeout = () => {
+  const onTimeout = async () => {
+    const answer = await revealAnswer(-1);
     streakRef.current = 0;
     setStreak(0); setFlash("wrong"); setLastPts(0);
     playSfx(SFX.wrong);
     setChosen(-1);
-    setPhase("ceremony");
+    if (answer !== -2) setPhase("ceremony");
   };
 
-  const handleChoice = useCallback((optIdx) => {
+  const handleChoice = useCallback(async (optIdx) => {
     if (phase !== "playing" || !answersReady || chosen !== null) return;
     clearInterval(timerRef.current);
     setChosen(optIdx);
-    if (optIdx === q.answer) {
+    const correctIndex = await revealAnswer(optIdx);
+    if (correctIndex === -2) return;
+    if (optIdx === correctIndex) {
       streakRef.current += 1;
       const m    = getMult(streakRef.current);
       const base = Math.round(200 + (timeLeft / currentTimeLimit) * 800);
@@ -356,7 +339,35 @@ export default function QuizPlay() {
     }
     setPhase("ceremony");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, answersReady, chosen, q, timeLeft, currentTimeLimit]);
+  }, [phase, answersReady, chosen, timeLeft, currentTimeLimit, revealAnswer, playSfx]);
+
+  const startGame = useCallback(async () => {
+    if (coins < selectedStake || startLoading) return;
+    setStartLoading(true);
+    setLoadError("");
+    try {
+      const result = await api.startQuiz({ categoryId, mode: "CHALLENGE", stakeCoins: selectedStake });
+      setSession(result);
+      setQuestions(result.questions.map((question, index) => ({
+        ...question,
+        q: { fr: question.text, en: question.text },
+        categoryId,
+        displayType: QUESTION_FORMATS[index % QUESTION_FORMATS.length],
+        answer: null,
+      })));
+      answersRef.current = [];
+      sessionStartedAtRef.current = Date.now();
+      tabSwitchesRef.current = 0;
+      setQIdx(0);
+      setCountdown(3);
+      setPhase("ready");
+      await refreshWallet();
+    } catch (error) {
+      setLoadError(error.message || "Impossible de démarrer la partie");
+    } finally {
+      setStartLoading(false);
+    }
+  }, [categoryId, coins, refreshWallet, selectedStake, startLoading]);
 
   useEffect(() => {
     const map = { a: 0, b: 1, c: 2, d: 3 };
@@ -365,7 +376,7 @@ export default function QuizPlay() {
     return () => window.removeEventListener("keydown", fn);
   }, [phase, handleChoice]);
 
-  if (!q) return (
+  if (!q && phase !== "setup") return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <p className="text-white/50 mb-2 text-sm">Catégorie introuvable.</p>
@@ -515,51 +526,14 @@ export default function QuizPlay() {
                 </div>
               </motion.header>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {SOLO_LEVELS.map((level) => {
-                  const selected = selectedLevelId === level.id;
-                  const LevelIcon = level.icon;
-                  return (
-                    <button
-                      key={level.id}
-                      onClick={() => setSelectedLevelId(level.id)}
-                      className="relative overflow-hidden rounded-2xl p-4 text-left transition-all"
-                      style={{
-                        background: selected ? AMBER : "var(--qa-surface)",
-                        color: selected ? "#07070F" : "var(--qa-text)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className="grid h-10 w-10 place-items-center rounded-xl"
-                          style={{
-                            background: selected ? "rgba(7,7,15,0.12)" : "var(--accent-soft)",
-                            color: selected ? "#07070F" : AMBER,
-                          }}
-                        >
-                          <LevelIcon className="h-5 w-5" />
-                        </span>
-                        <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: selected ? "#07070F" : "var(--qa-text-faint)" }}>
-                          {selected && <div className="w-2 h-2 rounded-full" style={{ background: "#07070F" }} />}
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <div className="text-lg font-extrabold">{level.label}</div>
-                        <div className="text-xs font-bold" style={{ color: selected ? "rgba(7,7,15,0.70)" : "var(--qa-text-sub)" }}>
-                          {level.text}
-                        </div>
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-extrabold">
-                        <span className="rounded-xl px-2.5 py-2" style={{ background: selected ? "rgba(7,7,15,0.10)" : "var(--qa-surface-2)" }}>
-                          ×{level.odd.toFixed(2)}
-                        </span>
-                        <span className="rounded-xl px-2.5 py-2 text-right" style={{ background: selected ? "rgba(7,7,15,0.10)" : "var(--qa-surface-2)" }}>
-                          {level.time}s
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="card rounded-2xl p-4 flex items-center gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-xl" style={{ background: "var(--accent-soft)", color: AMBER }}>
+                  <Zap className="h-5 w-5" />
+                </span>
+                <div>
+                  <div className="text-sm font-bold" style={{ color: "var(--qa-text)" }}>Format officiel</div>
+                  <div className="text-xs mt-1" style={{ color: "var(--qa-text-sub)" }}>10 questions · 8 secondes · paiement progressif selon le score</div>
+                </div>
               </div>
 
               <div className="card rounded-2xl p-4">
@@ -589,7 +563,7 @@ export default function QuizPlay() {
                   <div className="rounded-xl p-3" style={{ background: "var(--qa-active)" }}>
                     <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--qa-text-faint)" }}>Gain si 7/10+</div>
                     <div className="text-base font-bold mt-1" style={{ color: "var(--success)" }}>
-                      {formatMoney(Math.round(selectedStake * selectedLevel.odd) - selectedStake, currency, { showPlus: true })}
+                      {formatMoney(Math.round(selectedStake * 0.2), currency, { showPlus: true })}
                     </div>
                   </div>
                   <div className="rounded-xl p-3" style={{ background: "var(--qa-active)" }}>
@@ -608,13 +582,14 @@ export default function QuizPlay() {
               {/* Start button */}
               <div className="mt-auto pt-2">
                 <button
-                  onClick={() => setPhase("ready")}
-                  disabled={coins < selectedStake}
+                  onClick={startGame}
+                  disabled={coins < selectedStake || startLoading}
                   className="w-full py-3 rounded-xl text-sm font-bold transition disabled:opacity-40"
                   style={{ background: AMBER, color: "#07070F" }}
                 >
-                  Miser {formatMoney(selectedStake, currency)} et jouer en {selectedLevel.label}
+                  {startLoading ? "Ouverture sécurisée…" : `Miser ${formatMoney(selectedStake, currency)} et lancer le challenge`}
                 </button>
+                {loadError && <p className="text-center text-xs mt-2" style={{ color: "var(--danger)" }}>{loadError}</p>}
                 <p className="text-center text-[10px] text-white/20 mt-2">
                   <Link to="/rules" className="underline hover:text-white/40 transition">Lire les règles complètes</Link>
                 </p>

@@ -96,6 +96,19 @@ app.get("/ops-b92f2835255d", async (_req, reply) => {
   return adminHtml;
 });
 
+// Backoffice de l'édition historique servie sur :3010. Il utilise les
+// mêmes contrôles d'authentification/isAdmin et les mêmes routes serveur,
+// mais masque explicitement les modules qui n'existent pas dans ce produit
+// (clans et guerres de clans). Cela évite deux consoles divergentes tout en
+// respectant le périmètre fonctionnel découvert pendant l'audit terrain.
+app.get("/ops-classic-3010-b92f2835255d", async (_req, reply) => {
+  reply.type("text/html");
+  return adminHtml
+    .replace("<title>QuizArena — Backoffice</title>", "<title>QuizArena Classic — Backoffice</title>")
+    .replace("<body>", '<body data-edition="classic">')
+    .replace("QuizArena · Backoffice", "QuizArena Classic · Backoffice");
+});
+
 // Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
 // toutes s'ils n'existent pas encore (§duel/bot.ts), nécessaire avant
 // d'accepter des duels contre l'ordinateur.

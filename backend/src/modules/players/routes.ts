@@ -99,6 +99,52 @@ export async function playerRoutes(app: FastifyInstance) {
     return reply.send({ history });
   });
 
+  // Historique réel des duels du joueur. L'ancienne interface 3010
+  // affichait des « replays » inventés ; tant que les permutations de
+  // chaque question ne sont pas persistées, on expose un récapitulatif
+  // honnête (adversaire, score, mise, résultat) plutôt qu'une fausse vidéo.
+  app.get("/api/duel/history", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { page = "1", perPage = "20" } = req.query as { page?: string; perPage?: string };
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const size = Math.min(50, Math.max(1, parseInt(perPage) || 20));
+    const where = {
+      status: "COMPLETED" as const,
+      OR: [{ playerAId: req.user.userId }, { playerBId: req.user.userId }],
+    };
+    const [matches, total] = await Promise.all([
+      prisma.duelMatch.findMany({
+        where,
+        orderBy: { completedAt: "desc" },
+        skip: (currentPage - 1) * size,
+        take: size,
+        include: {
+          playerA: { select: { id: true, username: true } },
+          playerB: { select: { id: true, username: true } },
+          tournamentMatch: { select: { tournamentId: true } },
+          clanWarMatch: { select: { id: true } },
+        },
+      }),
+      prisma.duelMatch.count({ where }),
+    ]);
+    return reply.send({
+      matches: matches.map((match) => ({
+        id: match.id,
+        playerA: match.playerA.username,
+        playerB: match.playerB.username,
+        scoreA: match.scoreA,
+        scoreB: match.scoreB,
+        stakeCoins: match.stakeCoins,
+        winnerId: match.winnerId,
+        result: match.winnerId === req.user.userId ? "win" : match.winnerId ? "loss" : "draw",
+        context: match.tournamentMatch ? "TOURNAMENT" : match.clanWarMatch ? "CLAN_WAR" : "STANDARD",
+        completedAt: match.completedAt,
+      })),
+      total,
+      page: currentPage,
+      pages: Math.ceil(total / size),
+    });
+  });
+
   // ── Recherche joueurs ─────────────────────────────────────────────
   app.get("/api/players/search", { preHandler: [app.authenticate] }, async (req, reply) => {
     const { q } = req.query as { q?: string };

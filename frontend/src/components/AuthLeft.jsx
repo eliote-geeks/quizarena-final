@@ -1,11 +1,18 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CATEGORIES, TOP_PLAYERS } from "../data/mockData";
-import { getRank } from "../lib/eloEngine";
+import { CATEGORIES } from "../data/mockData";
+import * as api from "../lib/api";
 import { Radio, Users, Swords } from "lucide-react";
 
 const AMBER = "#E5A800";
 
 export default function AuthLeft() {
+  const [stats, setStats] = useState(null);
+  const [leaders, setLeaders] = useState([]);
+  useEffect(() => {
+    api.getPublicStats().then(setStats).catch(() => {});
+    api.getPublicLeaderboard().then((result) => setLeaders(result.leaderboard || [])).catch(() => {});
+  }, []);
   return (
     <div
       className="hidden lg:flex flex-col justify-between px-10 py-12 relative overflow-hidden"
@@ -57,8 +64,8 @@ export default function AuthLeft() {
           className="flex gap-3 mt-10"
         >
           {[
-            { icon: Users,  value: "5 247",  label: "en ligne" },
-            { icon: Swords, value: "1 832",  label: "en cours" },
+            { icon: Users,  value: stats?.activePlayers7d ?? "—", label: "actifs cette semaine" },
+            { icon: Swords, value: stats?.duelsToday ?? "—", label: "duels aujourd’hui" },
           ].map((s) => (
             <div
               key={s.label}
@@ -90,11 +97,10 @@ export default function AuthLeft() {
             Top joueurs
           </div>
           <div className="space-y-2">
-            {TOP_PLAYERS.slice(0, 4).map((p, i) => {
-              const rank = getRank(p.elo || 1400 - i * 80);
+            {leaders.slice(0, 4).map((p, i) => {
               return (
                 <motion.div
-                  key={p.name}
+                  key={p.username}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.35 + i * 0.06 }}
@@ -110,11 +116,11 @@ export default function AuthLeft() {
                     className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0"
                     style={{ background: `${AMBER}22`, color: AMBER }}
                   >
-                    {p.avatar}
+                    {p.username.slice(0, 2).toUpperCase()}
                   </div>
-                  <span className="text-sm font-bold flex-1 truncate" style={{ color: "#FFFFFF" }}>{p.name}</span>
-                  <span className="text-xs font-bold flex-shrink-0" style={{ color: rank.color }}>
-                    {rank.emoji} {p.wins}W
+                  <span className="text-sm font-bold flex-1 truncate" style={{ color: "#FFFFFF" }}>{p.username}</span>
+                  <span className="text-xs font-bold flex-shrink-0" style={{ color: AMBER }}>
+                    {p.winningsCoins.toLocaleString("fr-FR")} F
                   </span>
                 </motion.div>
               );

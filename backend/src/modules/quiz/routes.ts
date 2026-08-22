@@ -20,7 +20,10 @@ const submitSchema = z.object({
     .array(
       z.object({
         questionId: z.string(),
-        chosenIndex: z.number().int().min(0).max(3),
+        // -1 représente une absence de réponse (chrono écoulé). Le serveur
+        // ne doit surtout pas transformer un timeout en choix A : si A est
+        // correcte, cela créditerait un point que le joueur n'a pas gagné.
+        chosenIndex: z.number().int().min(-1).max(3),
         responseMs: z.number().int().min(0).max(120_000),
       })
     )
@@ -210,7 +213,7 @@ export async function quizRoutes(app: FastifyInstance) {
 
       // chosenIndex porte sur les options MÉLANGÉES envoyées au client ;
       // permutation[chosenIndex] retrouve l'index canonique en base.
-      const canonicalChosen = sq.permutation[answer.chosenIndex];
+      const canonicalChosen = answer.chosenIndex >= 0 ? sq.permutation[answer.chosenIndex] : undefined;
       const isCorrect = canonicalChosen === question.answerIndex;
       correctness.push(isCorrect);
       responseTimings.push(answer.responseMs);

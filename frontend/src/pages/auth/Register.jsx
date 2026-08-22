@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import AuthLeft from "../../components/AuthLeft";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Check, Phone } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -26,6 +26,7 @@ export default function Register() {
 
   const [username, setUsername] = useState("");
   const [email, setEmail]       = useState("");
+  const [phone, setPhone]       = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm]   = useState("");
   const [showPw, setShowPw]     = useState(false);
@@ -45,6 +46,9 @@ export default function Register() {
     if (!email.trim()) e.email = "L'email est requis.";
     else if (!/\S+@\S+\.\S+/.test(email)) e.email = "Email invalide.";
 
+    const normalizedPhone = phone.replace(/\s+/g, "");
+    if (normalizedPhone.length < 8) e.phone = "Numéro de téléphone invalide.";
+
     if (!password) e.password = "Le mot de passe est requis.";
     else if (password.length < 8) e.password = "Min. 8 caractères.";
 
@@ -55,16 +59,20 @@ export default function Register() {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    setTimeout(() => {
-      register(username.trim(), email);
+    try {
+      await register(username.trim(), email.trim(), phone.replace(/\s+/g, ""), password);
       navigate("/", { replace: true });
-    }, 1300);
+    } catch (requestError) {
+      setErrors((current) => ({ ...current, form: requestError.message || "Inscription impossible." }));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -122,6 +130,17 @@ export default function Register() {
               placeholder="ton@email.com"
               autoComplete="email"
               error={errors.email}
+            />
+
+            <AuthField
+              icon={Phone}
+              type="tel"
+              label="Téléphone Mobile Money"
+              value={phone}
+              onChange={(v) => { setPhone(v); setErrors(o => ({ ...o, phone: "", form: "" })); }}
+              placeholder="6XXXXXXXX"
+              autoComplete="tel"
+              error={errors.phone}
             />
 
             {/* Password */}
@@ -237,6 +256,7 @@ export default function Register() {
               {errors.terms && <FieldError msg={errors.terms} />}
             </div>
 
+            {errors.form && <FieldError msg={errors.form} />}
             <button
               type="submit"
               disabled={loading}

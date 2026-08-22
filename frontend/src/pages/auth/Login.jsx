@@ -21,22 +21,25 @@ export default function Login() {
   const [error, setError]         = useState("");
 
   const validate = () => {
-    if (!email.trim()) return "L'adresse email est requise.";
-    if (!/\S+@\S+\.\S+/.test(email)) return "Adresse email invalide.";
+    if (email.trim().length < 3) return "Email, téléphone ou pseudo requis.";
     if (!password) return "Le mot de passe est requis.";
     return "";
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const err = validate();
     if (err) { setError(err); return; }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      login(email, null);
+    try {
+      await login(email.trim(), password);
       navigate(from, { replace: true });
-    }, 1000);
+    } catch (requestError) {
+      setError(requestError.message || "Connexion impossible.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -76,12 +79,12 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <AuthInput
               icon={Mail}
-              type="email"
-              label="Adresse email"
+              type="text"
+              label="Email, téléphone ou pseudo"
               value={email}
               onChange={(v) => { setEmail(v); setError(""); }}
-              placeholder="ton@email.com"
-              autoComplete="email"
+              placeholder="paul_test ou 6XXXXXXXX"
+              autoComplete="username"
               hasError={!!(error && !email)}
             />
 
