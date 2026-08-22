@@ -1,0 +1,491 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════════
+   POLICE — Figtree variable, auto-hébergée. Une seule famille (§5).
+   ══════════════════════════════════════════════════════════════════ */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TOKENS — DESIGN.md v2 (19/08) : charcoal chaud + or + émeraude,
+   remplace l'encre/vermillon de la v1. Voir DESIGN.md pour le pourquoi.
+   ══════════════════════════════════════════════════════════════════ */
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  /* Encre — charbon CHAUD (jamais bleuté), même logique de séparation
+     par luminosité que la v1, juste une teinte marron/brun au lieu de
+     bleu-nuit (§3 DESIGN.md, et l'indigo qu'on a banni partout). */
+  --color-ink: #17100a;
+  --color-ink-2: #1e1610;
+  --color-ink-3: #241a12;
+  --color-ink-4: #382b1e;
+
+  /* Os — crème chaud, jamais blanc froid */
+  --color-bone: #f2ecdf;
+  --color-bone-2: #d8ccb8;
+  --color-bone-3: #b8a78c;
+  --color-bone-4: #8c7c68;
+
+  /* Accent primaire — or (§2). Remplace le vermillon v1. */
+  --color-flare: #f2a93b;
+  --color-flare-hot: #f6c066;
+  --color-flare-deep: #c9852f;
+
+  /* Juste = émeraude qui s'allume. Faux = rouge chaud dédié (§4). */
+  --color-live: #3ddc97;
+  --color-danger: #e2725b;
+
+  /* Exception cadrée §2/§6 — pastilles d'icône de la grille Catégories
+     UNIQUEMENT, jamais sur un bouton ou un statut. */
+  --color-terracotta: #e2725b;
+  --color-teal: #4fb8a6;
+  --color-rose: #d97a9c;
+
+  /* Rayon en trois tailles nommées, jamais une 4e improvisée (§1). */
+  --radius-tag: 8px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+
+  --text-label: 0.6875rem;
+
+  --ease-out-hard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════════ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    background: var(--color-ink);
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-ink);
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    font-weight: 400;
+    /* §5 — chiffres tabulaires partout, argent comme chrono */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input {
+    font: inherit;
+    color: inherit;
+  }
+
+  ::selection {
+    background: var(--color-flare);
+    color: var(--color-ink);
+  }
+
+  /* §7 — reduced-motion coupe tout sauf les changements d'état */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   REGISTRES TYPOGRAPHIQUES (§5)
+   ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* Display — le cri. Titres d'écran, scores, montants clés.
+     Poids 900 (max Figtree) + tracking légèrement positif pour
+     un rendu plus « titre de jeu » que texte éditorial. */
+  .t-display {
+    font-weight: 900;
+    line-height: 0.93;
+    letter-spacing: 0.01em;
+  }
+
+  /* Titre — sous-titres de section, noms de joueurs. */
+  .t-title {
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.005em;
+  }
+
+  /* Étiquette — la petite capitale espacée du tableau de score. */
+  .t-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: var(--text-label);
+    letter-spacing: 0.09em;
+    line-height: 1;
+  }
+
+  /* Courant. */
+  .t-body {
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     GRAIN (§6 v1, conservé) — feTurbulence en data-URI. Aucun réseau.
+     ──────────────────────────────────────────────────────────────── */
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     FILETS (§3) — pleins et assumés.
+     ──────────────────────────────────────────────────────────────── */
+  .rule {
+    border-top: 2px solid var(--color-ink-4);
+  }
+  .rule-flare {
+    border-top: 2px solid var(--color-flare);
+  }
+  .rule-bone {
+    border-top: 2px solid var(--color-ink-4);
+  }
+
+  /* ────────────────────────────────────────────────────────────────
+     MOUVEMENT (§7) — en CSS, pas en JS.
+     ──────────────────────────────────────────────────────────────── */
+  .anim-rise {
+    animation: rise 0.34s var(--ease-out-hard) both;
+  }
+  .anim-rise-2 {
+    animation: rise 0.34s var(--ease-out-hard) 0.12s both;
+  }
+  .anim-rise-3 {
+    animation: rise 0.34s var(--ease-out-hard) 0.24s both;
+  }
+  .anim-pop {
+    animation: pop 0.42s var(--ease-out-hard) both;
+  }
+  .anim-slam {
+    animation: slam 0.36s var(--ease-out-hard) both;
+  }
+  .anim-shake {
+    animation: shake 0.36s var(--ease-out-hard) both;
+  }
+  .anim-correct {
+    animation: pop 0.42s var(--ease-out-hard) both;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pop {
+    0% {
+      transform: scale(1.38);
+    }
+    60% {
+      transform: scale(0.96);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes slam {
+    0% {
+      opacity: 0;
+      transform: scale(1.5);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(2px); }
+  }
+
+  .anim-pulse {
+    animation: pulse 1s ease-in-out infinite both;
+  }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Chargement "épées" — remplace les 3 points par défaut sur les
+   * écrans qui le demandent (§ui/index.jsx SwordsLoader, demande
+   * directe de Paul le 19/08 : une animation à chaque transition de
+   * page). Deux lames qui s'entrechoquent en rythme, jamais de coupure
+   * nette — même philosophie que le reste des .anim-* du fichier. */
+  .anim-sword-a {
+    animation: sword-a 1.1s var(--ease-out-hard) infinite;
+    transform-origin: 50% 83%; /* pivot au niveau du pommeau, en % pour rester correct à n'importe quelle taille affichée */
+  }
+  .anim-sword-b {
+    animation: sword-b 1.1s var(--ease-out-hard) infinite;
+    transform-origin: 50% 83%;
+  }
+  @keyframes sword-a {
+    0%, 100% { transform: rotate(-32deg); }
+    50% { transform: rotate(-14deg) scale(1.06); }
+  }
+  @keyframes sword-b {
+    0%, 100% { transform: rotate(32deg); }
+    50% { transform: rotate(14deg) scale(1.06); }
+  }
+
+  /* ── Choc d'épées (clic "créer un duel") ─────────────────────────────
+     Overlay sombre + deux lames qui convergent du coin bas-gauche et
+     bas-droit, choc au centre avec flash doré, puis fondu rapide.
+     Durée totale : 560 ms (navigation déclenchée à la fin). */
+
+  @keyframes clash-overlay {
+    0%   { opacity: 0; }
+    18%  { opacity: 0.9; }
+    65%  { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+
+  /* Lame gauche : arrive du bas-gauche, inclinée -45°, fonce vers le
+     centre, micro-recul ("impact") puis disparaît vers la gauche. */
+  @keyframes clash-sword-l {
+    0%   { transform: translate(-130px, 90px) rotate(-50deg) scale(0.8); opacity: 0.85; }
+    40%  { transform: translate(-8px, 0px) rotate(-30deg) scale(1);     opacity: 1; }
+    50%  { transform: translate(-4px, -6px) rotate(-28deg) scale(1.1);  opacity: 1; }
+    58%  { transform: translate(-10px, 2px) rotate(-32deg) scale(0.97); opacity: 1; }
+    85%  { transform: translate(-10px, 2px) rotate(-32deg);             opacity: 1; }
+    100% { transform: translate(-80px, 20px) rotate(-50deg);            opacity: 0; }
+  }
+
+  /* Lame droite : miroir horizontal de la gauche. */
+  @keyframes clash-sword-r {
+    0%   { transform: translate(130px, 90px) rotate(50deg) scale(0.8); opacity: 0.85; }
+    40%  { transform: translate(8px, 0px) rotate(30deg) scale(1);      opacity: 1; }
+    50%  { transform: translate(4px, -6px) rotate(28deg) scale(1.1);   opacity: 1; }
+    58%  { transform: translate(10px, 2px) rotate(32deg) scale(0.97);  opacity: 1; }
+    85%  { transform: translate(10px, 2px) rotate(32deg);              opacity: 1; }
+    100% { transform: translate(80px, 20px) rotate(50deg);             opacity: 0; }
+  }
+
+  /* Flash doré qui éclate au moment du choc (45 % de la timeline). */
+  @keyframes clash-spark {
+    0%   { transform: scale(0.1); opacity: 0; }
+    42%  { transform: scale(0.1); opacity: 0; }
+    50%  { transform: scale(1.1); opacity: 1; }
+    62%  { transform: scale(1.9); opacity: 0.6; }
+    78%  { transform: scale(2.8); opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  /* Petites étoiles/rayons qui partent du centre au choc. */
+  @keyframes clash-ray {
+    0%, 42%  { opacity: 0; transform: scale(0) rotate(0deg); }
+    50%  { opacity: 1; transform: scale(0.8) rotate(0deg); }
+    75%  { opacity: 0; transform: scale(2.4) rotate(15deg); }
+    100% { opacity: 0; }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GACHA / RPG — cartes et boutons style Genshin Impact / FGO.
+   Appliqué sur AnimeModeCard, AnimeCard, CategoryCard et Block flare.
+   ══════════════════════════════════════════════════════════════════ */
+@layer components {
+
+  /* Fond de carte sombre dégradé — base commune */
+  .gacha-card {
+    background: linear-gradient(
+      165deg,
+      var(--color-ink-3) 0%,
+      var(--color-ink-2) 65%,
+      color-mix(in srgb, var(--color-ink-2) 91%, #7c5c30 9%) 100%
+    );
+  }
+
+  /* Balayage lumineux diagonal au hover — ligne de lumière or qui
+     traverse la carte de gauche à droite en 1,5 s. */
+  .gacha-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -80%;
+    width: 50%;
+    background: linear-gradient(
+      105deg,
+      transparent 25%,
+      rgba(255, 220, 110, 0.09) 50%,
+      transparent 75%
+    );
+    transform: skewX(-12deg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    z-index: 30;
+  }
+  .gacha-card:hover::before {
+    opacity: 1;
+    animation: gacha-shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes gacha-shimmer {
+    0%   { left: -80%; }
+    100% { left: 160%; }
+  }
+
+  /* Bouton d'action primaire style RPG : dégradé or, relief haut/bas.
+     Remplace bg-flare dans Block tone="flare". Pas de bg-* Tailwind
+     concurrent — ce composant gère entièrement son fond. */
+  .gacha-btn {
+    background: linear-gradient(
+      180deg,
+      var(--color-flare-hot) 0%,
+      var(--color-flare) 55%,
+      var(--color-flare-deep) 100%
+    );
+    border-top: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.28) !important;
+    box-shadow:
+      0 2px 16px rgba(242, 169, 59, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    letter-spacing: 0.07em;
+  }
+  .gacha-btn:hover:not(:disabled) {
+    background: linear-gradient(
+      180deg,
+      #f8db82 0%,
+      var(--color-flare-hot) 55%,
+      var(--color-flare) 100%
+    );
+    box-shadow:
+      0 3px 24px rgba(242, 169, 59, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  }
+  .gacha-btn:active:not(:disabled) {
+    box-shadow: 0 1px 6px rgba(242, 169, 59, 0.14);
+  }
+}
+
+@layer utilities {
+  /* Le bouton s'enfonce : le tap est enregistré (§7). */
+  .press {
+    transition: transform 0.06s linear, background-color 0.12s linear;
+  }
+  .press:active {
+    transform: translateY(2px);
+  }
+
+  /* Fondu de lisibilité en bas d'une photo de catégorie (§6) — le
+     SEUL dégradé toléré, jamais un dégradé décoratif ailleurs. */
+  .fade-to-panel {
+    background-image: linear-gradient(to bottom, transparent 55%, var(--color-ink-2) 100%);
+  }
+}
+/* Clan war matchmaking */
+.war-matchmaker { position: relative; overflow: hidden; border: 1px solid rgba(245,158,11,.14); border-radius: 24px; padding: 28px; background: radial-gradient(circle at 85% 45%,rgba(245,158,11,.11),transparent 32%),linear-gradient(135deg,#1d140e,#17110d 65%,#21170e); box-shadow: 0 22px 70px rgba(0,0,0,.24); }
+.war-grid-glow { position:absolute; inset:0; opacity:.22; background-image:linear-gradient(rgba(245,158,11,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.08) 1px,transparent 1px); background-size:30px 30px; mask-image:linear-gradient(90deg,transparent,#000); }
+.war-live-dot { width:8px; height:8px; border-radius:999px; background:#f59e0b; box-shadow:0 0 0 0 rgba(245,158,11,.5); animation:warPulse 2s infinite; }
+.war-size-picker { display:flex; padding:4px; border-radius:12px; background:rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.06); }
+.war-size-picker button { padding:9px 13px; border-radius:8px; color:#9f9489; font-size:13px; font-weight:700; transition:.2s ease; }
+.war-size-picker button:disabled { opacity:.3; cursor:not-allowed; }
+.war-size-picker > div { min-width:108px; display:flex; align-items:center; justify-content:center; gap:7px; color:#fff5e9; background:rgba(245,158,11,.13); border-radius:8px; }
+.war-size-picker > div strong { font-size:16px; }.war-size-picker > div span { font-size:8px; color:#b7aa9d; text-transform:uppercase; letter-spacing:.08em; }
+.war-radar { position:relative; width:240px; aspect-ratio:1; margin:auto; display:grid; place-items:center; border-radius:50%; overflow:hidden; border:1px solid rgba(245,158,11,.24); background:radial-gradient(circle,rgba(245,158,11,.14),rgba(16,11,8,.76) 64%); box-shadow:inset 0 0 45px rgba(245,158,11,.08),0 0 45px rgba(245,158,11,.08); }
+.war-radar::before,.war-radar::after { content:""; position:absolute; background:rgba(245,158,11,.13); }
+.war-radar::before { width:1px; height:100%; }.war-radar::after { width:100%; height:1px; }
+.war-radar-ring { position:absolute; border:1px solid rgba(245,158,11,.18); border-radius:50%; }.war-radar-ring.ring-one { inset:24%; }.war-radar-ring.ring-two { inset:9%; }
+.war-radar-sweep { position:absolute; inset:0; border-radius:50%; opacity:0; background:conic-gradient(from 0deg,transparent 0 76%,rgba(245,158,11,.3) 94%,transparent); }
+.is-searching .war-radar-sweep { opacity:1; animation:warScan 2.1s linear infinite; }
+.war-versus { position:relative; z-index:2; display:flex; align-items:center; gap:12px; }
+.war-versus span { display:grid; place-items:center; width:58px; height:58px; border-radius:16px; border:1px solid rgba(245,158,11,.28); background:#21160f; color:#ffc768; font-family:var(--font-display); font-weight:800; letter-spacing:.05em; box-shadow:0 9px 25px rgba(0,0,0,.28); }
+.war-versus b { color:#776b60; font-size:11px; letter-spacing:.12em; }
+.war-versus .mystery { color:#8e8277; animation:warMystery 1.1s ease-in-out infinite alternate; }
+.war-versus .found { color:#fff0d3; animation:warFound .55s cubic-bezier(.2,.9,.3,1.4); }
+@keyframes warScan { to { transform:rotate(360deg); } }
+@keyframes warPulse { 70% { box-shadow:0 0 0 8px rgba(245,158,11,0); } 100% { box-shadow:0 0 0 0 rgba(245,158,11,0); } }
+@keyframes warMystery { to { transform:scale(1.06); border-color:rgba(245,158,11,.5); } }
+@keyframes warFound { from { transform:scale(.3) rotate(-12deg); opacity:0; } }
+@media (max-width:767px) { .war-matchmaker { padding:22px; }.war-radar { width:205px; } }
+
+/* Premium duel arena */
+.arena-shell { position:relative; width:100%; max-width:1180px; height:100dvh; margin:auto; padding:14px 24px 18px; display:flex; flex-direction:column; overflow:hidden; }
+.arena-shell::before { content:""; position:fixed; inset:0; z-index:-1; background:radial-gradient(circle at 50% 18%,rgba(245,158,11,.09),transparent 38%),linear-gradient(180deg,rgba(11,8,6,.22),#0d0907 92%); }
+.arena-topbar { min-height:42px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,.06); }
+.arena-stake { padding:5px 9px; border:1px solid rgba(245,158,11,.22); border-radius:8px; color:#ffc667; background:rgba(245,158,11,.08); font-size:11px; font-weight:800; }
+.arena-hud { display:grid; grid-template-columns:1fr 106px 1fr; align-items:center; gap:18px; padding:13px 0 7px; }
+.arena-player { min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:11px; }
+.arena-player.opponent { direction:rtl; }.arena-player.opponent .arena-player-copy { direction:ltr; text-align:right; }.arena-player.opponent .arena-player-copy>div { justify-content:flex-end; }
+.arena-avatar-wrap { position:relative; }.arena-avatar { width:48px; height:48px; border-radius:15px; object-fit:cover; border:1px solid rgba(255,255,255,.12); box-shadow:0 8px 22px rgba(0,0,0,.35); }
+.arena-online { position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%; border:2px solid #110c09; }.arena-online.connected { background:#34d399; }.arena-online.disconnected { background:#ef4444; animation:warPulse 1.2s infinite; }
+.arena-player-copy { min-width:0; }.arena-player-copy strong { max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }.arena-player-copy span { padding:2px 5px; border-radius:5px; font-size:9px; font-weight:900; }.arena-player-copy small { display:block; margin-top:3px; color:#8d8278; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+.arena-score { font-family:var(--font-display); font-size:clamp(2rem,5vw,3.6rem); line-height:1; color:#f8ecdf; text-shadow:0 7px 24px rgba(0,0,0,.45); }
+.arena-timer { width:84px; aspect-ratio:1; margin:auto; padding:5px; border-radius:50%; background:conic-gradient(#f59e0b var(--timer-progress),rgba(255,255,255,.08) 0); box-shadow:0 0 30px rgba(245,158,11,.1); transition:background .1s linear; }
+.arena-timer.urgent { animation:arenaUrgent .62s ease-in-out infinite alternate; }.arena-timer>div { width:100%; height:100%; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#17100c; border:1px solid rgba(255,255,255,.06); }.arena-timer strong { font-family:var(--font-display); font-size:22px; }.arena-timer span { color:#8f8277; font-size:8px; font-weight:800; letter-spacing:.08em; }
+.arena-rounds { height:12px; display:flex; align-items:center; justify-content:center; gap:6px; }.arena-rounds span { width:18px; height:4px; border-radius:9px; background:#30261f; transition:.28s ease; }.arena-rounds span.current { box-shadow:0 0 0 1px rgba(245,158,11,.45); }.arena-rounds span.win { background:#34d399; box-shadow:0 0 10px rgba(52,211,153,.4); }.arena-rounds span.loss { background:#d25945; }
+.arena-connection-alert { align-self:center; margin-top:5px; padding:6px 12px; border:1px solid rgba(239,68,68,.22); border-radius:8px; background:rgba(239,68,68,.08); color:#e9b1a8; font-size:10px; }.arena-connection-alert span { display:inline-block; width:6px; height:6px; margin-right:7px; border-radius:50%; background:#ef4444; animation:warPulse 1.2s infinite; }
+.arena-stage { min-height:0; flex:1; display:grid; place-items:center; padding-top:8px; }
+.arena-question-card { position:relative; width:100%; max-width:980px; max-height:calc(100dvh - 190px); overflow:hidden; padding:clamp(18px,3vh,30px); border:1px solid rgba(245,158,11,.16); border-radius:24px; background:linear-gradient(145deg,rgba(34,24,17,.97),rgba(20,14,11,.98)); box-shadow:0 28px 80px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.035); transition:border-color .25s,box-shadow .25s; }
+.arena-question-card::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.18; background-image:linear-gradient(rgba(245,158,11,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.055) 1px,transparent 1px); background-size:34px 34px; mask-image:linear-gradient(#000,transparent 80%); }
+.arena-question-card.round-won { border-color:rgba(52,211,153,.42); box-shadow:0 20px 70px rgba(16,185,129,.12); }.arena-question-card.round-lost { border-color:rgba(239,68,68,.3); box-shadow:0 20px 70px rgba(239,68,68,.08); }
+.arena-card-kicker { position:relative; z-index:1; display:flex; justify-content:space-between; color:#a99b8e; font-size:9px; font-weight:900; letter-spacing:.14em; }
+.arena-question-text { position:relative; z-index:1; max-width:25ch; margin:clamp(12px,2vh,22px) auto clamp(15px,2.5vh,26px); text-align:center; font-family:var(--font-display); font-size:clamp(1.35rem,3.4vw,2.65rem); line-height:1.12; text-wrap:balance; }
+.arena-answers { position:relative; z-index:1; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.arena-answer { min-height:64px; display:flex; align-items:center; gap:13px; padding:11px 14px; border:1px solid rgba(255,255,255,.07); border-bottom-color:rgba(0,0,0,.5); border-radius:14px; background:linear-gradient(180deg,#2a201a,#211813); box-shadow:0 7px 0 #120d0a,0 12px 24px rgba(0,0,0,.18); text-align:left; transition:transform .16s,border-color .16s,background .16s,opacity .16s; }
+.arena-answer:hover:not(:disabled) { transform:translateY(-2px); border-color:rgba(245,158,11,.34); background:linear-gradient(180deg,#34271e,#281d17); }.arena-answer:active:not(:disabled) { transform:translateY(4px); box-shadow:0 3px 0 #120d0a; }
+.arena-answer-letter { width:35px; height:35px; flex:none; display:grid; place-items:center; border-radius:10px; background:rgba(0,0,0,.25); color:#e9aa48; font-family:var(--font-display); font-weight:900; border:1px solid rgba(245,158,11,.16); }.arena-answer-text { font-size:14px; font-weight:700; line-height:1.25; }
+.arena-answer.is-locked { border-color:rgba(245,158,11,.6); background:linear-gradient(180deg,#4a331d,#322113); transform:translateY(3px); box-shadow:0 3px 0 #120d0a,0 0 24px rgba(245,158,11,.12); }.arena-answer.is-correct { opacity:1; color:#07150f; border-color:#53e2ad; background:linear-gradient(180deg,#58dda9,#2ebf88); box-shadow:0 7px 0 #126846,0 0 30px rgba(52,211,153,.25); }.arena-answer.is-wrong { opacity:1!important; color:#f7ded9; border-color:#c94d3c; background:linear-gradient(180deg,#6b2c24,#462019); }.arena-answer.is-dimmed { opacity:.32; }
+.arena-round-feedback { position:absolute; z-index:5; left:50%; top:50%; transform:translate(-50%,-50%); min-width:220px; padding:13px 18px; display:flex; flex-direction:column; align-items:center; border-radius:14px; backdrop-filter:blur(12px); animation:arenaFeedback .35s cubic-bezier(.2,.9,.25,1.2); box-shadow:0 18px 48px rgba(0,0,0,.45); }.arena-round-feedback.success { background:rgba(9,55,39,.94); border:1px solid rgba(52,211,153,.45); color:#74efbd; }.arena-round-feedback.failure { background:rgba(68,25,20,.94); border:1px solid rgba(239,68,68,.4); color:#f2a99e; }.arena-round-feedback strong { font-family:var(--font-display); font-size:17px; }.arena-round-feedback span { margin-top:3px; color:#c4b8ad; font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+.arena-result { position:relative; isolation:isolate; min-height:100dvh; overflow:hidden; padding:38px 24px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }.arena-result-glow { position:absolute; inset:0; z-index:-1; background:radial-gradient(circle at 50% 35%,rgba(52,211,153,.13),transparent 36%); }.arena-result.defeat .arena-result-glow { background:radial-gradient(circle at 50% 35%,rgba(239,68,68,.1),transparent 36%); }.arena-result h1 { margin-top:12px; font-family:var(--font-display); font-size:clamp(3.4rem,12vw,8rem); line-height:.9; color:#f1e6d9; letter-spacing:-.05em; }.arena-result.victory h1 { color:#56dda9; text-shadow:0 0 55px rgba(52,211,153,.2); }
+.arena-result-versus { width:min(700px,100%); margin-top:34px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:20px; }.arena-result-versus>div { display:flex; flex-direction:column; align-items:center; gap:8px; min-width:0; }.arena-result-versus img { width:66px; height:66px; border-radius:20px; object-fit:cover; border:1px solid rgba(255,255,255,.12); }.arena-result-versus span { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; font-weight:800; }.arena-result-versus>strong { font-family:var(--font-display); font-size:clamp(2.7rem,8vw,5.5rem); }.arena-result-versus i { margin:0 12px; color:#806f60; font-style:normal; }
+.arena-result-reward { margin-top:25px; padding:11px 24px; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:rgba(255,255,255,.035); }.arena-result-reward span { display:block; color:#897c70; font-size:8px; font-weight:900; letter-spacing:.14em; }.arena-result-reward strong { display:block; margin-top:4px; font-size:23px; }.arena-result-actions { width:min(520px,100%); margin-top:28px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }.arena-result-actions>button:last-child { grid-column:1/-1; padding:8px; color:#8d8176; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+.direct-challenge-card { animation:directChallengeIn .48s cubic-bezier(.18,.9,.25,1.15),directChallengeGlow 1.8s ease-in-out infinite alternate; }.direct-challenge-home { transform-origin:top right; }
+@keyframes arenaUrgent { to { transform:scale(1.055); box-shadow:0 0 35px rgba(239,68,68,.28); } } @keyframes arenaFeedback { from { opacity:0; transform:translate(-50%,-40%) scale(.8); } } @keyframes directChallengeIn { from { opacity:0; transform:translateX(45px) scale(.95); } } @keyframes directChallengeGlow { to { box-shadow:0 16px 55px rgba(245,158,11,.22); } }
+@media (max-width:640px) { .arena-shell { padding:7px 10px 9px; }.arena-topbar { min-height:36px; }.arena-hud { grid-template-columns:1fr 68px 1fr; gap:5px; padding:7px 0 4px; }.arena-avatar { width:34px; height:34px; border-radius:10px; }.arena-player { gap:5px; }.arena-player-copy strong { max-width:70px; font-size:10px; }.arena-player-copy span { display:none; }.arena-player-copy small { font-size:7px; }.arena-score { font-size:1.75rem; }.arena-timer { width:58px; padding:3px; }.arena-timer strong { font-size:16px; }.arena-timer span { font-size:6px; }.arena-rounds { gap:3px; }.arena-rounds span { width:10px; height:3px; }.arena-stage { padding-top:4px; }.arena-question-card { max-height:calc(100dvh - 132px); padding:12px 10px; border-radius:16px; overflow:hidden; }.arena-question-text { margin:8px auto 10px; font-size:clamp(1.08rem,5.3vw,1.55rem); line-height:1.1; }.arena-answers { grid-template-columns:1fr; gap:6px; }.arena-answer { min-height:47px; padding:7px 10px; border-radius:10px; box-shadow:0 4px 0 #120d0a; }.arena-answer-letter { width:29px; height:29px; border-radius:8px; }.arena-answer-text { font-size:12px; }.arena-card-kicker { font-size:7px; }.arena-round-feedback { top:42%; }.arena-result { padding:24px 16px; }.arena-result-versus { gap:8px; }.arena-result-versus img { width:52px; height:52px; border-radius:15px; }.arena-result-versus i { margin:0 5px; }.arena-result-actions { grid-template-columns:1fr; }.arena-result-actions>button:last-child { grid-column:auto; } }
