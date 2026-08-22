@@ -58,14 +58,6 @@ const BANNERS = [
   },
 ];
 
-/** Numéro de semaine ISO réel — plus de "SEM. 32" codé en dur. */
-function isoWeek(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-}
-
 /**
  * Le lobby est une UNE de journal sportif, pas un dashboard.
  * Une seule action dominante, le reste est un tableau de scores.
@@ -187,50 +179,66 @@ export default function Lobby() {
         onCancel={() => setPendingJoin(null)}
       />
       {/* ── Bandeau mobile uniquement : la barre desktop vit dans Shell. ── */}
-      <header className="flex items-end justify-between gap-4 pt-6 pb-5 sm:hidden">
-        <div className="flex items-baseline gap-3">
-          <span className="t-display text-xl text-flare">QUIZARENA</span>
-          <Label>SEM. {isoWeek()}</Label>
-        </div>
-        <div className="text-right">
-          <Label className="mb-1">solde</Label>
-          <Money value={balanceCoins} size="sm" />
-        </div>
+      <header className="flex items-center justify-between gap-4 pt-5 pb-4 sm:hidden">
+        <span className="t-display text-lg tracking-tight text-flare">QUIZARENA</span>
+        <button
+          type="button"
+          onClick={() => nav("/wallet")}
+          className="press flex items-center gap-2 rounded-full border border-flare/20 bg-flare/8 px-3 py-2"
+          aria-label="Ouvrir le portefeuille"
+        >
+          <span className="t-label text-[9px] text-bone-4">SOLDE</span>
+          <Money value={balanceCoins} size="sm" tone="flare" />
+        </button>
       </header>
 
       <div className="rule-flare sm:mt-9" />
 
       {/* ── L'action dominante. Le plus gros élément est la chose
              la plus importante — le test n°4 de DESIGN.md. ── */}
-      <section className="grid gap-8 pt-10 pb-14 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
+      <section className="grid gap-8 pt-6 pb-9 sm:pt-10 sm:pb-14 lg:grid-cols-[1.35fr_1fr] lg:gap-16">
         <div>
-          <h1 className="t-display text-[clamp(2rem,7vw,3.5rem)]">
+          <p className="t-label mb-2 text-[9px] text-bone-4 sm:hidden">PARTIE CLASSIQUE</p>
+          <h1 className="t-display text-[2rem] leading-none sm:text-[clamp(2rem,7vw,3.5rem)] sm:leading-[1.05]">
             Duel <span className="text-flare">rapide</span>
           </h1>
 
-          <div className="mt-4 flex items-center gap-5">
+          <div className="mt-4 hidden items-center gap-5 sm:flex">
             <Stat label="format" value="10 manches" size="sm" />
             <Stat label="parties jouées" value={stats?.totalGames ?? 0} size="sm" />
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="t-label mt-4 flex items-center gap-2 text-[10px] text-bone-3 sm:hidden">
+            <span>10 QUESTIONS</span>
+            <span className="h-1 w-1 rounded-full bg-flare" />
+            <span>8 S</span>
+            <span className="h-1 w-1 rounded-full bg-flare" />
+            <span>MISE AU CHOIX</span>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2 sm:mt-5">
             <Block
               size="md"
               icon={<NavIcon type="swords" className="h-4 w-4" />}
               onClick={goToDuel}
+              className="w-full justify-center sm:w-auto"
             >
               Lancer un duel
             </Block>
           </div>
 
-          <p className="t-body mt-5 max-w-md text-sm text-bone-3">
+          <p className="t-body mt-5 hidden max-w-md text-sm text-bone-3 sm:block">
             Dix questions, huit secondes chacune. Le plus de bonnes réponses
             gagne. Vainqueur emporte la mise.
+          </p>
+
+          <p className="t-body mt-3 text-center text-[11px] text-bone-4 sm:hidden">
+            Le meilleur score remporte la mise.
           </p>
         </div>
 
         {/* ── Colonne de droite : chiffres bruts, aucun encadré. ── */}
-        <aside className="flex flex-col gap-5">
+        <aside className="hidden flex-col gap-5 sm:flex">
           <div>
             <Label className="mb-2">votre solde</Label>
             <Money value={balanceCoins} size="lg" tone="flare" />
@@ -241,14 +249,14 @@ export default function Lobby() {
         </aside>
       </section>
 
-      <div className="grid gap-6 pb-12 lg:grid-cols-2">
-      <section className="min-w-0 rounded-2xl border border-ink-5 bg-ink-2/45 p-5">
+      <div className="grid gap-4 pb-9 sm:gap-6 sm:pb-12 lg:grid-cols-2">
+      <section className="order-2 min-w-0 rounded-2xl border border-ink-5 bg-ink-2/45 p-4 sm:p-5 lg:order-1">
         <div className="flex items-baseline justify-between pb-4"><h2 className="t-display text-lg">Clans à découvrir</h2><button onClick={() => nav("/clans")} className="t-label text-flare">tous ›</button></div>
         {homeClans.length === 0 ? <p className="t-body text-sm text-bone-4">Aucun clan disponible.</p> : <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{homeClans.map((clan) => <button key={clan.id} onClick={() => nav(`/clans/${clan.id}`)} className="press min-w-[220px] rounded-(--radius-card) bg-ink-2 p-4 text-left hover:bg-ink-3"><div className="flex items-center gap-3"><ClanEmblem emblemKey={clan.emblemKey} tag={clan.tag} color={clan.bannerColor} size="sm" /><div className="min-w-0"><div className="t-title truncate text-sm">{clan.name}</div><div className="t-body mt-1 text-xs text-bone-4">{clan.memberCount} membre{clan.memberCount !== 1 ? "s" : ""} · {clan.joinPolicyLabel}</div></div></div></button>)}</div>}
       </section>
 
       {/* Profils réellement connectés au WebSocket — aucune présence fictive. */}
-      <section className="min-w-0 rounded-2xl border border-ink-5 bg-ink-2/45 p-5">
+      <section className="order-1 min-w-0 rounded-2xl border border-ink-5 bg-ink-2/45 p-4 sm:p-5 lg:order-2">
         <div className="flex items-baseline justify-between pb-4">
           <h2 className="t-display text-lg">Joueurs en ligne</h2>
           <Label tone="live">{onlinePlayers.length} connecté{onlinePlayers.length !== 1 ? "s" : ""}</Label>
@@ -279,7 +287,7 @@ export default function Lobby() {
       </section>
       </div>
 
-      <section className="pb-14">
+      <section className="pb-10 sm:pb-14">
         <div className="rule-bone flex items-baseline justify-between pt-5 pb-4"><h2 className="t-display text-lg">Matchs en direct</h2><Label tone="flare">live</Label></div>
         {liveDuels.length === 0 ? <p className="t-body text-sm text-bone-4">Aucun match en cours pour l’instant.</p> : <div className="relative z-20 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{liveDuels.map((match) => <Link key={match.id} to={`/duel/spectate/${match.id}`} aria-label={`Regarder ${match.players[0].username} contre ${match.players[1].username}`} className="press group relative z-20 min-w-[290px] cursor-pointer touch-manipulation rounded-(--radius-card) border border-danger/30 bg-ink-2 p-4 text-left hover:border-flare/60"><div className="flex items-center justify-between"><div className="t-label flex items-center gap-2 text-[10px] text-danger"><span className="h-2 w-2 animate-pulse rounded-full bg-danger" />EN DIRECT</div><span className="t-label text-[9px] text-bone-4">◉ {match.viewerCount ?? 0} spectateur{match.viewerCount !== 1 ? "s" : ""}</span></div><div className="mt-4 flex items-center justify-between gap-2 text-sm"><span className="max-w-24 truncate">{match.players[0].username}</span><strong className="t-display text-flare">{match.scoreA} – {match.scoreB}</strong><span className="max-w-24 truncate text-right">{match.players[1].username}</span></div><div className="mt-3 flex items-center justify-between"><span className="t-body text-xs text-bone-4">Mise {match.stakeCoins.toLocaleString("fr-FR")} F</span><span className="rounded-lg bg-flare/12 px-2 py-1 text-[9px] font-black uppercase tracking-wider text-flare">Regarder →</span></div></Link>)}</div>}
       </section>
