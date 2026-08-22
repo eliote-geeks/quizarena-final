@@ -1012,15 +1012,15 @@ async function music(){
   const r=await G('/api/admin/music');
   const tracks=r.tracks||[];
   const typeLabel={relaxing:'Ambiance',action:'Action'};
-  const rows=tracks.map(t=>`
+  const rows=tracks.map(t=>{const playable=t.url.startsWith('/')?`${location.protocol}//${location.hostname}:3011${t.url}`:t.url;return `
     <tr>
       <td><b style="font-size:13px">${esc(t.title)}</b></td>
       <td><span class="tag ${t.type==='action'?'to':'tb'}">${typeLabel[t.type]||t.type}</span></td>
       <td><button class="btn ${t.active!==false?'btn-green':'btn-ghost'} btn-xs" onclick="toggleMusicTrack('${t.id}',${t.active===false?'true':'false'})">${t.active!==false?'Active':'En pause'}</button></td>
-      <td><a href="${esc(t.url)}" target="_blank" style="color:var(--blue);font-size:12px;word-break:break-all">${esc(t.url)}</a></td>
+      <td><a href="${esc(playable)}" target="_blank" style="color:var(--blue);font-size:12px;word-break:break-all">${esc(t.url)}</a>${t.builtin?'<div style="font-size:9px;color:var(--gold);margin-top:3px">PISTE INTÉGRÉE</div>':''}</td>
       <td><span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmtD(t.createdAt)}</span></td>
-      <td><button class="btn btn-danger btn-xs" onclick="deleteMusicTrack('${t.id}','${esc(t.title).replace(/'/g,"\\'")}')">Supprimer</button></td>
-    </tr>`).join('');
+      <td><button class="btn btn-ghost btn-xs" onclick="previewMusicTrack('${esc(playable).replace(/'/g,"\\'")}',this)">Écouter</button> <button class="btn btn-danger btn-xs" onclick="deleteMusicTrack('${t.id}','${esc(t.title).replace(/'/g,"\\'")}')">Supprimer</button></td>
+    </tr>`}).join('');
   document.getElementById('content').innerHTML=`
     <h2>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -1073,6 +1073,14 @@ async function deleteMusicTrack(id,name){
 async function toggleMusicTrack(id,active){
   try{await PA(`/api/admin/music/${id}`,{active});muMsg=active?'Piste remise en diffusion.':'Piste mise en pause.';}catch(e){muMsg='Erreur : '+e.message;}
   music();
+}
+let musicPreview=null;
+function previewMusicTrack(url,button){
+  if(musicPreview){musicPreview.pause();musicPreview=null;document.querySelectorAll('[data-music-playing]').forEach(b=>{b.textContent='Écouter';delete b.dataset.musicPlaying;});}
+  if(button.dataset.musicPlaying)return;
+  musicPreview=new Audio(url);musicPreview.volume=.35;
+  musicPreview.play().then(()=>{button.textContent='Arrêter';button.dataset.musicPlaying='1';}).catch(()=>{muMsg='Lecture impossible depuis cette URL.';music();});
+  musicPreview.onended=()=>{button.textContent='Écouter';delete button.dataset.musicPlaying;musicPreview=null;};
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────

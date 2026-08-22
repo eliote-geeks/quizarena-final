@@ -11,12 +11,19 @@ function getSettings() {
 }
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
+const BUILTIN_MUSIC = [
+  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", active: true, builtin: true },
+  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", active: true, builtin: true },
+  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", active: true, builtin: true },
+  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", active: true, builtin: true },
+];
 function getMusicPublic() {
-  if (!existsSync(MUSIC_PATH)) return { tracks: [] };
+  if (!existsSync(MUSIC_PATH)) return { tracks: BUILTIN_MUSIC };
   try {
     const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
+    if (parsed.initialized !== true && !(parsed.tracks ?? []).length) return { tracks: BUILTIN_MUSIC };
     return { tracks: (parsed.tracks ?? []).filter((track: any) => track.active !== false) };
-  } catch { return { tracks: [] }; }
+  } catch { return { tracks: BUILTIN_MUSIC }; }
 }
 
 /** Chiffres publics pour la landing page (avant connexion) — plus jamais

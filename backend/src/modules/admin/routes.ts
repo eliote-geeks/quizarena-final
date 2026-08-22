@@ -7,16 +7,26 @@ import { dirname, join } from "path";
 import { randomUUID } from "crypto";
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
-type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; active: boolean; createdAt: string };
-function getMusic(): { tracks: MusicTrack[] } {
-  if (!existsSync(MUSIC_PATH)) return { tracks: [] };
+type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; active: boolean; createdAt: string; builtin?: boolean };
+type MusicConfig = { initialized: boolean; tracks: MusicTrack[] };
+const BUILTIN_MUSIC: MusicTrack[] = [
+  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+];
+function getMusic(): MusicConfig {
+  if (!existsSync(MUSIC_PATH)) return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) };
   try {
     const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
-    return { tracks: (parsed.tracks ?? []).map((track: MusicTrack) => ({ ...track, active: track.active !== false })) };
-  } catch { return { tracks: [] }; }
+    if (parsed.initialized !== true && !(parsed.tracks ?? []).length) {
+      return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) };
+    }
+    return { initialized: true, tracks: (parsed.tracks ?? []).map((track: MusicTrack) => ({ ...track, active: track.active !== false })) };
+  } catch { return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) }; }
 }
 function saveMusic(data: { tracks: MusicTrack[] }) {
-  writeFileSync(MUSIC_PATH, JSON.stringify(data, null, 2));
+  writeFileSync(MUSIC_PATH, JSON.stringify({ initialized: true, tracks: data.tracks }, null, 2));
 }
 
 function validPublicAudioUrl(value: string) {
@@ -795,7 +805,9 @@ Ne donne jamais la réponse dans le texte de la question.`;
 
   // ── Musiques ──────────────────────────────────────────────────────
   app.get("/api/admin/music", async (_req, reply) => {
-    return reply.send(getMusic());
+    const music = getMusic();
+    if (!music.initialized) saveMusic(music);
+    return reply.send({ tracks: music.tracks });
   });
 
   app.post("/api/admin/music", async (req, reply) => {

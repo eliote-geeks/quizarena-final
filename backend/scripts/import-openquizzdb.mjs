@@ -18,6 +18,7 @@
 import { PrismaClient } from "@prisma/client";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { legacyCategory } from "./openquizzdb-taxonomy.mjs";
 
 const LEGACY_DIR = process.argv[2];
 if (!LEGACY_DIR) {
@@ -235,7 +236,7 @@ async function main() {
   for (const file of files) {
     const id = Number(basename(file).match(/\d+/)?.[0]);
     const title = titleById.get(id) ?? "";
-    const catalogueCategory = categoryById.get(id) ?? "culture";
+    const catalogueCategory = legacyCategory(id, title);
     if (catalogueCategory === "__skip") continue;
     const mapped = inferCategory(title, catalogueCategory);
     const categoryId = categories.has(mapped) ? mapped : "culture";

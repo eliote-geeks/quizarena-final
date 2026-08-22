@@ -48,18 +48,23 @@ async function fetchCustomTracks() {
       if (type === "relaxing") _tracksCache.ambient.push(t.url); // ambient = relaxing
     }
   } catch {
-    _tracksCache = {}; // vide → fallback
+    _tracksCache = null; // erreur réseau → fallback local
   } finally {
     _tracksFetching = false;
   }
 }
 
+// Charge la configuration dès l'ouverture de l'application. Aucun fichier
+// audio n'est téléchargé ici : seule la petite liste JSON est récupérée.
+fetchCustomTracks();
+
 /** Retourne la liste de pistes pour un type donné :
  * si des pistes custom existent, les utilise ; sinon fallback statique. */
 function getTracks(kind) {
   const type = kind === "action" ? "action" : kind === "relaxing" ? "relaxing" : "ambient";
-  const custom = _tracksCache?.[type];
-  if (custom && custom.length > 0) return custom;
+  // Une réponse API réussie est autoritaire, y compris lorsqu'elle est vide :
+  // l'administration peut ainsi réellement couper toutes les pistes.
+  if (_tracksCache !== null) return _tracksCache[type] ?? [];
   return FALLBACK_TRACKS;
 }
 
@@ -96,10 +101,10 @@ export function setMuted(muted) {
 }
 
 /** Tirage sans répéter deux fois de suite le même titre. */
-function pickNextTrackIndex(excludeIndex) {
-  if (TRACKS.length <= 1) return 0;
-  let i = Math.floor(Math.random() * TRACKS.length);
-  while (i === excludeIndex) i = Math.floor(Math.random() * TRACKS.length);
+function pickNextTrackIndex(excludeIndex, length) {
+  if (length <= 1) return 0;
+  let i = Math.floor(Math.random() * length);
+  while (i === excludeIndex) i = Math.floor(Math.random() * length);
   return i;
 }
 
@@ -116,6 +121,7 @@ function startTrack(kind, index) {
   fetchCustomTracks();
 
   const tracks = getTracks(kind);
+  if (!tracks.length) return { kind, stop() {} };
   const audio = new Audio(tracks[index % tracks.length]);
   audio.preload = "auto";
   const node = c.createMediaElementSource(audio);
@@ -131,7 +137,11 @@ function startTrack(kind, index) {
     // Recalculer getTracks au moment de l'enchaînement — les custom
     // tracks auront peut-être chargé depuis que la piste a démarré.
     const nextTracks = getTracks(kind);
-    const nextIdx = pickNextTrackIndex(index % nextTracks.length);
+    if (!nextTracks.length) {
+      current = null;
+      return;
+    }
+    const nextIdx = pickNextTrackIndex(index % nextTracks.length, nextTracks.length);
     current = startTrack(kind, nextIdx);
   };
   audio.addEventListener("ended", onEnded);
@@ -222,7 +232,10 @@ export function playAmbient() {
 export function playAction() {
   if (current?.kind === "action") return;
   current?.stop(0.5);
-  current = startActionPulse();
+  const actionTracks = getTracks("action");
+  current = actionTracks.length
+    ? startTrack("action", Math.floor(Math.random() * actionTracks.length))
+    : startActionPulse();
 }
 
 /** Coupe toute musique (fin de duel, sortie de l'écran). */
