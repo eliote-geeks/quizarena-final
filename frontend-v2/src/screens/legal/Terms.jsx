@@ -79,11 +79,20 @@ export default function Terms() {
         {
           title: "7. Propriété intellectuelle",
           body: (
-            <p>
-              L'ensemble des contenus (questions, marque, interface) est la propriété
-              de QuizArena ou de ses partenaires et ne peut être reproduit sans
-              autorisation écrite.
-            </p>
+            <>
+              <p>
+                La marque, l'interface et les contenus originaux sont la propriété de
+                QuizArena ou de leurs titulaires respectifs.
+              </p>
+              <p>
+                Une partie de la banque de questions provient d'{" "}
+                <a href="https://www.openquizzdb.org" target="_blank" rel="noreferrer" className="text-flare hover:text-flare-hot">OpenQuizzDB</a>,
+                sous licence{" "}
+                <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noreferrer" className="text-flare hover:text-flare-hot">Creative Commons CC BY-SA 4.0</a>.
+                Ces questions ont été adaptées au format de jeu QuizArena, notamment
+                par classement thématique et mélange dynamique des propositions.
+              </p>
+            </>
           ),
         },
         {

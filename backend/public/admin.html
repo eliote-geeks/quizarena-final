@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>QuizArena — Backoffice</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2312121a'/%3E%3Cpath d='M36 5 13 35h17l-3 24 24-33H34z' fill='%23f2a93b'/%3E%3C/svg%3E"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -200,6 +201,19 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <div class="sb-item" data-tab="tournaments" onclick="nav('tournaments')">
         <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 0 0 5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 1 0 5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
         Tournois
+      </div>
+      <div class="sb-item" data-tab="duels" onclick="nav('duels')">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 17.5-8-8V4h5.5l8 8"/><path d="m3 21 6-6"/><path d="m14 4 6 6"/><path d="m17 3 4 4"/></svg>
+        Duels
+      </div>
+      <div class="sb-section">Clans</div>
+      <div class="sb-item" data-tab="clans" onclick="nav('clans')">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-7 7-7s7 3 7 7"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M18 15c2.5.8 4 3 4 6"/></svg>
+        Clans
+      </div>
+      <div class="sb-item" data-tab="clanwars" onclick="nav('clanwars')">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 17.5-12-12V2h3.5l12 12"/><path d="m9.5 17.5 12-12V2H18l-12 12"/><path d="M3 21l5-5"/><path d="m21 21-5-5"/></svg>
+        Guerres de clans
       </div>
       <div class="sb-section">Contenu</div>
       <div class="sb-item" data-tab="questions" onclick="nav('questions')">
@@ -427,7 +441,7 @@ async function checkAuth(){
 function nav(tab){
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));
   document.getElementById('content').innerHTML='<p style="color:var(--text3);padding:12px 0">Chargement…</p>';
-  ({overview,transactions,users,leaderboard,questions,categories,quarantine,flags,userreports,tournaments,maintenance,settings,music})[tab]?.();
+  ({overview,transactions,users,leaderboard,questions,categories,quarantine,flags,userreports,tournaments,duels,clans,clanwars,maintenance,settings,music})[tab]?.();
 }
 
 // ── Overview ───────────────────────────────────────────────────────────
@@ -438,12 +452,12 @@ async function overview(){
   document.getElementById('content').innerHTML=`
     <h2>${ic('zap')} Vue d'ensemble ${maintOn?'<span class="maint-badge maint-on">Maintenance active</span>':'<span class="maint-badge maint-off">Site en ligne</span>'}</h2>
     <div class="kpi-grid">
-      ${kpi('Utilisateurs',fmt(ov.totalUsers))}${kpi('Balance',fmtF(ov.balanceLiability),'dépôts − retraits')}
+      ${kpi('Utilisateurs',fmt(ov.users?.total??ov.totalUsers))}${kpi('Balance',fmtF(ov.balanceLiability),'dépôts − retraits')}
       ${kpi('Mises',fmtF(ov.byType?.STAKE),'','.tb')}${kpi('Gains distribués',fmtF(ov.byType?.PAYOUT),'','.tg')}
       ${kpi('Dépôts',fmtF(ov.byType?.DEPOSIT))}${kpi('Retraits',fmtF(ov.byType?.WITHDRAWAL))}
-      ${kpi('Quarantaine',fmt(ov.quarantine),'bloquées','.tr')}${kpi('Duels (24h)',fmt(ov.duelsToday))}
-      ${kpi('Tournois actifs',fmt(ov.activeTournaments))}${kpi('Questions en attente',fmt(ov.questionsPending),'non activées','.tr')}
-      ${kpi('Signalements',fmt(ov.flags),'non résolus','.tr')}
+      ${kpi('Quarantaine',fmt(ov.quarantine?.count??ov.quarantineCount),'bloquées','.tr')}${kpi('Duels (24h)',fmt(ov.duelsToday))}
+      ${kpi('Tournois actifs',fmt(ov.tournamentsActive??ov.activeTournaments))}${kpi('Questions en attente',fmt(ov.questionsPending),'non activées','.tr')}
+      ${kpi('Signalements',fmt(ov.flagsUnresolved??ov.flags),'non résolus','.tr')}
     </div>
     <div class="chart-grid">
       ${chartCard('Dépôts — 14 j',d.data,'deposits','var(--gold)')}
@@ -576,42 +590,55 @@ async function leaderboard(){
 }
 
 // ── Questions ──────────────────────────────────────────────────────────
-let qView='pending',qMsg='',_qCats=[];
+let qView='pending',qMsg='',_qCats=[],qCategory='',qSource='',qSearch='',qPage=1;
 async function questions(){
-  const [p,a,c]=await Promise.all([G('/api/admin/questions?active=false'),G('/api/admin/questions?active=true'),G('/api/admin/categories')]);
+  const params=new URLSearchParams({active:qView==='active'?'true':'false',page:String(qPage)});
+  if(qCategory)params.set('categoryId',qCategory);if(qSource)params.set('source',qSource);if(qSearch)params.set('q',qSearch);
+  const [r,c]=await Promise.all([G('/api/admin/questions?'+params),G('/api/admin/categories')]);
   _qCats=c.categories||[];
-  const list=qView==='pending'?(p.questions||[]):(a.questions||[]);
+  const list=r.questions||[];
   const cols=[
     {label:'Question',key:'textFr',render:r=>`<span style="max-width:340px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.textFr)}</span>`},
     {label:'Catégorie',key:'categoryId',render:r=>`<span class="tag tb">${esc(r.categoryId)}</span>`},
     {label:'Source',key:'source',render:r=>`<span class="tag tgr" style="font-size:10px">${esc(r.source||'—')}</span>`},
     {label:'Actions',key:'id',render:(r,cb)=>`<div class="row">
       ${qView==='pending'?`<button class="btn btn-green btn-xs" onclick='cb("activate","${r.id}")'>${ic('check')} Activer</button>`:''}
+      ${qView==='active'?`<button class="btn btn-ghost btn-xs" onclick='cb("deactivate","${r.id}")'>Mettre en attente</button>`:''}
       <button class="btn btn-danger btn-xs" onclick='cb("delete","${r.id}")'>${ic('trash')}</button>
     </div>`},
   ];
   const onAction=async(action,id)=>{
     if(action==='activate') await P(`/api/admin/questions/${id}/activate`);
+    else if(action==='deactivate') await P(`/api/admin/questions/${id}/deactivate`);
     else if(action==='delete'&&await adminConfirm('Supprimer cette question','Cette question sera définitivement supprimée.','Supprimer')) await D(`/api/admin/questions/${id}`);
     questions();
   };
   DT['q']=new Datatable({id:'q',columns:cols,rows:list,pageSize:25,onAction});
   const catOpts=_qCats.map(c=>`<option value="${c.id}">${esc(c.nameFr)} (${c.total})</option>`).join('');
+  const sourceOpts=(r.sources||[]).map(s=>`<option value="${esc(s.source)}" ${qSource===s.source?'selected':''}>${esc(s.source)} (${fmt(s.count)})</option>`).join('');
   document.getElementById('content').innerHTML=`
     <h2>${ic('search')} Questions</h2>
     ${qMsg?msg(qMsg):''}
+    <div class="kpi-grid">${kpi('Actives',fmt(r.activeCount),'prêtes à jouer','.tg')}${kpi('En attente',fmt(r.pendingCount),'à relire','.to')}${kpi('Résultats',fmt(r.total),'filtre actuel')}</div>
     <div class="row" style="margin-bottom:16px">
-      <button class="btn ${qView==='pending'?'btn-gold':'btn-ghost'} btn-sm" onclick="qView='pending';qMsg='';questions()">En attente (${(p.questions||[]).length})</button>
-      <button class="btn ${qView==='active'?'btn-gold':'btn-ghost'} btn-sm" onclick="qView='active';qMsg='';questions()">Actives (${(a.questions||[]).length})</button>
+      <button class="btn ${qView==='pending'?'btn-gold':'btn-ghost'} btn-sm" onclick="qView='pending';qPage=1;qMsg='';questions()">En attente</button>
+      <button class="btn ${qView==='active'?'btn-gold':'btn-ghost'} btn-sm" onclick="qView='active';qPage=1;qMsg='';questions()">Actives</button>
     </div>
-    <div class="card"><h3>${ic('zap')} Générer via IA (qwen2.5:3b — arrière-plan)</h3>
+    <div class="card"><h3>Recherche et filtres</h3><div class="row" style="align-items:flex-end">
+      <div style="min-width:220px;flex:1"><label>Texte</label><input id="q-search" value="${esc(qSearch)}" placeholder="Rechercher une question…" onkeydown="if(event.key==='Enter')applyQuestionFilters()"/></div>
+      <div><label>Catégorie</label><select id="q-category" style="width:220px"><option value="">Toutes</option>${_qCats.map(x=>`<option value="${x.id}" ${qCategory===x.id?'selected':''}>${esc(x.nameFr)}</option>`).join('')}</select></div>
+      <div><label>Source</label><select id="q-source" style="width:180px"><option value="">Toutes</option>${sourceOpts}</select></div>
+      <button class="btn btn-gold btn-sm" onclick="applyQuestionFilters()">Filtrer</button>
+      <button class="btn btn-ghost btn-sm" onclick="qCategory='';qSource='';qSearch='';qPage=1;questions()">Réinitialiser</button>
+    </div></div>
+    <div class="card"><h3>${ic('zap')} Générer via IA locale — brouillons uniquement</h3>
       <div class="row" style="align-items:flex-end;flex-wrap:wrap;gap:10px">
         <div><label>Catégorie</label><select id="gen-cat" style="width:220px">${catOpts}</select></div>
         <div><label>Nombre (max 10)</label><input id="gen-n" type="number" min="1" max="10" value="3" style="width:70px"/></div>
         <button id="gen-btn" class="btn btn-gold btn-sm" onclick="doGenerate()">${ic('zap')} Lancer en arrière-plan</button>
       </div>
       <div id="gen-status" style="display:none;margin-top:12px;font-size:13px;color:var(--text2);padding:10px 14px;background:var(--bg3);border-radius:8px;border:1px solid var(--bg4)"></div>
-      <p style="font-size:11px;color:var(--text3);margin-top:10px">Le serveur tourne sur CPU pur (Java + k3s saturent les cœurs). La génération est lancée en tâche de fond et peut prendre <b style="color:var(--text2)">3-10 min par question</b>. Revenez sur "En attente" quelques minutes plus tard pour voir les nouvelles questions.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">Les sorties du modèle local restent toujours <b style="color:var(--gold)">en attente</b> : elles doivent être relues factuellement avant activation. La génération peut prendre plusieurs minutes par question.</p>
     </div>
     <div class="card"><h3>${ic('trash')} Suppression en lot</h3>
       <div class="row" style="align-items:flex-end">
@@ -620,7 +647,8 @@ async function questions(){
         <button class="btn btn-danger btn-sm" onclick="doBulkDelete()">${ic('trash')} Supprimer</button>
       </div>
     </div>
-    ${DT['q'].html()}`;
+    ${DT['q'].html()}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn btn-ghost btn-sm" ${qPage<=1?'disabled':''} onclick="qPage--;questions()">← Précédent</button><span style="color:var(--text2)">Page ${r.page} / ${r.pages}</span><button class="btn btn-ghost btn-sm" ${qPage>=r.pages?'disabled':''} onclick="qPage++;questions()">Suivant →</button></div>`;
   qMsg='';
   window.__qAction=onAction;
   document.querySelectorAll('#content button[onclick*="cb("]').forEach(b=>{
@@ -628,6 +656,7 @@ async function questions(){
     if(m) b.setAttribute('onclick',`__qAction(${m[1]})`);
   });
 }
+function applyQuestionFilters(){qSearch=document.getElementById('q-search')?.value.trim()||'';qCategory=document.getElementById('q-category')?.value||'';qSource=document.getElementById('q-source')?.value||'';qPage=1;questions();}
 async function doGenerate(){
   const cat=document.getElementById('gen-cat')?.value;
   const n=parseInt(document.getElementById('gen-n')?.value)||3;
@@ -789,10 +818,10 @@ async function tournaments(){
     {label:'Pot',key:'pot',val:r=>r.stakeCoins*r.capacity,render:r=>`<span style="color:var(--gold)">${fmtF(r.stakeCoins*r.capacity)}</span>`},
     {label:'Catégorie',key:'categoryId',render:r=>`<span class="tag tb" style="font-size:10px">${esc(r.categoryId||'Mélangé')}</span>`},
     {label:'Joueurs',key:'participants',render:r=>`<span style="font-size:11px;color:var(--text2)">${esc((r.participants||[]).slice(0,3).join(', ')+(r.participants?.length>3?'…':''))}</span>`},
-    {label:'Action',key:'id',render:(r,cb)=>r.status==='IN_PROGRESS'?'<span style="color:var(--text3);font-size:11px">en cours</span>':`<button class="btn btn-danger btn-xs" onclick='cb("delete","${r.id}","${esc(r.name||r.id)}")'>${ic('trash')} Supprimer${r.status==='REGISTERING'?' (remb.)':''}</button>`},
+    {label:'Action',key:'id',render:(r,cb)=>`<button class="btn btn-danger btn-xs" onclick='cb("delete","${r.id}","${esc(r.name||r.id)}","${r.status}")'>${ic('trash')} Supprimer${r.status!=='COMPLETED'?' (remb.)':''}</button>`},
   ];
-  const onAction=async(action,id,name)=>{
-    if(action==='delete'&&await adminConfirm(`Supprimer le tournoi`,`Supprimer <b>${esc(name)}</b> ?${r.status==='REGISTERING'?'<br><span style="color:var(--gold)">Les participants inscrits seront automatiquement remboursés.</span>':''}`,'Supprimer')){
+  const onAction=async(action,id,name,status)=>{
+    if(action==='delete'&&await adminConfirm(`Supprimer le tournoi`,`Supprimer <b>${esc(name)}</b> ?${status!=='COMPLETED'?'<br><span style="color:var(--gold)">Les participants inscrits seront automatiquement remboursés.</span>':''}`,'Supprimer')){
       try{
         const res=await D(`/api/admin/tournaments/${id}`);
         tmMsg=`Tournoi supprimé.${res.refunded>0?` ${res.refunded} joueur(s) remboursé(s).`:''}`;
@@ -816,6 +845,71 @@ async function tournaments(){
     const m=b.getAttribute('onclick').match(/cb\((.+)\)/);
     if(m) b.setAttribute('onclick',`__tmAction(${m[1]})`);
   });
+}
+
+// ── Duels ─────────────────────────────────────────────────────────────
+let duelFilter='';
+async function duels(){
+  const params=new URLSearchParams({page:'1'});if(duelFilter)params.set('status',duelFilter);
+  const r=await G('/api/admin/duels?'+params),list=r.matches||[];
+  const labels={MATCHING:'recherche',IN_PROGRESS:'en direct',COMPLETED:'terminé',CANCELLED:'annulé'};
+  const tones={MATCHING:'to',IN_PROGRESS:'tg',COMPLETED:'tgr',CANCELLED:'tr'};
+  const contexts={STANDARD:'Normal',TOURNAMENT:'Tournoi',CLAN_WAR:'Guerre de clans'};
+  const cols=[
+    {label:'Début',key:'startedAt',val:x=>x.startedAt,render:x=>`<span style="color:var(--text2);white-space:nowrap">${fmtD(x.startedAt)}</span>`},
+    {label:'Joueurs',key:'players',val:x=>x.playerA+' '+x.playerB,render:x=>`<b>${esc(x.playerA)}</b><span style="color:var(--text3)"> vs </span><b>${esc(x.playerB)}</b>`},
+    {label:'Score',key:'scoreA',val:x=>x.scoreA+x.scoreB,render:x=>`<strong style="color:var(--gold)">${x.scoreA} – ${x.scoreB}</strong>`},
+    {label:'Statut',key:'status',render:x=>`<span class="tag ${tones[x.status]||'tgr'}">${labels[x.status]||esc(x.status)}</span>`},
+    {label:'Contexte',key:'context',render:x=>`<span class="tag ${x.context==='CLAN_WAR'?'tp':x.context==='TOURNAMENT'?'tb':'tgr'}">${contexts[x.context]||x.context}</span>`},
+    {label:'Catégorie',key:'categoryId',render:x=>`<span style="color:var(--text2)">${esc(x.categoryId)}</span>`},
+    {label:'Mise',key:'stakeCoins',val:x=>x.stakeCoins,render:x=>`<b style="color:var(--gold)">${fmtF(x.stakeCoins)}</b>`},
+    {label:'Réponses',key:'answerCount',val:x=>x.answerCount,render:x=>fmt(x.answerCount)},
+  ];
+  DT.duels=new Datatable({id:'duels',columns:cols,rows:list,pageSize:25});
+  const filters=['','MATCHING','IN_PROGRESS','COMPLETED','CANCELLED'];
+  document.getElementById('content').innerHTML=`<h2>${ic('zap')} Duels</h2><div class="kpi-grid">${kpi('Total',fmt(r.total))}${kpi('Affichés',fmt(list.length))}${kpi('En direct',fmt(list.filter(x=>x.status==='IN_PROGRESS').length),'sur cette page','.tg')}</div><div class="row" style="margin-bottom:16px">${filters.map(f=>`<button class="btn ${duelFilter===f?'btn-gold':'btn-ghost'} btn-sm" onclick="duelFilter='${f}';duels()">${f?labels[f]:'Tous'}</button>`).join('')}</div>${DT.duels.html()}`;
+}
+
+// ── Clans ─────────────────────────────────────────────────────────────
+let clanAdminMsg='';
+async function clans(){
+  const r=await G('/api/admin/clans?page=1'),list=r.clans||[];
+  const cols=[
+    {label:'Clan',key:'name',render:x=>`<b>${esc(x.name)}</b> <span class="tag tp">[${esc(x.tag)}]</span>`},
+    {label:'Chef',key:'leader',render:x=>`<b>${esc(x.leader)}</b>`},
+    {label:'Membres',key:'memberCount',val:x=>x.memberCount,render:x=>`${x.memberCount}/20`},
+    {label:'Entrées',key:'joinPolicy',render:x=>`<span class="tag tgr">${esc(x.joinPolicy)}</span>${x.pendingRequests?` <span class="tag to">${x.pendingRequests} attente</span>`:''}`},
+    {label:'Guerres',key:'wars',val:x=>x.warWins+x.warLosses+x.warDraws,render:x=>`<span style="color:var(--green)">${x.warWins} V</span> · <span style="color:var(--red)">${x.warLosses} D</span> · ${x.warDraws} N`},
+    {label:'Gains',key:'warEarnings',val:x=>x.warEarnings,render:x=>`<b style="color:var(--gold)">${fmtF(x.warEarnings)}</b>`},
+    {label:'Créé',key:'createdAt',val:x=>x.createdAt,render:x=>`<span style="color:var(--text3);white-space:nowrap">${fmtD(x.createdAt)}</span>`},
+    {label:'Action',key:'id',render:(x,cb)=>`<button class="btn btn-danger btn-xs" onclick='cb("delete","${x.id}","${esc(x.name)}")'>${ic('trash')} Supprimer</button>`},
+  ];
+  const onAction=async(action,id,name)=>{if(action!=='delete'||!await adminConfirm('Supprimer le clan',`Dissoudre définitivement <b>${esc(name)}</b> et retirer tous ses membres ?`,'Supprimer'))return;try{await D(`/api/admin/clans/${id}`);clanAdminMsg=`Clan « ${name} » supprimé.`;}catch(e){clanAdminMsg='Erreur : '+e.message;}clans();};
+  DT.clans=new Datatable({id:'clans',columns:cols,rows:list,pageSize:25,onAction});
+  document.getElementById('content').innerHTML=`<h2>Clans</h2>${clanAdminMsg?msg(clanAdminMsg):''}<div class="kpi-grid">${kpi('Clans',fmt(r.total))}${kpi('Membres affichés',fmt(list.reduce((n,x)=>n+x.memberCount,0)))}</div>${DT.clans.html()}`;
+  clanAdminMsg='';window.__clanAction=onAction;document.querySelectorAll('#content button[onclick*="cb("]').forEach(b=>{const m=b.getAttribute('onclick').match(/cb\((.+)\)/);if(m)b.setAttribute('onclick',`__clanAction(${m[1]})`);});
+}
+
+// ── Guerres de clans ─────────────────────────────────────────────────
+let warFilter='';
+async function clanwars(){
+  const params=new URLSearchParams({page:'1'});if(warFilter)params.set('status',warFilter);
+  const r=await G('/api/admin/clan-wars?'+params),list=r.wars||[];
+  const labels={PENDING:'à confirmer',TEAM_SELECTION:'équipes',IN_PROGRESS:'en cours',COMPLETED:'terminée',DECLINED:'refusée',EXPIRED:'expirée'};
+  const tones={PENDING:'to',TEAM_SELECTION:'tb',IN_PROGRESS:'tg',COMPLETED:'tgr',DECLINED:'tr',EXPIRED:'tr'};
+  const cols=[
+    {label:'Créée',key:'createdAt',val:x=>x.createdAt,render:x=>`<span style="color:var(--text3);white-space:nowrap">${fmtD(x.createdAt)}</span>`},
+    {label:'Affiche',key:'clans',val:x=>x.challenger+' '+x.defender,render:x=>`<b>${esc(x.challenger)}</b><span style="color:var(--gold)"> vs </span><b>${esc(x.defender)}</b>`},
+    {label:'Format',key:'teamSize',val:x=>x.teamSize,render:x=>`${x.teamSize} contre ${x.teamSize}`},
+    {label:'Mise / clan',key:'stakeCoins',val:x=>x.stakeCoins,render:x=>`<b style="color:var(--gold)">${fmtF(x.stakeCoins)}</b>`},
+    {label:'Score',key:'score',val:x=>x.challengerScore+x.defenderScore,render:x=>`<strong>${x.challengerScore} – ${x.defenderScore}</strong>`},
+    {label:'Statut',key:'status',render:x=>`<span class="tag ${tones[x.status]||'tgr'}">${labels[x.status]||esc(x.status)}</span>`},
+    {label:'Combats',key:'matchCount',val:x=>x.matchCount,render:x=>`${x.matchCount} duel${x.matchCount!==1?'s':''}`},
+    {label:'Pot distribué',key:'payoutCoins',val:x=>x.payoutCoins,render:x=>`<span style="color:var(--green)">${fmtF(x.payoutCoins)}</span>`},
+  ];
+  DT.clanwars=new Datatable({id:'clanwars',columns:cols,rows:list,pageSize:25});
+  const filters=['','PENDING','TEAM_SELECTION','IN_PROGRESS','COMPLETED','DECLINED','EXPIRED'];
+  document.getElementById('content').innerHTML=`<h2>Guerres de clans</h2><div class="kpi-grid">${kpi('Total',fmt(r.total))}${kpi('Recherches ouvertes',fmt(r.searches),'matchmaking','.to')}${kpi('En cours',fmt(list.filter(x=>x.status==='IN_PROGRESS').length),'sur cette page','.tg')}</div><div class="row" style="margin-bottom:16px">${filters.map(f=>`<button class="btn ${warFilter===f?'btn-gold':'btn-ghost'} btn-sm" onclick="warFilter='${f}';clanwars()">${f?labels[f]:'Toutes'}</button>`).join('')}</div>${DT.clanwars.html()}`;
 }
 
 // ── Maintenance ────────────────────────────────────────────────────────
@@ -922,6 +1016,7 @@ async function music(){
     <tr>
       <td><b style="font-size:13px">${esc(t.title)}</b></td>
       <td><span class="tag ${t.type==='action'?'to':'tb'}">${typeLabel[t.type]||t.type}</span></td>
+      <td><button class="btn ${t.active!==false?'btn-green':'btn-ghost'} btn-xs" onclick="toggleMusicTrack('${t.id}',${t.active===false?'true':'false'})">${t.active!==false?'Active':'En pause'}</button></td>
       <td><a href="${esc(t.url)}" target="_blank" style="color:var(--blue);font-size:12px;word-break:break-all">${esc(t.url)}</a></td>
       <td><span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmtD(t.createdAt)}</span></td>
       <td><button class="btn btn-danger btn-xs" onclick="deleteMusicTrack('${t.id}','${esc(t.title).replace(/'/g,"\\'")}')">Supprimer</button></td>
@@ -952,7 +1047,7 @@ async function music(){
     </div>
     <div class="dt-wrap">
       <div class="dt-toolbar"><span class="dt-count">${tracks.length} piste${tracks.length!==1?'s':''} enregistrée${tracks.length!==1?'s':''}</span></div>
-      ${tracks.length?`<table><thead><tr><th>Titre</th><th>Type</th><th>URL</th><th>Ajouté</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="empty">Aucune piste. Ajoutez-en une ci-dessus — le moteur audio intégré prendra le relais si aucune n\'est configurée.</p>'}
+      ${tracks.length?`<table><thead><tr><th>Titre</th><th>Type</th><th>Diffusion</th><th>URL</th><th>Ajouté</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>`:'<p class="empty">Aucune piste. Ajoutez-en une ci-dessus — le moteur audio intégré prendra le relais si aucune n\'est configurée.</p>'}
     </div>`;
   muMsg='';
 }
@@ -973,6 +1068,10 @@ async function deleteMusicTrack(id,name){
     await D(`/api/admin/music/${id}`);
     muMsg='Piste supprimée.';
   }catch(e){muMsg='Erreur : '+e.message;}
+  music();
+}
+async function toggleMusicTrack(id,active){
+  try{await PA(`/api/admin/music/${id}`,{active});muMsg=active?'Piste remise en diffusion.':'Piste mise en pause.';}catch(e){muMsg='Erreur : '+e.message;}
   music();
 }
 

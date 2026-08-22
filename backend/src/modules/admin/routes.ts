@@ -7,12 +7,23 @@ import { dirname, join } from "path";
 import { randomUUID } from "crypto";
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
-function getMusic(): { tracks: Array<{ id: string; title: string; url: string; type: string; createdAt: string }> } {
+type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; active: boolean; createdAt: string };
+function getMusic(): { tracks: MusicTrack[] } {
   if (!existsSync(MUSIC_PATH)) return { tracks: [] };
-  try { return JSON.parse(readFileSync(MUSIC_PATH, "utf8")); } catch { return { tracks: [] }; }
+  try {
+    const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
+    return { tracks: (parsed.tracks ?? []).map((track: MusicTrack) => ({ ...track, active: track.active !== false })) };
+  } catch { return { tracks: [] }; }
 }
-function saveMusic(data: { tracks: Array<{ id: string; title: string; url: string; type: string; createdAt: string }> }) {
+function saveMusic(data: { tracks: MusicTrack[] }) {
   writeFileSync(MUSIC_PATH, JSON.stringify(data, null, 2));
+}
+
+function validPublicAudioUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && !["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+  } catch { return false; }
 }
 
 /**
@@ -73,6 +84,9 @@ export async function adminRoutes(app: FastifyInstance) {
 
     return reply.send({
       users: { total: userCount, activeToday, newThisWeek },
+      // Alias plats conservés pour le dashboard statique et les anciens
+      // clients d'administration.
+      totalUsers: userCount,
       balanceLiability,
       byType: {
         deposits: byType.DEPOSIT ?? 0,
@@ -81,12 +95,19 @@ export async function adminRoutes(app: FastifyInstance) {
         payouts: byType.PAYOUT ?? 0,
         refunds: byType.REFUND ?? 0,
         bonuses: byType.BONUS ?? 0,
+        DEPOSIT: byType.DEPOSIT ?? 0,
+        WITHDRAWAL: Math.abs(byType.WITHDRAWAL ?? 0),
+        STAKE: Math.abs(byType.STAKE ?? 0),
+        PAYOUT: byType.PAYOUT ?? 0,
       },
       quarantine: { count: quarantinedAgg._count, amountCoins: quarantinedAgg._sum.amountCoins ?? 0 },
+      quarantineCount: quarantinedAgg._count,
       pending: { count: pendingAgg._count, amountCoins: pendingAgg._sum.amountCoins ?? 0 },
       flagsUnresolved,
+      flags: flagsUnresolved,
       questionsPending,
       tournamentsActive,
+      activeTournaments: tournamentsActive,
       duelsToday,
     });
   });
@@ -209,13 +230,28 @@ export async function adminRoutes(app: FastifyInstance) {
 
   // ── Questions (relecture du contenu généré, §scripts/generate-questions.mjs) ──
   app.get("/api/admin/questions", async (req, reply) => {
-    const { active } = req.query as { active?: string };
-    const questions = await prisma.question.findMany({
-      where: active === undefined ? {} : { active: active === "true" },
-      include: { category: { select: { nameFr: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
+    const { active, categoryId, source, q, page = "1" } = req.query as Record<string, string>;
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const take = 50;
+    const where = {
+      ...(active === undefined ? {} : { active: active === "true" }),
+      ...(categoryId ? { categoryId } : {}),
+      ...(source ? { source } : {}),
+      ...(q ? { textFr: { contains: q, mode: "insensitive" as const } } : {}),
+    };
+    const [questions, total, activeCount, pendingCount, sources] = await Promise.all([
+      prisma.question.findMany({
+        where,
+        include: { category: { select: { nameFr: true } } },
+        orderBy: { createdAt: "desc" },
+        skip: (currentPage - 1) * take,
+        take,
+      }),
+      prisma.question.count({ where }),
+      prisma.question.count({ where: { active: true } }),
+      prisma.question.count({ where: { active: false } }),
+      prisma.question.groupBy({ by: ["source"], _count: { id: true }, orderBy: { _count: { id: "desc" } } }),
+    ]);
     return reply.send({
       questions: questions.map((q) => ({
         id: q.id,
@@ -228,12 +264,24 @@ export async function adminRoutes(app: FastifyInstance) {
         source: q.source,
         createdAt: q.createdAt,
       })),
+      total,
+      activeCount,
+      pendingCount,
+      sources: sources.map((item) => ({ source: item.source, count: item._count.id })),
+      page: currentPage,
+      pages: Math.max(1, Math.ceil(total / take)),
     });
   });
 
   app.post("/api/admin/questions/:id/activate", async (req, reply) => {
     const { id } = req.params as { id: string };
     const question = await prisma.question.update({ where: { id }, data: { active: true } });
+    return reply.send({ question });
+  });
+
+  app.post("/api/admin/questions/:id/deactivate", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const question = await prisma.question.update({ where: { id }, data: { active: false } });
     return reply.send({ question });
   });
 
@@ -253,6 +301,35 @@ export async function adminRoutes(app: FastifyInstance) {
       },
     });
     return reply.send({ deleted: result.count });
+  });
+
+  // Activation en lot avec les mêmes garde-fous structurels que le jeu.
+  // Cette route n'atteste pas la vérité factuelle d'une sortie IA : elle
+  // est surtout destinée aux imports issus d'une banque éditoriale relue.
+  app.post("/api/admin/questions/bulk-activate", async (req, reply) => {
+    const body = req.body as { source?: string; categoryId?: string; limit?: number };
+    const limit = Math.min(Math.max(1, Number(body.limit) || 1000), 10_000);
+    const candidates = await prisma.question.findMany({
+      where: {
+        active: false,
+        ...(body.source ? { source: body.source } : {}),
+        ...(body.categoryId ? { categoryId: body.categoryId } : {}),
+      },
+      select: { id: true, textFr: true, options: true, answerIndex: true },
+      orderBy: { createdAt: "asc" },
+      take: limit,
+    });
+    const validIds = candidates.filter((q) => {
+      const options = Array.isArray(q.options) ? q.options.map(String) : [];
+      return q.textFr.trim().length >= 8
+        && options.length === 4
+        && q.answerIndex >= 0
+        && q.answerIndex < 4
+        && options.every((option) => option.trim().length > 0)
+        && new Set(options.map((option) => option.trim().toLocaleLowerCase("fr"))).size === 4;
+    }).map((q) => q.id);
+    const result = await prisma.question.updateMany({ where: { id: { in: validIds } }, data: { active: true } });
+    return reply.send({ activated: result.count, rejected: candidates.length - validIds.length });
   });
 
   // ── Génération IA en arrière-plan (fire-and-forget) ────────────────────
@@ -544,31 +621,176 @@ Ne donne jamais la réponse dans le texte de la question.`;
     });
   });
 
-  // Annuler/supprimer un tournoi (seulement si REGISTERING ou COMPLETED)
+  // Annuler/supprimer un tournoi. Un tournoi non terminé rembourse chaque
+  // inscription avant la suppression de son bracket.
   app.delete("/api/admin/tournaments/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
     const t = await prisma.tournament.findUnique({ where: { id }, include: { entries: true } });
     if (!t) return reply.notFound("Tournoi introuvable");
-    if (t.status === "IN_PROGRESS") return reply.badRequest("Impossible de supprimer un tournoi en cours");
 
-    // Rembourser les participants si le tournoi était en phase d'inscription
+    // Rembourser les participants tant qu'aucun vainqueur n'a été payé.
     let refunded = 0;
-    if (t.status === "REGISTERING" && t.entries.length > 0) {
+    if (t.status !== "COMPLETED" && t.entries.length > 0) {
       const { credit } = await import("../wallet/ledger.js");
       for (const entry of t.entries) {
-        try {
-          await credit({
-            userId: entry.userId,
-            type: "REFUND",
-            amountCoins: t.stakeCoins,
-            metadata: { reason: `Tournoi annulé par l'admin : ${t.name ?? id}` },
-          });
-          refunded++;
-        } catch { /* continuer même si un remboursement échoue */ }
+        await credit({
+          userId: entry.userId,
+          type: "REFUND",
+          amountCoins: t.stakeCoins,
+          metadata: { reason: `Tournoi annulé par l'admin : ${t.name ?? id}`, tournamentId: id },
+        });
+        refunded++;
       }
     }
-    await prisma.tournament.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.tournamentMatch.deleteMany({ where: { tournamentId: id } }),
+      prisma.tournamentEntry.deleteMany({ where: { tournamentId: id } }),
+      prisma.tournament.delete({ where: { id } }),
+    ]);
     return reply.send({ deleted: true, refunded });
+  });
+
+  // ── Gestion des duels ────────────────────────────────────────────
+  app.get("/api/admin/duels", async (req, reply) => {
+    const { status, page = "1" } = req.query as { status?: string; page?: string };
+    const take = 25;
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const where = status ? { status: status as "MATCHING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" } : {};
+    const [matches, total] = await Promise.all([
+      prisma.duelMatch.findMany({
+        where,
+        include: {
+          playerA: { select: { username: true } },
+          playerB: { select: { username: true } },
+          tournamentMatch: { select: { tournamentId: true } },
+          clanWarMatch: { select: { warId: true } },
+          _count: { select: { answers: true } },
+        },
+        orderBy: { startedAt: "desc" },
+        take,
+        skip: (currentPage - 1) * take,
+      }),
+      prisma.duelMatch.count({ where }),
+    ]);
+    return reply.send({
+      matches: matches.map((match) => ({
+        id: match.id,
+        status: match.status,
+        categoryId: match.categoryId,
+        stakeCoins: match.stakeCoins,
+        playerA: match.playerA.username,
+        playerB: match.playerB.username,
+        scoreA: match.scoreA,
+        scoreB: match.scoreB,
+        winnerId: match.winnerId,
+        answerCount: match._count.answers,
+        context: match.clanWarMatch ? "CLAN_WAR" : match.tournamentMatch ? "TOURNAMENT" : "STANDARD",
+        contextId: match.clanWarMatch?.warId ?? match.tournamentMatch?.tournamentId ?? null,
+        startedAt: match.startedAt,
+        completedAt: match.completedAt,
+      })),
+      total,
+      page: currentPage,
+      pages: Math.max(1, Math.ceil(total / take)),
+    });
+  });
+
+  // ── Gestion des clans ────────────────────────────────────────────
+  app.get("/api/admin/clans", async (req, reply) => {
+    const { page = "1" } = req.query as { page?: string };
+    const take = 25;
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const [clans, total] = await Promise.all([
+      prisma.clan.findMany({
+        include: {
+          members: { include: { user: { select: { username: true } } }, orderBy: { joinedAt: "asc" } },
+          _count: { select: { joinRequests: true, warsChallenged: true, warsDefending: true } },
+        },
+        orderBy: [{ warEarnings: "desc" }, { createdAt: "desc" }],
+        take,
+        skip: (currentPage - 1) * take,
+      }),
+      prisma.clan.count(),
+    ]);
+    return reply.send({
+      clans: clans.map((clan) => ({
+        id: clan.id,
+        name: clan.name,
+        tag: clan.tag,
+        leaderId: clan.leaderId,
+        leader: clan.members.find((member) => member.userId === clan.leaderId)?.user.username ?? "—",
+        members: clan.members.map((member) => ({ username: member.user.username, role: member.role })),
+        memberCount: clan.members.length,
+        joinPolicy: clan.joinPolicy,
+        warWins: clan.warWins,
+        warLosses: clan.warLosses,
+        warDraws: clan.warDraws,
+        warEarnings: clan.warEarnings,
+        pendingRequests: clan._count.joinRequests,
+        warCount: clan._count.warsChallenged + clan._count.warsDefending,
+        createdAt: clan.createdAt,
+      })),
+      total,
+      page: currentPage,
+      pages: Math.max(1, Math.ceil(total / take)),
+    });
+  });
+
+  app.delete("/api/admin/clans/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const clan = await prisma.clan.findUnique({
+      where: { id },
+      include: { warsChallenged: { where: { status: { in: ["TEAM_SELECTION", "IN_PROGRESS"] } }, select: { id: true } }, warsDefending: { where: { status: { in: ["TEAM_SELECTION", "IN_PROGRESS"] } }, select: { id: true } } },
+    });
+    if (!clan) return reply.notFound("Clan introuvable");
+    if (clan.warsChallenged.length || clan.warsDefending.length) return reply.badRequest("Impossible de supprimer un clan engagé dans une guerre active");
+    await prisma.clan.delete({ where: { id } });
+    return reply.send({ deleted: true });
+  });
+
+  // ── Gestion des guerres de clans ─────────────────────────────────
+  app.get("/api/admin/clan-wars", async (req, reply) => {
+    const { status, page = "1" } = req.query as { status?: string; page?: string };
+    const take = 25;
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const where = status ? { status: status as any } : {};
+    const [wars, total, searches] = await Promise.all([
+      prisma.clanWar.findMany({
+        where,
+        include: {
+          challengerClan: { select: { name: true, tag: true } },
+          defenderClan: { select: { name: true, tag: true } },
+          _count: { select: { members: true, matches: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+        skip: (currentPage - 1) * take,
+      }),
+      prisma.clanWar.count({ where }),
+      prisma.clanWarSearch.count(),
+    ]);
+    return reply.send({
+      wars: wars.map((war) => ({
+        id: war.id,
+        challenger: `[${war.challengerClan.tag}] ${war.challengerClan.name}`,
+        defender: `[${war.defenderClan.tag}] ${war.defenderClan.name}`,
+        status: war.status,
+        teamSize: war.teamSize,
+        stakeCoins: war.stakeCoins,
+        challengerScore: war.challengerScore,
+        defenderScore: war.defenderScore,
+        payoutCoins: war.payoutCoins,
+        memberCount: war._count.members,
+        matchCount: war._count.matches,
+        startsAt: war.startsAt,
+        endsAt: war.endsAt,
+        createdAt: war.createdAt,
+      })),
+      searches,
+      total,
+      page: currentPage,
+      pages: Math.max(1, Math.ceil(total / take)),
+    });
   });
 
   // ── Musiques ──────────────────────────────────────────────────────
@@ -579,17 +801,41 @@ Ne donne jamais la réponse dans le texte de la question.`;
   app.post("/api/admin/music", async (req, reply) => {
     const body = req.body as { title?: string; url?: string; type?: string };
     if (!body.url) return reply.badRequest("url requis");
+    if (!validPublicAudioUrl(body.url)) return reply.badRequest("URL audio publique HTTP(S) invalide");
+    if (body.type && !["relaxing", "action"].includes(body.type)) return reply.badRequest("Type de piste invalide");
     const music = getMusic();
-    const track = {
+    if (music.tracks.length >= 100) return reply.badRequest("Limite de 100 pistes atteinte");
+    const track: MusicTrack = {
       id: randomUUID(),
-      title: body.title || body.url,
+      title: (body.title || body.url).trim().slice(0, 120),
       url: body.url,
-      type: body.type || "relaxing",
+      type: body.type === "action" ? "action" : "relaxing",
+      active: true,
       createdAt: new Date().toISOString(),
     };
     music.tracks.push(track);
     saveMusic(music);
     return reply.status(201).send(track);
+  });
+
+  app.patch("/api/admin/music/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = req.body as { title?: string; url?: string; type?: string; active?: boolean };
+    if (body.url !== undefined && !validPublicAudioUrl(body.url)) return reply.badRequest("URL audio publique HTTP(S) invalide");
+    if (body.type !== undefined && !["relaxing", "action"].includes(body.type)) return reply.badRequest("Type de piste invalide");
+    const music = getMusic();
+    const index = music.tracks.findIndex((track) => track.id === id);
+    if (index < 0) return reply.notFound("Piste introuvable");
+    const current = music.tracks[index]!;
+    music.tracks[index] = {
+      ...current,
+      ...(body.title !== undefined ? { title: body.title.trim().slice(0, 120) || current.title } : {}),
+      ...(body.url !== undefined ? { url: body.url } : {}),
+      ...(body.type !== undefined ? { type: body.type as "relaxing" | "action" } : {}),
+      ...(body.active !== undefined ? { active: Boolean(body.active) } : {}),
+    };
+    saveMusic(music);
+    return reply.send({ track: music.tracks[index] });
   });
 
   app.delete("/api/admin/music/:id", async (req, reply) => {

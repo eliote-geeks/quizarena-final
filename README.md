@@ -27,3 +27,13 @@ Copier les fichiers `.env.example` vers des fichiers `.env` locaux et renseigner
 ## Sécurité du jeu
 
 Les scores, chronomètres, réponses, mises et paiements sont validés par le serveur. Les mises de guerre de clans sont séquestrées dans une transaction PostgreSQL atomique et le pot est réparti automatiquement entre les combattants gagnants.
+
+## Banque de questions
+
+La production combine des questions originales et une banque éditoriale issue d’[OpenQuizzDB](https://www.openquizzdb.org), sous licence [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.fr). Les contenus importés sont adaptés au classement thématique de QuizArena et les propositions sont mélangées par le serveur au moment de jouer.
+
+- `backend/scripts/import-openquizzdb.mjs` : import idempotent, validation structurelle et dédoublonnage.
+- `backend/scripts/generate-questions.mjs` : génération locale de brouillons inactifs, à relire avant publication.
+- `backend/scripts/cleanup-test-data.mjs` : inventaire puis nettoyage explicite des données de préproduction avec `--execute`.
+
+Le dashboard d’opérations permet de filtrer et modérer les questions, suivre les duels, clans, guerres et tournois, et gérer les pistes musicales diffusées par le site.

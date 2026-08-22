@@ -13,7 +13,10 @@ function getSettings() {
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
 function getMusicPublic() {
   if (!existsSync(MUSIC_PATH)) return { tracks: [] };
-  try { return JSON.parse(readFileSync(MUSIC_PATH, "utf8")); } catch { return { tracks: [] }; }
+  try {
+    const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
+    return { tracks: (parsed.tracks ?? []).filter((track: any) => track.active !== false) };
+  } catch { return { tracks: [] }; }
 }
 
 /** Chiffres publics pour la landing page (avant connexion) — plus jamais
