@@ -1,0 +1,16 @@
+[Unit]
+Description=QuizArena Classic backend (API et donnees isolees)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/quizarena-classic-backend
+EnvironmentFile=/home/ubuntu/quizarena-classic-backend/.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

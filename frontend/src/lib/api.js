@@ -1,7 +1,7 @@
 // Contrat réseau unique du frontend 3010. Aucune page métier ne doit appeler
 // fetch directement : le JWT, les erreurs et l'URL du serveur restent ici.
-const BASE_URL = process.env.REACT_APP_API_URL || "http://79.137.32.27:4000";
-const TOKEN_KEY = "qa_token";
+const BASE_URL = process.env.REACT_APP_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:4010");
+const TOKEN_KEY = "qa_classic_token";
 
 export class ApiError extends Error {
   constructor(message, status, data) {

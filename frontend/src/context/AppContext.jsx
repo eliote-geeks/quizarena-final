@@ -4,7 +4,10 @@ import { CURRENCY_ORDER } from "../lib/currency";
 import * as api from "../lib/api";
 
 const AppContext = createContext(null);
-const USER_CACHE_KEY = "qa_user";
+// L'édition Classic possède son propre backend et sa propre base. Ses données
+// de session navigateur ne doivent donc jamais réutiliser celles de l'autre
+// QuizArena, même lorsque les deux applications partagent le même domaine.
+const USER_CACHE_KEY = "qa_classic_user";
 
 function normalizeUser(raw) {
   if (!raw) return null;
@@ -25,11 +28,13 @@ export function AppProvider({ children }) {
   const [sessionLoading, setSessionLoading] = useState(() => Boolean(api.getToken()));
   const [user, setUser] = useState(readCachedUser);
   const [stats, setStats] = useState(null);
-  const [theme, setThemeState] = useState(() => localStorage.getItem("qa_theme") || "dark");
-  const [currency, setCurrencyState] = useState(() => localStorage.getItem("qa_currency") || "XAF");
-  const [onboardingSeen, setOnboardingSeen] = useState(() => localStorage.getItem("qa_onboarding_seen") === "1");
+  const [theme, setThemeState] = useState(() => localStorage.getItem("qa_classic_theme") || "dark");
+  const [currency, setCurrencyState] = useState(() => localStorage.getItem("qa_classic_currency") || "XAF");
+  const [onboardingSeen, setOnboardingSeen] = useState(() => localStorage.getItem("qa_classic_onboarding_seen") === "1");
 
-  useEffect(() => { document.documentElement.classList.toggle("light", theme === "light"); }, [theme]);
+  useEffect(() => {
+    document.documentElement.classList.toggle("light", theme === "light");
+  }, [theme]);
 
   const cacheUser = useCallback((raw) => {
     const normalized = normalizeUser(raw);
@@ -87,18 +92,18 @@ export function AppProvider({ children }) {
   const toggleTheme = useCallback(() => {
     setThemeState((current) => {
       const next = current === "dark" ? "light" : "dark";
-      localStorage.setItem("qa_theme", next); return next;
+      localStorage.setItem("qa_classic_theme", next); return next;
     });
   }, []);
   const setCurrency = useCallback((code) => {
     if (!CURRENCY_ORDER.includes(code)) return;
-    localStorage.setItem("qa_currency", code); setCurrencyState(code);
+    localStorage.setItem("qa_classic_currency", code); setCurrencyState(code);
   }, []);
   const markOnboardingSeen = useCallback(() => {
-    localStorage.setItem("qa_onboarding_seen", "1"); setOnboardingSeen(true);
+    localStorage.setItem("qa_classic_onboarding_seen", "1"); setOnboardingSeen(true);
   }, []);
   const resetOnboarding = useCallback(() => {
-    localStorage.removeItem("qa_onboarding_seen"); setOnboardingSeen(false);
+    localStorage.removeItem("qa_classic_onboarding_seen"); setOnboardingSeen(false);
   }, []);
 
   // Aucune progression financière ou VIP ne doit être forgée côté client.

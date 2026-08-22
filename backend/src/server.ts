@@ -67,7 +67,11 @@ app.setErrorHandler((err, req, reply) => {
   return reply.send(err);
 });
 
-app.get("/api/health", async () => ({ ok: true, service: "quizarena-backend" }));
+app.get("/api/health", async () => ({
+  ok: true,
+  service: env.APP_EDITION === "classic" ? "quizarena-classic-backend" : "quizarena-backend",
+  edition: env.APP_EDITION,
+}));
 
 await app.register(authRoutes);
 await app.register(walletRoutes);
@@ -77,8 +81,10 @@ await app.register(playerRoutes);
 await app.register(publicRoutes);
 await app.register(tournamentRoutes);
 await app.register(adminRoutes);
-await app.register(clanRoutes);
-await app.register(clanWarRoutes);
+if (env.APP_EDITION === "main") {
+  await app.register(clanRoutes);
+  await app.register(clanWarRoutes);
+}
 await app.register(avatarRoutes);
 await app.register(duelWsRoutes);
 await app.register(duelRestRoutes);
@@ -91,23 +97,27 @@ await app.register(duelRestRoutes);
 // serveur, mais ça évite le scan/curiosité casuelle sur une URL connue.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const adminHtml = readFileSync(join(__dirname, "../public/admin.html"), "utf8");
-app.get("/ops-b92f2835255d", async (_req, reply) => {
-  reply.type("text/html");
-  return adminHtml;
-});
+if (env.APP_EDITION === "main") {
+  app.get("/ops-b92f2835255d", async (_req, reply) => {
+    reply.type("text/html");
+    return adminHtml;
+  });
+}
 
 // Backoffice de l'édition historique servie sur :3010. Il utilise les
 // mêmes contrôles d'authentification/isAdmin et les mêmes routes serveur,
 // mais masque explicitement les modules qui n'existent pas dans ce produit
 // (clans et guerres de clans). Cela évite deux consoles divergentes tout en
 // respectant le périmètre fonctionnel découvert pendant l'audit terrain.
-app.get("/ops-classic-3010-b92f2835255d", async (_req, reply) => {
-  reply.type("text/html");
-  return adminHtml
-    .replace("<title>QuizArena — Backoffice</title>", "<title>QuizArena Classic — Backoffice</title>")
-    .replace("<body>", '<body data-edition="classic">')
-    .replace("QuizArena · Backoffice", "QuizArena Classic · Backoffice");
-});
+if (env.APP_EDITION === "classic") {
+  app.get("/ops-classic-3010-b92f2835255d", async (_req, reply) => {
+    reply.type("text/html");
+    return adminHtml
+      .replace("<title>QuizArena — Backoffice</title>", "<title>QuizArena Classic — Backoffice</title>")
+      .replace("<body>", '<body data-edition="classic">')
+      .replace("QuizArena · Backoffice", "QuizArena Classic · Backoffice");
+  });
+}
 
 // Comptes "Ordinateur" (facile/moyen/difficile) — créés une fois pour
 // toutes s'ils n'existent pas encore (§duel/bot.ts), nécessaire avant
@@ -118,7 +128,7 @@ await ensureBotUsers();
 // voir duel/hooks.ts pour la raison de ce registre plutôt qu'un import
 // direct (duel/engine.ts ne doit rien savoir des tournois).
 setTournamentMatchDoneHandler(advanceBracket);
-setClanWarMatchDoneHandler(finalizeClanWarMatch);
+if (env.APP_EDITION === "main") setClanWarMatchDoneHandler(finalizeClanWarMatch);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);
@@ -137,6 +147,8 @@ setInterval(() => {
     .catch((err) => app.log.error(err, "[reconcile] balayage échoué"));
 }, 20_000);
 
-setInterval(() => {
-  sweepExpiredClanWars().catch((err) => app.log.error(err, "[clan-wars] clôture automatique échouée"));
-}, 60_000);
+if (env.APP_EDITION === "main") {
+  setInterval(() => {
+    sweepExpiredClanWars().catch((err) => app.log.error(err, "[clan-wars] clôture automatique échouée"));
+  }, 60_000);
+}

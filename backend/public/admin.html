@@ -15,6 +15,21 @@
 }
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;overflow:hidden}
 body[data-edition="classic"] [data-tab="clans"],body[data-edition="classic"] [data-tab="clanwars"],body[data-edition="classic"] .clan-only{display:none!important}
+body[data-edition="classic"] .sb-section:has(+ [data-tab="clans"]){display:none!important}
+body[data-edition="classic"]{
+  --bg:#071018;--bg2:#0b1722;--bg3:#102231;--bg4:#19364a;--bg5:#21475e;
+  --text:#e9f7ff;--text2:#91b7c9;--text3:#557b8d;
+  --gold:#22d3ee;--gold2:#0891b2;--green:#34d399;--blue:#60a5fa;--purple:#a78bfa;
+}
+body[data-edition="classic"] #topbar{height:62px;background:#081722;border-bottom-color:rgba(34,211,238,.22)}
+body[data-edition="classic"] .topbar-brand{font-size:16px;color:#67e8f9}
+body[data-edition="classic"] .topbar-brand::after{content:'3010 · ÉDITION CLASSIC';font-size:9px;letter-spacing:.14em;color:#071018;background:#22d3ee;border-radius:99px;padding:4px 8px;margin-left:8px}
+body[data-edition="classic"] #sidebar{width:242px;background:#091823;border-right-color:rgba(34,211,238,.16)}
+body[data-edition="classic"] .sb-item.active{background:rgba(34,211,238,.14);box-shadow:inset 3px 0 #22d3ee}
+body[data-edition="classic"] #content{padding-top:22px;background:radial-gradient(circle at 90% 0,rgba(34,211,238,.07),transparent 34%),var(--bg)}
+body[data-edition="classic"] #content::before{content:'QUIZARENA CLASSIC / CENTRE DE CONTRÔLE';display:block;color:var(--gold);font-size:10px;font-weight:800;letter-spacing:.16em;margin-bottom:18px}
+body[data-edition="classic"] .login-box{border-color:rgba(34,211,238,.25);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+body[data-edition="classic"] .login-box .brand::after{content:'CLASSIC 3010';font-size:9px;letter-spacing:.12em;color:#071018;background:#22d3ee;border-radius:99px;padding:4px 7px}
 svg{display:block;flex-shrink:0}
 
 /* ── Layout ───────────────────────────────────── */
@@ -257,8 +272,12 @@ tbody td{padding:10px 14px;vertical-align:middle}
 </div>
 
 <script>
-const API='http://79.137.32.27:4000';
-let TOKEN=localStorage.getItem('bo_token')||'';
+// Chaque backoffice dialogue uniquement avec l'API qui le sert : 4000 pour
+// l'application principale, 4010 pour Classic. Aucun croisement de données.
+const API=location.origin;
+const IS_CLASSIC=document.body.dataset.edition==='classic';
+const TOKEN_KEY=IS_CLASSIC?'bo_token_classic_3010':'bo_token';
+let TOKEN=localStorage.getItem(TOKEN_KEY)||'';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 async function req(method,path,body,noAuth){
@@ -418,14 +437,14 @@ async function doLogin(){
   try{
     const r=await req('POST','/api/auth/login',{identifier:id,password:pw},true);
     if(!r.user.isAdmin){err.textContent='Ce compte n\'est pas administrateur.';return;}
-    TOKEN=r.token; localStorage.setItem('bo_token',TOKEN);
+    TOKEN=r.token; localStorage.setItem(TOKEN_KEY,TOKEN);
     document.getElementById('top-user').textContent=r.user.username;
     document.getElementById('login-screen').style.display='none';
     document.getElementById('shell').style.display='flex';
     nav('overview');
   }catch(e){err.textContent=e.message;}
 }
-function doLogout(){TOKEN='';localStorage.removeItem('bo_token');location.reload();}
+function doLogout(){TOKEN='';localStorage.removeItem(TOKEN_KEY);location.reload();}
 async function checkAuth(){
   if(!TOKEN)return;
   try{
@@ -440,6 +459,7 @@ async function checkAuth(){
 
 // ── Navigation ─────────────────────────────────────────────────────────
 function nav(tab){
+  if(IS_CLASSIC&&(tab==='clans'||tab==='clanwars'))tab='overview';
   document.querySelectorAll('.sb-item').forEach(el=>el.classList.toggle('active',el.dataset.tab===tab));
   document.getElementById('content').innerHTML='<p style="color:var(--text3);padding:12px 0">Chargement…</p>';
   ({overview,transactions,users,leaderboard,questions,categories,quarantine,flags,userreports,tournaments,duels,clans,clanwars,maintenance,settings,music})[tab]?.();

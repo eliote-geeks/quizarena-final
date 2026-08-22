@@ -4,7 +4,9 @@ Date : 22 août 2026
 Frontend local : `/home/paul/quizarena/frontend`  
 Frontend serveur : `/home/ubuntu/quizarena/build`  
 Service : `quizarena-frontend.service` (`0.0.0.0:3010`)  
-Backend métier réutilisable : `/home/paul/quizarena/backend` / port `4000`
+Backend Classic : `/home/ubuntu/quizarena-classic-backend` / port interne `4010`
+
+Base Classic : PostgreSQL `quizarena_classic` (rôle dédié `quizarena_classic`)
 
 ## Conclusion
 
@@ -41,6 +43,25 @@ Le produit 3010 n'expose pas de clans, guerres de clans ou gestion collective.
 Ces modules ne doivent donc pas apparaître dans son interface ni dans son
 dashboard dédié.
 
+## Isolation avec l'autre QuizArena
+
+Le code métier est mutualisé dans le dépôt afin de maintenir les mêmes
+garanties anti-triche, mais les deux produits ne partagent aucune donnée à
+l'exécution :
+
+- l'application principale utilise l'API `4000`, la base `quizarena` et Redis
+  sans namespace Classic ;
+- l'édition Classic utilise l'API interne `4010`, la base
+  `quizarena_classic`, un rôle PostgreSQL distinct, Redis DB `1`, un secret JWT
+  distinct et des clés `localStorage` distinctes ;
+- le serveur public `3010` reverse-proxy uniquement ses chemins `/api`, `/ws`
+  et son dashboard vers `4010` ;
+- les catégories/questions ont été copiées une fois comme contenu initial :
+  elles sont désormais physiquement indépendantes et peuvent diverger ;
+- aucun joueur, solde, historique, transaction, tournoi ou clan n'a été
+  importé. Seul le compte d'administration de démarrage est dupliqué pour
+  permettre l'exploitation du nouveau backoffice.
+
 ## Dashboard nécessaire
 
 Le backoffice du produit 3010 doit couvrir : vue générale, utilisateurs,
@@ -67,13 +88,17 @@ changement du dernier choix jusqu'à l'échéance, spectateurs et compteur,
 classement par gains, profils publics/signalements, historique vérifiable des
 duels, création/inscription/bracket de tournoi et dashboard Classic dédié.
 
-Le backend contient actuellement 9 349 questions actives dans 29 catégories.
-L'édition 3010 n'en expose volontairement que les 14 catégories présentes dans
-son identité produit ; elle ne récupère pas automatiquement les thèmes propres
-à l'édition 3011.
+La base Classic contient 6 400 questions actives dans les 14 catégories
+présentes dans son identité produit. Elle ne récupère plus automatiquement les
+ajouts ou modifications de l'édition principale.
 
 Dashboard Classic :
-`http://79.137.32.27:4000/ops-classic-3010-b92f2835255d`
+`http://79.137.32.27:3010/ops-classic-3010-b92f2835255d`
+
+Les paiements Classic sont volontairement bloqués (`503`) tant que des
+identifiants SharePay propres à ce produit et leur webhook ne sont pas
+configurés. En production, l'absence de clé ne bascule jamais sur le fournisseur
+simulé.
 
 Reste à traiter dans une itération dédiée : envoi réel des e-mails de
 réinitialisation (aucun SMTP n'est configuré sur le serveur), modèle VIP et

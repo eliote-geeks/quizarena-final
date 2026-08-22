@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma.js";
 import { credit, debit, getBalance, listTransactions, listTransactionsPaged, InsufficientBalanceError } from "./ledger.js";
 import { getPaymentProvider } from "./payment-provider.js";
 import { resolvePendingTransaction } from "./reconcile.js";
+import { env } from "../../lib/env.js";
 
 const amountSchema = z.object({
   amountCoins: z.number().int().min(100, "100 F minimum").max(500_000), // 100 = plus petite mise possible (§DuelSetup)
@@ -43,6 +44,13 @@ export async function walletRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/wallet/deposit", { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!env.SHAREPAY_API_KEY && !env.ALLOW_SIMULATED_PAYMENTS) {
+      return reply.code(503).send({
+        statusCode: 503,
+        error: "Service Unavailable",
+        message: "Paiements temporairement indisponibles sur cette édition",
+      });
+    }
     const body = amountSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
     if (user.accountStatus === "BANNED" || user.accountStatus === "SUSPENDED") {
@@ -91,6 +99,13 @@ export async function walletRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/wallet/withdraw", { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!env.SHAREPAY_API_KEY && !env.ALLOW_SIMULATED_PAYMENTS) {
+      return reply.code(503).send({
+        statusCode: 503,
+        error: "Service Unavailable",
+        message: "Paiements temporairement indisponibles sur cette édition",
+      });
+    }
     const body = amountSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
     if (user.accountStatus === "BANNED" || user.accountStatus === "SUSPENDED") {

@@ -1,6 +1,6 @@
 import { getToken } from "./api";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://79.137.32.27:4000";
+const API_URL = process.env.REACT_APP_API_URL || (typeof window !== "undefined" ? window.location.origin : "http://127.0.0.1:4010");
 const WS_BASE = API_URL.replace(/^http/, "ws");
 const listeners = new Map();
 let socket = null;
