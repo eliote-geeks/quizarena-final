@@ -7,26 +7,37 @@ import { dirname, join } from "path";
 import { randomUUID } from "crypto";
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
-type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; active: boolean; createdAt: string; builtin?: boolean };
-type MusicConfig = { initialized: boolean; tracks: MusicTrack[] };
+type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; mood?: string; active: boolean; createdAt: string; builtin?: boolean };
+type MusicConfig = { version: number; initialized: boolean; tracks: MusicTrack[] };
 const BUILTIN_MUSIC: MusicTrack[] = [
-  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
-  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
-  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
-  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "builtin-war-1", title: "Five Armies — Kevin MacLeod", url: "/audio/theme-five-armies.mp3", type: "action", mood: "Guerre", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-war-2", title: "Heroic Age — Kevin MacLeod", url: "/audio/theme-heroic-age.mp3", type: "action", mood: "Épique", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-anime-1", title: "Pixelland — Kevin MacLeod", url: "/audio/theme-pixelland.mp3", type: "action", mood: "Anime & gaming", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-relax-1", title: "Carefree — Kevin MacLeod", url: "/audio/theme-carefree.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-ambient-5", title: "Floating Cities — Kevin MacLeod", url: "/audio/theme-floating-cities.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-world-1", title: "Desert City — Kevin MacLeod", url: "/audio/theme-desert-city.mp3", type: "relaxing", mood: "Monde", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
+  { id: "builtin-game-1", title: "Townie Loop — Kevin MacLeod", url: "/audio/theme-townie-loop.mp3", type: "relaxing", mood: "Anime & gaming", active: true, builtin: true, createdAt: "2026-08-22T00:00:00.000Z" },
 ];
 function getMusic(): MusicConfig {
-  if (!existsSync(MUSIC_PATH)) return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) };
+  if (!existsSync(MUSIC_PATH)) return { version: 2, initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) };
   try {
     const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
-    if (parsed.initialized !== true && !(parsed.tracks ?? []).length) {
-      return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) };
+    if (parsed.version !== 2) {
+      const previous = Array.isArray(parsed.tracks) ? parsed.tracks : [];
+      const previousIds = new Set(previous.map((track: MusicTrack) => track.id));
+      const defaults = new Map(BUILTIN_MUSIC.map((track) => [track.id, track]));
+      const migrated = previous.map((track: MusicTrack) => ({ ...(defaults.get(track.id) ?? {}), ...track }));
+      return { version: 2, initialized: false, tracks: [...migrated, ...BUILTIN_MUSIC.filter((track) => !previousIds.has(track.id))] };
     }
-    return { initialized: true, tracks: (parsed.tracks ?? []).map((track: MusicTrack) => ({ ...track, active: track.active !== false })) };
-  } catch { return { initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) }; }
+    return { version: 2, initialized: true, tracks: (parsed.tracks ?? []).map((track: MusicTrack) => ({ ...track, active: track.active !== false })) };
+  } catch { return { version: 2, initialized: false, tracks: BUILTIN_MUSIC.map((track) => ({ ...track })) }; }
 }
 function saveMusic(data: { tracks: MusicTrack[] }) {
-  writeFileSync(MUSIC_PATH, JSON.stringify({ initialized: true, tracks: data.tracks }, null, 2));
+  writeFileSync(MUSIC_PATH, JSON.stringify({ version: 2, initialized: true, tracks: data.tracks }, null, 2));
 }
 
 function validPublicAudioUrl(value: string) {
@@ -811,7 +822,7 @@ Ne donne jamais la réponse dans le texte de la question.`;
   });
 
   app.post("/api/admin/music", async (req, reply) => {
-    const body = req.body as { title?: string; url?: string; type?: string };
+    const body = req.body as { title?: string; url?: string; type?: string; mood?: string };
     if (!body.url) return reply.badRequest("url requis");
     if (!validPublicAudioUrl(body.url)) return reply.badRequest("URL audio publique HTTP(S) invalide");
     if (body.type && !["relaxing", "action"].includes(body.type)) return reply.badRequest("Type de piste invalide");
@@ -822,6 +833,7 @@ Ne donne jamais la réponse dans le texte de la question.`;
       title: (body.title || body.url).trim().slice(0, 120),
       url: body.url,
       type: body.type === "action" ? "action" : "relaxing",
+      mood: (body.mood || (body.type === "action" ? "Action" : "Ambiance")).trim().slice(0, 40),
       active: true,
       createdAt: new Date().toISOString(),
     };
@@ -832,7 +844,7 @@ Ne donne jamais la réponse dans le texte de la question.`;
 
   app.patch("/api/admin/music/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const body = req.body as { title?: string; url?: string; type?: string; active?: boolean };
+    const body = req.body as { title?: string; url?: string; type?: string; mood?: string; active?: boolean };
     if (body.url !== undefined && !validPublicAudioUrl(body.url)) return reply.badRequest("URL audio publique HTTP(S) invalide");
     if (body.type !== undefined && !["relaxing", "action"].includes(body.type)) return reply.badRequest("Type de piste invalide");
     const music = getMusic();
@@ -844,6 +856,7 @@ Ne donne jamais la réponse dans le texte de la question.`;
       ...(body.title !== undefined ? { title: body.title.trim().slice(0, 120) || current.title } : {}),
       ...(body.url !== undefined ? { url: body.url } : {}),
       ...(body.type !== undefined ? { type: body.type as "relaxing" | "action" } : {}),
+      ...(body.mood !== undefined ? { mood: body.mood.trim().slice(0, 40) || current.mood } : {}),
       ...(body.active !== undefined ? { active: Boolean(body.active) } : {}),
     };
     saveMusic(music);

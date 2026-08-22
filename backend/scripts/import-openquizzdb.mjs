@@ -32,11 +32,11 @@ const prisma = new PrismaClient();
 
 const CATEGORY_MAP = new Map([
   ["ALPHAQUIZZ", "culture"],
-  ["ANIMAUX", "nature"],
+  ["ANIMAUX", "animaux"],
   ["ARCHEOLOGIE", "histoire"],
-  ["ARTS", "culture"],
-  ["BD", "anime"],
-  ["BANDE DESSINEE", "anime"],
+  ["ARTS", "arts"],
+  ["BD", "bandes-dessinees"],
+  ["BANDE DESSINEE", "bandes-dessinees"],
   ["CELEBRITES", "celebrites"],
   ["CINEMA", "cinema"],
   ["CULTURE", "culture"],
@@ -48,7 +48,7 @@ const CATEGORY_MAP = new Map([
   ["HISTOIRE", "histoire"],
   ["INFORMATIQUE", "technologie"],
   ["LITTERATURE", "litterature"],
-  ["LOISIRS", "culture"],
+  ["LOISIRS", "societe"],
   ["MOTS CROISES", "litterature"],
   ["MOTSCROISES", "litterature"],
   ["MUSIQUE", "musique"],
@@ -58,11 +58,11 @@ const CATEGORY_MAP = new Map([
   ["MONDE", "geographie"],
   ["ADULTES", "__skip"],
   ["QUADRIQUIZZ", "culture"],
-  ["QUOTIDIEN", "culture"],
+  ["QUOTIDIEN", "societe"],
   ["SCIENCES", "sciences"],
   ["SPORTS", "sport"],
-  ["TELEVISION", "cinema"],
-  ["TOURISME", "geographie"],
+  ["TELEVISION", "television"],
+  ["TOURISME", "voyages"],
   ["WEB", "technologie"],
 ]);
 
@@ -119,7 +119,8 @@ function parseLegacyCsv(content) {
   for (const rawLine of content.split(/\r?\n/)) {
     if (!rawLine.trim()) continue;
     const f = parseCsvLine(rawLine);
-    const languageColumn = /^(fr|en)$/i.test(f[1] ?? "");
+    const languageColumn = /^[a-z]{2}$/i.test(f[1] ?? "");
+    if (languageColumn && String(f[1]).toLowerCase() !== "fr") continue;
     const start = languageColumn ? 2 : 1;
     if (f.length < start + 5) continue;
     const text = decodeHtml(f[start]);

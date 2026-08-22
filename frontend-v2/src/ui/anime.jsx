@@ -597,6 +597,16 @@ export const CATEGORY_CHAR = {
   "celebrites":  StarChar,
   "anime":       StarChar,
   "geographie":  ExplorerChar,
+  "animaux":     ScienceChar,
+  "environnement": ScienceChar,
+  "television":  StarChar,
+  "jeux-video":  ScienceChar,
+  "automobile":  FootballerChar,
+  "sante":       ScienceChar,
+  "arts":        HistorianChar,
+  "societe":     CitizenChar,
+  "voyages":     ExplorerChar,
+  "bandes-dessinees": StarChar,
 };
 
 /* Personnage par défaut pour les catégories non mappées */

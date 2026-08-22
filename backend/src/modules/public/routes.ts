@@ -12,16 +12,29 @@ function getSettings() {
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
 const BUILTIN_MUSIC = [
-  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", active: true, builtin: true },
-  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", active: true, builtin: true },
-  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", active: true, builtin: true },
-  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", active: true, builtin: true },
+  { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true },
+  { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true },
+  { id: "builtin-ambient-3", title: "At Rest — Kevin MacLeod", url: "/audio/ambient-3.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true },
+  { id: "builtin-ambient-4", title: "Bathed in the Light — Kevin MacLeod", url: "/audio/ambient-4.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true },
+  { id: "builtin-war-1", title: "Five Armies — Kevin MacLeod", url: "/audio/theme-five-armies.mp3", type: "action", mood: "Guerre", active: true, builtin: true },
+  { id: "builtin-war-2", title: "Heroic Age — Kevin MacLeod", url: "/audio/theme-heroic-age.mp3", type: "action", mood: "Épique", active: true, builtin: true },
+  { id: "builtin-anime-1", title: "Pixelland — Kevin MacLeod", url: "/audio/theme-pixelland.mp3", type: "action", mood: "Anime & gaming", active: true, builtin: true },
+  { id: "builtin-relax-1", title: "Carefree — Kevin MacLeod", url: "/audio/theme-carefree.mp3", type: "relaxing", mood: "Détente", active: true, builtin: true },
+  { id: "builtin-ambient-5", title: "Floating Cities — Kevin MacLeod", url: "/audio/theme-floating-cities.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true },
+  { id: "builtin-world-1", title: "Desert City — Kevin MacLeod", url: "/audio/theme-desert-city.mp3", type: "relaxing", mood: "Monde", active: true, builtin: true },
+  { id: "builtin-game-1", title: "Townie Loop — Kevin MacLeod", url: "/audio/theme-townie-loop.mp3", type: "relaxing", mood: "Anime & gaming", active: true, builtin: true },
 ];
 function getMusicPublic() {
   if (!existsSync(MUSIC_PATH)) return { tracks: BUILTIN_MUSIC };
   try {
     const parsed = JSON.parse(readFileSync(MUSIC_PATH, "utf8"));
-    if (parsed.initialized !== true && !(parsed.tracks ?? []).length) return { tracks: BUILTIN_MUSIC };
+    if (parsed.version !== 2) {
+      const previous = Array.isArray(parsed.tracks) ? parsed.tracks : [];
+      const previousIds = new Set(previous.map((track: any) => track.id));
+      const defaults = new Map(BUILTIN_MUSIC.map((track) => [track.id, track]));
+      const migrated = previous.map((track: any) => ({ ...(defaults.get(track.id) ?? {}), ...track }));
+      return { tracks: [...migrated, ...BUILTIN_MUSIC.filter((track) => !previousIds.has(track.id))].filter((track: any) => track.active !== false) };
+    }
     return { tracks: (parsed.tracks ?? []).filter((track: any) => track.active !== false) };
   } catch { return { tracks: BUILTIN_MUSIC }; }
 }

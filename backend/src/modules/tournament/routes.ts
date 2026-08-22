@@ -17,6 +17,8 @@ const COVER_IMAGE_ALLOWLIST = new Set(
     "football-cm", "musique-cm", "histoire-cm", "societe-cm", "gastronomie-cm",
     "culture", "histoire", "geographie", "sciences", "sport", "afrique", "cinema",
     "musique", "celebrites", "technologie", "nature", "gastronomie", "litterature", "anime",
+    "animaux", "environnement", "television", "jeux-video", "automobile", "sante", "arts",
+    "societe", "voyages", "bandes-dessinees",
   ].map((id) => `/categories/${id}.webp`)
 );
 

@@ -1015,7 +1015,7 @@ async function music(){
   const rows=tracks.map(t=>{const playable=t.url.startsWith('/')?`${location.protocol}//${location.hostname}:3011${t.url}`:t.url;return `
     <tr>
       <td><b style="font-size:13px">${esc(t.title)}</b></td>
-      <td><span class="tag ${t.type==='action'?'to':'tb'}">${typeLabel[t.type]||t.type}</span></td>
+      <td><span class="tag ${t.type==='action'?'to':'tb'}">${esc(t.mood||typeLabel[t.type]||t.type)}</span></td>
       <td><button class="btn ${t.active!==false?'btn-green':'btn-ghost'} btn-xs" onclick="toggleMusicTrack('${t.id}',${t.active===false?'true':'false'})">${t.active!==false?'Active':'En pause'}</button></td>
       <td><a href="${esc(playable)}" target="_blank" style="color:var(--blue);font-size:12px;word-break:break-all">${esc(t.url)}</a>${t.builtin?'<div style="font-size:9px;color:var(--gold);margin-top:3px">PISTE INTÉGRÉE</div>':''}</td>
       <td><span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmtD(t.createdAt)}</span></td>
@@ -1034,8 +1034,12 @@ async function music(){
         <div style="min-width:200px"><label>Titre</label><input id="mu-title" placeholder="Titre de la piste"/></div>
         <div style="min-width:150px"><label>Type</label>
           <select id="mu-type">
-            <option value="relaxing">Ambiance (lobby, navigation)</option>
-            <option value="action">Action (duel, tournoi)</option>
+            <option value="relaxing|Ambiance">Ambiance (lobby, navigation)</option>
+            <option value="relaxing|Détente">Relaxante</option>
+            <option value="relaxing|Monde">Monde</option>
+            <option value="action|Guerre">Guerre</option>
+            <option value="action|Épique">Épique</option>
+            <option value="action|Anime & gaming">Anime & gaming</option>
           </select>
         </div>
         <div style="align-self:flex-end"><button class="btn btn-gold btn-sm" onclick="addMusicTrack()">
@@ -1054,10 +1058,10 @@ async function music(){
 async function addMusicTrack(){
   const url=document.getElementById('mu-url').value.trim();
   const title=document.getElementById('mu-title').value.trim();
-  const type=document.getElementById('mu-type').value;
+  const [type,mood]=document.getElementById('mu-type').value.split('|');
   if(!url){await adminAlert('URL requise.');return;}
   try{
-    await P('/api/admin/music',{url,title:title||url,type});
+    await P('/api/admin/music',{url,title:title||url,type,mood});
     muMsg='Piste ajoutée avec succès.';
   }catch(e){muMsg='Erreur : '+e.message;}
   music();

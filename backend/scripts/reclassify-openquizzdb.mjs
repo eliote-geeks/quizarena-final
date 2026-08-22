@@ -30,14 +30,16 @@ function parseCsvLine(line) {
   }
   fields.push(current.trim()); return fields;
 }
-function questionTexts(content) {
+function questionRows(content) {
   const result = [];
   for (const line of content.split(/\r?\n/)) {
     if (!line.trim()) continue;
     const fields = parseCsvLine(line);
-    const start = /^(fr|en)$/i.test(fields[1] ?? "") ? 2 : 1;
+    const languageColumn = /^[a-z]{2}$/i.test(fields[1] ?? "");
+    const language = languageColumn ? String(fields[1]).toLowerCase() : "fr";
+    const start = languageColumn ? 2 : 1;
     const text = decodeHtml(fields[start] ?? "");
-    if (text.length >= 8) result.push(fold(text));
+    if (text.length >= 8) result.push({ text: fold(text), language });
   }
   return result;
 }
@@ -45,6 +47,7 @@ function questionTexts(content) {
 async function main() {
   const categories = new Set((await prisma.category.findMany({ select: { id: true } })).map((row) => row.id));
   const desiredByText = new Map();
+  const nonFrenchTexts = new Set();
   const conflicts = new Set();
   const sourceCounts = new Map();
   const files = (await readdir(DATA_DIR)).filter((name) => /^openquizzdb_\d+\.csv$/.test(name));
@@ -54,9 +57,11 @@ async function main() {
     try { title = (await readFile(join(DATA_DIR, `openquizzdb_${id}.desc`), "utf8")).match(/^TITRE\s*:\s*(.*)$/m)?.[1]?.trim() ?? ""; } catch {}
     const categoryId = legacyCategory(id, title);
     if (categoryId !== "__skip" && !categories.has(categoryId)) throw new Error(`Catégorie absente: ${categoryId}`);
-    const texts = questionTexts(await readFile(join(DATA_DIR, file), "utf8"));
-    sourceCounts.set(categoryId, (sourceCounts.get(categoryId) ?? 0) + texts.length);
-    for (const text of texts) {
+    const rows = questionRows(await readFile(join(DATA_DIR, file), "utf8"));
+    const frenchRows = rows.filter((row) => row.language === "fr");
+    sourceCounts.set(categoryId, (sourceCounts.get(categoryId) ?? 0) + frenchRows.length);
+    for (const { text, language } of rows) {
+      if (language !== "fr") nonFrenchTexts.add(text);
       if (desiredByText.has(text) && desiredByText.get(text) !== categoryId) conflicts.add(text);
       else desiredByText.set(text, categoryId);
     }
@@ -66,9 +71,15 @@ async function main() {
   const questions = await prisma.question.findMany({ where: { source: "openquizzdb" }, select: { id: true, textFr: true, categoryId: true, active: true } });
   const changes = new Map();
   const excluded = [];
+  const nonFrench = [];
   let matched = 0;
   for (const question of questions) {
-    const desired = desiredByText.get(fold(question.textFr));
+    const normalized = fold(question.textFr);
+    if (nonFrenchTexts.has(normalized)) {
+      if (question.active) nonFrench.push(question.id);
+      continue;
+    }
+    const desired = desiredByText.get(normalized);
     if (!desired) continue;
     matched += 1;
     if (desired === "__skip") { if (question.active) excluded.push(question.id); continue; }
@@ -84,6 +95,7 @@ async function main() {
     ambiguousTexts: conflicts.size,
     categoryChanges: Object.fromEntries([...changes].map(([category, ids]) => [category, ids.length]).sort()),
     deactivatedAdultQuestions: excluded.length,
+    deactivatedNonFrenchQuestions: nonFrench.length,
     archiveDistribution: Object.fromEntries([...sourceCounts].sort()),
   };
   console.log(JSON.stringify(report, null, 2));
@@ -92,8 +104,8 @@ async function main() {
     for (let i = 0; i < ids.length; i += 500) await prisma.question.updateMany({ where: { id: { in: ids.slice(i, i + 500) } }, data: { categoryId } });
   }
   for (let i = 0; i < excluded.length; i += 500) await prisma.question.updateMany({ where: { id: { in: excluded.slice(i, i + 500) } }, data: { active: false } });
+  for (let i = 0; i < nonFrench.length; i += 500) await prisma.question.updateMany({ where: { id: { in: nonFrench.slice(i, i + 500) } }, data: { active: false } });
   console.log("Reclassement appliqué.");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => prisma.$disconnect());
-

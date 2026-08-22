@@ -179,11 +179,11 @@ function SidebarNav() {
           confidentialité
         </Link>
       </div>
-      {/* Attribution requise par la licence Creative Commons BY 3.0 des
+      {/* Attribution requise par les licences Creative Commons des
           morceaux de §musicEngine.js — musique de Kevin MacLeod
           (incompetech.com), pas composée pour le projet. */}
       <p className="px-5 pb-6 text-[10px] leading-snug text-bone-4/70">
-        Musique : Kevin MacLeod (incompetech.com), licence{" "}
+        Musique : Kevin MacLeod (incompetech.com), licences{" "}
         <a
           href="https://creativecommons.org/licenses/by/3.0/"
           target="_blank"
@@ -192,6 +192,8 @@ function SidebarNav() {
         >
           CC BY 3.0
         </a>
+        {" / "}
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer" className="underline hover:text-flare">CC BY 4.0</a>
         .
       </p>
     </aside>

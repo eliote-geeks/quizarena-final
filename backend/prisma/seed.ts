@@ -23,6 +23,16 @@ const CATEGORIES: { id: string; nameFr: string; nameEn: string; difficulty: stri
   { id: "gastronomie", nameFr: "Gastronomie", nameEn: "Food", difficulty: "facile" },
   { id: "litterature", nameFr: "Littérature", nameEn: "Literature", difficulty: "difficile" },
   { id: "anime", nameFr: "Anime & Manga", nameEn: "Anime & Manga", difficulty: "moyen" },
+  { id: "animaux", nameFr: "Animaux", nameEn: "Animals", difficulty: "moyen" },
+  { id: "environnement", nameFr: "Environnement", nameEn: "Environment", difficulty: "moyen" },
+  { id: "television", nameFr: "Télévision", nameEn: "Television", difficulty: "facile" },
+  { id: "jeux-video", nameFr: "Jeux vidéo", nameEn: "Video games", difficulty: "moyen" },
+  { id: "automobile", nameFr: "Automobile", nameEn: "Automotive", difficulty: "moyen" },
+  { id: "sante", nameFr: "Santé", nameEn: "Health", difficulty: "difficile" },
+  { id: "arts", nameFr: "Arts", nameEn: "Arts", difficulty: "moyen" },
+  { id: "societe", nameFr: "Société", nameEn: "Society", difficulty: "moyen" },
+  { id: "voyages", nameFr: "Voyages & tourisme", nameEn: "Travel & tourism", difficulty: "facile" },
+  { id: "bandes-dessinees", nameFr: "Bande dessinée", nameEn: "Comics", difficulty: "moyen" },
 ];
 
 type BankEntry = { q: { fr: string; en: string }; options: string[]; answer: number };

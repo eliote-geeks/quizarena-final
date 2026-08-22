@@ -10,6 +10,11 @@ describe("taxonomie OpenQuizzDB historique", () => {
     [159, "Variété française", "musique"],
     [223, "Crypto-monnaies", "technologie"],
     [260, "Pomme de terre", "gastronomie"],
+    [10, "Requins", "animaux"],
+    [147, "Feuilletons télévisés", "television"],
+    [164, "Santé et bien-être", "sante"],
+    [240, "Paris aujourd’hui", "voyages"],
+    [124, "Tintin", "bandes-dessinees"],
   ])("classe le quiz %i dans %s", (id, title, expected) => {
     expect(legacyCategory(id, title)).toBe(expected);
   });
@@ -22,4 +27,3 @@ describe("taxonomie OpenQuizzDB historique", () => {
     expect(legacyCategory(154, "Culture générale 2")).toBe("culture");
   });
 });
-
