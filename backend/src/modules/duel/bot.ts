@@ -14,10 +14,14 @@ import { prisma } from "../../lib/prisma.js";
 
 export type BotDifficulty = "facile" | "moyen" | "difficile";
 
-export const BOT_PARAMS: Record<BotDifficulty, { accuracy: number; minMs: number; maxMs: number; username: string }> = {
-  facile: { accuracy: 0.35, minMs: 3500, maxMs: 7000, username: "Ordinateur · Facile" },
-  moyen: { accuracy: 0.6, minMs: 2500, maxMs: 5500, username: "Ordinateur · Moyen" },
-  difficile: { accuracy: 0.85, minMs: 1000, maxMs: 3500, username: "Ordinateur · Difficile" },
+// Difficultés calibrées pour être battables par un joueur attentif :
+// - facile : répond lentement, se trompe souvent (3/10 en moyenne)
+// - moyen  : 50/50, un joueur concentré gagne s'il maîtrise le sujet
+// - difficile : 7/10 en moyenne — exige un bon niveau, pas imbattable
+export const BOT_PARAMS: Record<BotDifficulty, { accuracy: number; minMs: number; maxMs: number; username: string; payoutMultiplier: number }> = {
+  facile:    { accuracy: 0.28, minMs: 4500, maxMs: 7500, username: "Ordinateur · Facile", payoutMultiplier: 1.20 },
+  moyen:     { accuracy: 0.50, minMs: 3000, maxMs: 6000, username: "Ordinateur · Moyen", payoutMultiplier: 1.50 },
+  difficile: { accuracy: 0.68, minMs: 1500, maxMs: 4000, username: "Ordinateur · Difficile", payoutMultiplier: 2.00 },
 };
 
 const BOT_PHONES: Record<BotDifficulty, string> = {
@@ -59,4 +63,9 @@ export function getBotUserId(difficulty: BotDifficulty): string {
 
 export function botUsername(difficulty: BotDifficulty): string {
   return BOT_PARAMS[difficulty].username;
+}
+
+export function botWinnerPayout(stakeCoins: number, difficulty: BotDifficulty): number {
+  if (!Number.isInteger(stakeCoins) || stakeCoins < 0) throw new Error("Mise IA invalide");
+  return Math.round(stakeCoins * BOT_PARAMS[difficulty].payoutMultiplier);
 }

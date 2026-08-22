@@ -9,27 +9,27 @@ import {
 const STEPS = [
   {
     icon: Play,
-    title: "Bienvenue dans l'arène",
-    text: "QuizArena est une plateforme de compétition intellectuelle. Vos gains dépendent de votre savoir, pas du hasard. Passons en revue les modules clés en 4 étapes.",
-    highlight: "Aucun tirage aléatoire, uniquement du skill.",
+    title: "Entre dans l'arène",
+    text: "Réponds juste, réponds vite, gagne en FCFA.",
+    highlight: "La connaissance fait la différence.",
   },
   {
     icon: Swords,
-    title: "Quiz, duels, tournois",
-    text: "Trois modes de jeu : solo pour vous entraîner et gagner de petits crédits, duels 1v1 avec mise partagée, et tournois multi-joueurs avec cagnotte cumulée.",
-    highlight: "Un chrono par question. Le plus rapide et le plus juste gagne.",
+    title: "Trois façons de jouer",
+    text: "Solo, Duel 1v1 ou Tournois. Choisis ta mise et lance la partie.",
+    highlight: "Chaque question a son chrono.",
   },
   {
     icon: Crown,
-    title: "Le statut VIP",
-    text: "Atteignez 30 victoires cumulées et 5 parrainages validés pour débloquer la création de vos propres tournois avec vos règles.",
-    highlight: "Suivez votre progression sur l'onglet VIP.",
+    title: "VIP se mérite",
+    text: "30 victoires de Duel sur le mois débloquent les outils VIP.",
+    highlight: "Tournois privés et parrainage.",
   },
   {
     icon: Wallet,
     title: "Wallet et paiements",
-    text: "Rechargez en Orange Money ou MTN MoMo. Les gains sont crédités en FCFA. Consultez le classement hebdomadaire pour les récompenses des 3 meilleurs joueurs de la semaine.",
-    highlight: "Prêt ? Lançons votre premier quiz.",
+    text: "Recharge, joue, retire tes gains en FCFA.",
+    highlight: "Prêt ? Lance ton premier quiz.",
   },
 ];
 
@@ -66,7 +66,7 @@ export default function OnboardingModal() {
           exit={{ y: 60, opacity: 0 }}
           transition={{ type: "spring", stiffness: 280, damping: 24 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden card-gold card-gold-glow"
+          className="card w-full overflow-hidden rounded-t-3xl sm:max-w-md sm:rounded-3xl"
         >
           {/* Header with progress */}
           <div className="px-5 pt-5 pb-3">
@@ -115,10 +115,10 @@ export default function OnboardingModal() {
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                 style={{
-                  background: "linear-gradient(145deg, rgba(212,175,55,0.28), rgba(0,0,0,0.25))",
+                  background: "var(--accent-soft)",
                   color: "var(--qa-gold)",
                   border: "1px solid var(--qa-border-md)",
-                  boxShadow: "0 8px 24px -8px rgba(212,175,55,0.45)",
+                  boxShadow: "none",
                 }}
               >
                 <Icon className="w-8 h-8" strokeWidth={2.2} />

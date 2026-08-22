@@ -6,7 +6,6 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { getMockPlayerProfile, ALL_REPLAYS, getCategory, CATEGORIES } from "../data/mockData";
-import { getRank } from "../lib/eloEngine";
 import ArenaBackground from "../components/ArenaBackground";
 import ReplayModal from "../components/ReplayModal";
 
@@ -22,7 +21,6 @@ export default function PlayerPage() {
   const { lang } = useApp();
 
   const p = getMockPlayerProfile(username);
-  const rank = getRank(p.elo);
   const isOwnProfile = username === "ArenaCadet";
 
   const [activeTab, setActiveTab] = useState(0);
@@ -49,7 +47,7 @@ export default function PlayerPage() {
   const winPct = p.games > 0 ? Math.round((p.wins / p.games) * 100) : 0;
 
   return (
-    <div className="relative min-h-screen" style={{ background: "var(--qa-page)" }}>
+    <div className="player-page relative min-h-screen" style={{ background: "var(--qa-page)" }}>
       <ArenaBackground />
       <div className="relative max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
 
@@ -82,17 +80,11 @@ export default function PlayerPage() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h1 className="text-lg font-semibold text-white leading-none">{p.name}</h1>
-                <span
-                  className="text-xs font-medium px-2 py-0.5 rounded-full border"
-                  style={{ color: rank.color, borderColor: `${rank.color}40`, background: `${rank.color}12` }}
-                >
-                  {rank.emoji} {rank.name}
-                </span>
               </div>
 
-              <div className="font-arcade text-2xl leading-none mb-1" style={{ color: AMBER }}>
-                {p.elo}
-                <span className="text-xs font-sans text-white/25 ml-1">ELO</span>
+              <div className="font-display text-2xl font-extrabold leading-none mb-1" style={{ color: AMBER }}>
+                {p.wins}
+                <span className="text-xs font-sans text-white/25 ml-1">victoires</span>
               </div>
 
               <div className="text-[11px] text-white/30 mb-3">Membre depuis {p.joined}</div>

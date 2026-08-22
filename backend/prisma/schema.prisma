@@ -19,35 +19,37 @@ datasource db {
 
 enum AccountStatus {
   ACTIVE
-  WATCHED     // niveau 0-1 : surveillance, pas de restriction visible
-  RESTRICTED  // niveau 2 : mise plafonnée, duel bloqué
-  SUSPENDED   // niveau 3 : suspension temporaire
-  BANNED      // niveau 4 : définitif
+  WATCHED // niveau 0-1 : surveillance, pas de restriction visible
+  RESTRICTED // niveau 2 : mise plafonnée, duel bloqué
+  SUSPENDED // niveau 3 : suspension temporaire
+  BANNED // niveau 4 : définitif
 }
 
 model User {
-  id           String        @id @default(uuid())
-  username     String        @unique
-  email        String?       @unique
-  phone        String        @unique
-  passwordHash String
-  region       String?
-  eloRating    Int           @default(1000)
-  accountStatus AccountStatus @default(ACTIVE)
-  riskScore    Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
-  isBot        Boolean       @default(false) // compte "Ordinateur" (§duel/bot.ts) — jamais crédité, jamais classé
-  isAdmin      Boolean       @default(false) // accès au dashboard admin (§modules/admin/) — jamais via l'inscription publique, uniquement scripts/make-admin.mjs
-  createdAt    DateTime      @default(now())
-  lastLoginAt  DateTime?
+  id               String        @id @default(uuid())
+  username         String        @unique
+  email            String?       @unique
+  phone            String        @unique
+  passwordHash     String
+  region           String?
+  eloRating        Int           @default(1000)
+  accountStatus    AccountStatus @default(ACTIVE)
+  riskScore        Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
+  isBot            Boolean       @default(false) // compte "Ordinateur" (§duel/bot.ts) — jamais crédité, jamais classé
+  isAdmin          Boolean       @default(false) // accès au dashboard admin (§modules/admin/) — jamais via l'inscription publique, uniquement scripts/make-admin.mjs
+  createdAt        DateTime      @default(now())
+  lastLoginAt      DateTime?
   lastDailyBonusAt DateTime? // gate serveur du bonus quotidien (§ QuizPlay.jsx isDaily) — le client ne peut pas le déclarer deux fois
 
-  transactions Transaction[]
-  quizSessions QuizSession[]
-  flags        Flag[]
-  stats        PlayerStats?
-  duelsAsA     DuelMatch[]   @relation("DuelPlayerA")
-  duelsAsB     DuelMatch[]   @relation("DuelPlayerB")
+  transactions      Transaction[]
+  quizSessions      QuizSession[]
+  flags             Flag[]
+  stats             PlayerStats?
+  duelsAsA          DuelMatch[]       @relation("DuelPlayerA")
+  duelsAsB          DuelMatch[]       @relation("DuelPlayerB")
   tournamentEntries TournamentEntry[]
+  clanMembership    ClanMember?
+  clanJoinRequests  ClanJoinRequest[]
 
   @@index([riskScore])
   @@index([accountStatus])
@@ -63,36 +65,36 @@ model User {
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
-  STAKE       // mise engagée (négatif)
-  PAYOUT      // gain de partie/tournoi (positif)
-  REFUND      // panne technique ou tournoi annulé (§ Refund.jsx)
-  BONUS       // parrainage, promo
+  STAKE // mise engagée (négatif)
+  PAYOUT // gain de partie/tournoi (positif)
+  REFUND // panne technique ou tournoi annulé (§ Refund.jsx)
+  BONUS // parrainage, promo
 }
 
 enum TransactionStatus {
-  PENDING     // en attente (ex : webhook Mobile Money pas encore reçu)
+  PENDING // en attente (ex : webhook Mobile Money pas encore reçu)
   COMPLETED
   FAILED
   QUARANTINED // suspicion_score 50-89 : gain retenu, voir ANTICHEAT_SPEC §3.4 phase 9.2
 }
 
 model Transaction {
-  id            String             @id @default(uuid())
-  userId        String
-  user          User               @relation(fields: [userId], references: [id])
-  type          TransactionType
-  amountCoins   Int                // signé : dépôt/gain positif, retrait/mise négatif
-  status        TransactionStatus  @default(COMPLETED)
-  provider      String?            // "sharepay" | "simulated"
-  providerRef   String?            // référence SharePay, pour rapprochement + idempotence webhook
-  relatedTransactionId String?     // ex : REFUND → pointe vers le WITHDRAWAL remboursé (évite un double remboursement si le webhook est livré deux fois)
-  quizSessionId String?
-  quizSession   QuizSession?       @relation(fields: [quizSessionId], references: [id])
-  duelMatchId   String?
-  duelMatch     DuelMatch?         @relation(fields: [duelMatchId], references: [id])
-  metadata      Json?
-  createdAt     DateTime           @default(now())
-  releasedAt    DateTime?          // date de sortie de quarantaine
+  id                   String            @id @default(uuid())
+  userId               String
+  user                 User              @relation(fields: [userId], references: [id])
+  type                 TransactionType
+  amountCoins          Int // signé : dépôt/gain positif, retrait/mise négatif
+  status               TransactionStatus @default(COMPLETED)
+  provider             String? // "sharepay" | "simulated"
+  providerRef          String? // référence SharePay, pour rapprochement + idempotence webhook
+  relatedTransactionId String? // ex : REFUND → pointe vers le WITHDRAWAL remboursé (évite un double remboursement si le webhook est livré deux fois)
+  quizSessionId        String?
+  quizSession          QuizSession?      @relation(fields: [quizSessionId], references: [id])
+  duelMatchId          String?
+  duelMatch            DuelMatch?        @relation(fields: [duelMatchId], references: [id])
+  metadata             Json?
+  createdAt            DateTime          @default(now())
+  releasedAt           DateTime? // date de sortie de quarantaine
 
   @@index([userId, status])
   @@index([status, createdAt])
@@ -103,12 +105,12 @@ model Transaction {
 // ────────────────────────────────────────────────────────────────────
 
 model Category {
-  id         String     @id // slug, ex "histoire"
-  nameFr     String
-  nameEn     String
-  difficulty String     @default("moyen")
-  questions  Question[]
-  sessions   QuizSession[]
+  id          String        @id // slug, ex "histoire"
+  nameFr      String
+  nameEn      String
+  difficulty  String        @default("moyen")
+  questions   Question[]
+  sessions    QuizSession[]
   tournaments Tournament[]
 }
 
@@ -118,8 +120,8 @@ model Question {
   category    Category @relation(fields: [categoryId], references: [id])
   textFr      String
   textEn      String
-  options     Json     // string[4], ordre canonique — le shuffle se fait à l'envoi (§3.4)
-  answerIndex Int      // index dans `options`, jamais envoyé au client avant submit
+  options     Json // string[4], ordre canonique — le shuffle se fait à l'envoi (§3.4)
+  answerIndex Int // index dans `options`, jamais envoyé au client avant submit
   active      Boolean  @default(true)
   source      String   @default("manual") // "manual" | "ai" — généré hors ligne par un modèle local (§scripts/generate-questions.mjs), jamais en direct pendant une partie
   createdAt   DateTime @default(now())
@@ -146,27 +148,27 @@ enum SessionStatus {
 }
 
 model QuizSession {
-  id            String        @id @default(uuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  categoryId    String
-  category      Category      @relation(fields: [categoryId], references: [id])
-  mode          QuizMode
-  stakeCoins    Int           @default(0)
-  daily         Boolean       @default(false) // partie du jour (LIBRE) — bonus 500 F, une fois/24h, vérifié serveur
-  questionIds   Json          // string[] — ordre figé au démarrage (§3.4 : anti-refresh)
-  status        SessionStatus @default(STARTED)
-  startedAt     DateTime      @default(now())
-  expiresAt     DateTime      // startedAt + (nb_questions × timer) + marge
-  submittedAt   DateTime?
+  id          String        @id @default(uuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  categoryId  String
+  category    Category      @relation(fields: [categoryId], references: [id])
+  mode        QuizMode
+  stakeCoins  Int           @default(0)
+  daily       Boolean       @default(false) // partie du jour (LIBRE) — bonus 500 F, une fois/24h, vérifié serveur
+  questionIds Json // string[] — ordre figé au démarrage (§3.4 : anti-refresh)
+  status      SessionStatus @default(STARTED)
+  startedAt   DateTime      @default(now())
+  expiresAt   DateTime // startedAt + (nb_questions × timer) + marge
+  submittedAt DateTime?
 
   // Résultat, rempli uniquement par submit() côté serveur
-  scoreServer      Int?
-  eloDelta         Int?
-  tabSwitches      Int      @default(0) // rapporté par le client, indicatif (§2.2 : pas une preuve seule)
-  totalDurationMs  Int?
-  suspicionScore   Float?
-  suspicionFlags   Json?       // string[] des règles déclenchées (R01…)
+  scoreServer         Int?
+  eloDelta            Int?
+  tabSwitches         Int     @default(0) // rapporté par le client, indicatif (§2.2 : pas une preuve seule)
+  totalDurationMs     Int?
+  suspicionScore      Float?
+  suspicionFlags      Json? // string[] des règles déclenchées (R01…)
   clientScoreMismatch Boolean @default(false) // le client a menti sur son score
 
   answers      QuizAnswer[]
@@ -176,14 +178,14 @@ model QuizSession {
 }
 
 model QuizAnswer {
-  id            String      @id @default(uuid())
-  sessionId     String
-  session       QuizSession @relation(fields: [sessionId], references: [id])
-  questionId    String
-  chosenIndex   Int
-  correct       Boolean     // recalculé serveur, jamais pris du client
-  responseMs    Int
-  createdAt     DateTime    @default(now())
+  id          String      @id @default(uuid())
+  sessionId   String
+  session     QuizSession @relation(fields: [sessionId], references: [id])
+  questionId  String
+  chosenIndex Int
+  correct     Boolean // recalculé serveur, jamais pris du client
+  responseMs  Int
+  createdAt   DateTime    @default(now())
 
   @@index([sessionId])
 }
@@ -201,46 +203,47 @@ enum DuelStatus {
   MATCHING
   IN_PROGRESS
   COMPLETED
-  CANCELLED   // adversaire perdu avant le début, ou solde insuffisant au débit → mises remboursées
+  CANCELLED // adversaire perdu avant le début, ou solde insuffisant au débit → mises remboursées
 }
 
 model DuelMatch {
-  id           String       @id @default(uuid())
-  categoryId   String
-  stakeCoins   Int
-  playerAId    String
-  playerA      User         @relation("DuelPlayerA", fields: [playerAId], references: [id])
-  playerBId    String
-  playerB      User         @relation("DuelPlayerB", fields: [playerBId], references: [id])
-  status       DuelStatus   @default(MATCHING)
-  questionIds  Json?        // string[] — même liste, même ordre pour les deux joueurs
-  scoreA       Int          @default(0)
-  scoreB       Int          @default(0)
-  winnerId     String?      // null si égalité ou annulé
-  forfeitedBy  String?      // userId qui a abandonné/déconnecté après le début (§R08 anti-triche)
-  eloDeltaA    Int?
-  eloDeltaB    Int?
-  startedAt    DateTime     @default(now())
-  completedAt  DateTime?
+  id          String     @id @default(uuid())
+  categoryId  String
+  stakeCoins  Int
+  playerAId   String
+  playerA     User       @relation("DuelPlayerA", fields: [playerAId], references: [id])
+  playerBId   String
+  playerB     User       @relation("DuelPlayerB", fields: [playerBId], references: [id])
+  status      DuelStatus @default(MATCHING)
+  questionIds Json? // string[] — même liste, même ordre pour les deux joueurs
+  scoreA      Int        @default(0)
+  scoreB      Int        @default(0)
+  winnerId    String? // null si égalité ou annulé
+  forfeitedBy String? // userId qui a abandonné/déconnecté après le début (§R08 anti-triche)
+  eloDeltaA   Int?
+  eloDeltaB   Int?
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
 
-  transactions Transaction[]
-  answers      DuelAnswer[]
+  transactions    Transaction[]
+  answers         DuelAnswer[]
   tournamentMatch TournamentMatch? // non-null si ce duel est un match de tournoi (§tournament/)
+  clanWarMatch    ClanWarMatch? // non-null si ce duel compte pour une guerre de clans
 
   @@index([playerAId])
   @@index([playerBId])
 }
 
 model DuelAnswer {
-  id           String    @id @default(uuid())
-  duelMatchId  String
-  duelMatch    DuelMatch @relation(fields: [duelMatchId], references: [id])
-  userId       String
-  questionId   String
-  chosenIndex  Int       // -1 = timeout, aucune réponse reçue à temps
-  correct      Boolean
-  responseMs   Int       // calculé serveur : réception - envoi de la question, jamais déclaré par le client
-  createdAt    DateTime  @default(now())
+  id          String    @id @default(uuid())
+  duelMatchId String
+  duelMatch   DuelMatch @relation(fields: [duelMatchId], references: [id])
+  userId      String
+  questionId  String
+  chosenIndex Int // -1 = timeout, aucune réponse reçue à temps
+  correct     Boolean
+  responseMs  Int // calculé serveur : réception - envoi de la question, jamais déclaré par le client
+  createdAt   DateTime  @default(now())
 
   @@index([duelMatchId])
   @@index([userId])
@@ -268,18 +271,20 @@ enum TournamentStatus {
 }
 
 enum TournamentMatchStatus {
-  PENDING     // vainqueurs du tour précédent pas encore tous connus
-  READY       // les deux joueurs sont fixés, en attente qu'ils rejoignent
+  PENDING // vainqueurs du tour précédent pas encore tous connus
+  READY // les deux joueurs sont fixés, en attente qu'ils rejoignent
   IN_PROGRESS // les deux ont rejoint, DuelMatch en cours (voir duelMatchId)
   COMPLETED
 }
 
 model Tournament {
   id          String           @id @default(uuid())
-  categoryId  String
-  category    Category         @relation(fields: [categoryId], references: [id])
-  stakeCoins  Int              // droit d'entrée, débité à l'inscription
-  capacity    Int              // 4, 8 ou 16
+  name        String? // saisi par le créateur (19/08) ; absent sur les tournois créés avant — repli sur le nom de catégorie côté API
+  coverImage  String? // chemin choisi parmi le set de photos existant (20/08) — jamais un upload libre, voir routes.ts COVER_IMAGE_ALLOWLIST
+  categoryId  String? // optionnel depuis le 19/08 : null = questions mélangées sur tout le bank, comme un duel PvP normal (§quiz/questions.ts pickQuestions)
+  category    Category?        @relation(fields: [categoryId], references: [id])
+  stakeCoins  Int // droit d'entrée, débité à l'inscription
+  capacity    Int // 4, 8 ou 16
   status      TournamentStatus @default(REGISTERING)
   createdAt   DateTime         @default(now())
   startedAt   DateTime?
@@ -298,9 +303,9 @@ model TournamentEntry {
   userId          String
   user            User       @relation(fields: [userId], references: [id])
   seed            Int        @default(0) // position dans le bracket, tirée au hasard à la clôture des inscriptions
-  eliminatedRound Int?       // round où éliminé ; null tant qu'en course
-  placement       Int?       // rang final : 1=vainqueur, 2=finaliste, 3=demi-finaliste, 0=éliminé plus tôt ; null tant que le tournoi n'est pas terminé
-  payoutCoins     Int?       // gain réellement crédité (0 si non placé)
+  eliminatedRound Int? // round où éliminé ; null tant qu'en course
+  placement       Int? // rang final : 1=vainqueur, 2=finaliste, 3=demi-finaliste, 0=éliminé plus tôt ; null tant que le tournoi n'est pas terminé
+  payoutCoins     Int? // gain réellement crédité (0 si non placé)
   joinedAt        DateTime   @default(now())
 
   @@unique([tournamentId, userId])
@@ -308,17 +313,17 @@ model TournamentEntry {
 }
 
 model TournamentMatch {
-  id           String                 @id @default(uuid())
+  id           String                @id @default(uuid())
   tournamentId String
-  tournament   Tournament             @relation(fields: [tournamentId], references: [id])
-  round        Int                    // 1 = premier tour
-  slot         Int                    // position dans le round, pour apparier le round suivant (slot i et i+1 -> slot i/2)
-  playerAId    String?                // null tant que le vainqueur du tour précédent n'est pas encore connu
+  tournament   Tournament            @relation(fields: [tournamentId], references: [id])
+  round        Int // 1 = premier tour
+  slot         Int // position dans le round, pour apparier le round suivant (slot i et i+1 -> slot i/2)
+  playerAId    String? // null tant que le vainqueur du tour précédent n'est pas encore connu
   playerBId    String?
-  winnerId     String?                // null si personne ne s'est présenté (double défaut, cascade en bye)
-  status       TournamentMatchStatus  @default(PENDING)
-  duelMatchId  String?                @unique
-  duelMatch    DuelMatch?             @relation(fields: [duelMatchId], references: [id])
+  winnerId     String? // null si personne ne s'est présenté (double défaut, cascade en bye)
+  status       TournamentMatchStatus @default(PENDING)
+  duelMatchId  String?               @unique
+  duelMatch    DuelMatch?            @relation(fields: [duelMatchId], references: [id])
   completedAt  DateTime?
 
   @@index([tournamentId, round])
@@ -331,44 +336,242 @@ model TournamentMatch {
 // ────────────────────────────────────────────────────────────────────
 
 model PlayerStats {
-  userId          String   @id
-  user            User     @relation(fields: [userId], references: [id])
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id])
 
-  totalGames      Int      @default(0)
-  winRateGlobal   Float    @default(0)
-  avgScore        Float    @default(0)
-  avgResponseMs   Float    @default(0)
+  totalGames    Int   @default(0)
+  winRateGlobal Float @default(0)
+  avgScore      Float @default(0)
+  avgResponseMs Float @default(0)
 
-  games7d         Int      @default(0)
-  winRate7d       Float    @default(0)
-  coinsWon7d      Int      @default(0)
-  coinsLost7d     Int      @default(0)
+  games7d     Int   @default(0)
+  winRate7d   Float @default(0)
+  coinsWon7d  Int   @default(0)
+  coinsLost7d Int   @default(0)
 
-  games30d        Int      @default(0)
-  winRate30d      Float    @default(0)
-  avgScore30d     Float    @default(0)
+  games30d    Int   @default(0)
+  winRate30d  Float @default(0)
+  avgScore30d Float @default(0)
 
-  avgTabSwitches  Float    @default(0)
-  fastAnswerRate  Float    @default(0)
-  timingVariance  Float    @default(0)
+  avgTabSwitches Float @default(0)
+  fastAnswerRate Float @default(0)
+  timingVariance Float @default(0)
 
-  eloDelta7d      Int      @default(0)
+  eloDelta7d Int @default(0)
 
-  suspicionScoreAvg Float  @default(0) // moyenne mobile sur 30 parties
-  flagsCount        Int    @default(0)
+  suspicionScoreAvg Float     @default(0) // moyenne mobile sur 30 parties
+  flagsCount        Int       @default(0)
   lastFlagAt        DateTime?
 
-  updatedAt       DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 model Flag {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  rule      String   // "RESPONSE_TOO_FAST", "ABNORMAL_WIN_RATE", … (§6.1)
+  rule      String // "RESPONSE_TOO_FAST", "ABNORMAL_WIN_RATE", … (§6.1)
   detail    Json?
   resolved  Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([userId, resolved])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Signalements joueur — remontés par les autres joueurs (harcèlement,
+// triche présumée, comportement toxique…). Distinct des Flag
+// anti-triche automatiques : ici c'est un humain qui signale un autre.
+// ────────────────────────────────────────────────────────────────────
+
+model UserReport {
+  id         String   @id @default(uuid())
+  reporterId String // celui qui signale
+  targetId   String // celui signalé
+  reason     String // "CHEATING" | "HARASSMENT" | "SPAM" | "BUG" | "OTHER"
+  detail     String? // texte libre optionnel
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([targetId, resolved])
+  @@index([reporterId])
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Clans — groupes de joueurs. Un joueur ne peut appartenir qu'à un
+// seul clan à la fois (@@id sur userId dans ClanMember). Le leader
+// est stocké dans Clan.leaderId pour accès direct sans JOIN.
+// ────────────────────────────────────────────────────────────────────
+
+enum ClanJoinPolicy {
+  OPEN // tout joueur qui respecte les critères entre immédiatement
+  APPROVAL // le chef ou un officier valide la candidature
+  CLOSED // aucune nouvelle adhésion
+}
+
+model Clan {
+  id           String         @id @default(uuid())
+  name         String         @unique // nom complet, ex. "Les Insoumis"
+  tag          String         @unique // court, 2-5 chars, ex. "INS"
+  description  String?
+  bannerColor  String         @default("#f59e0b") // couleur d'accent du clan
+  emblemKey    String         @default("shogun") // emblème anime prédéfini, jamais une URL client
+  leaderId     String // userId du leader (redondant avec ClanMember.role mais pratique)
+  joinPolicy   ClanJoinPolicy @default(OPEN)
+  minimumCoins Int            @default(0) // solde disponible minimal pour candidater
+  minimumGames Int            @default(0) // parties terminées minimales
+  maxMembers   Int            @default(20)
+  warWins      Int            @default(0)
+  warLosses    Int            @default(0)
+  warDraws     Int            @default(0)
+  warEarnings  Int            @default(0) // gains effectivement distribués aux combattants
+  createdAt    DateTime       @default(now())
+
+  members        ClanMember[]
+  joinRequests   ClanJoinRequest[]
+  invites        ClanInvite[]
+  warsChallenged ClanWar[]         @relation("WarChallenger")
+  warsDefending  ClanWar[]         @relation("WarDefender")
+  warSearch      ClanWarSearch?
+
+  @@index([createdAt])
+}
+
+// File persistante de matchmaking. Une seule recherche peut être ouverte par
+// clan ; le serveur apparie aléatoirement deux clans du même format.
+model ClanWarSearch {
+  clanId        String   @id
+  requestedById String
+  teamSize      Int
+  stakeCoins    Int      @default(0) // mise PAR clan ; 0 = guerre gratuite
+  createdAt     DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([teamSize, stakeCoins, createdAt])
+}
+
+enum ClanWarStatus {
+  PENDING // défi en attente de réponse du chef adverse
+  TEAM_SELECTION // accepté, les deux chefs composent leur équipe
+  IN_PROGRESS // les confrontations sont disponibles
+  COMPLETED
+  DECLINED
+  EXPIRED
+}
+
+enum ClanWarMatchStatus {
+  READY
+  IN_PROGRESS
+  COMPLETED
+  FORFEIT
+}
+
+// Une guerre est toujours bornée à 24 h après son acceptation. Les gains
+// classent les clans ; ces points servent uniquement à désigner le vainqueur.
+model ClanWar {
+  id               String        @id @default(uuid())
+  challengerClanId String
+  defenderClanId   String
+  createdById      String
+  teamSize         Int
+  stakeCoins       Int           @default(0) // mise identique engagée par chaque chef
+  status           ClanWarStatus @default(PENDING)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  challengerScore  Float         @default(0)
+  defenderScore    Float         @default(0)
+  winnerClanId     String?
+  challengerStakeTxId String?
+  defenderStakeTxId   String?
+  payoutCoins         Int        @default(0)
+  payoutDistributedAt DateTime?
+  createdAt        DateTime      @default(now())
+  completedAt      DateTime?
+
+  challengerClan Clan            @relation("WarChallenger", fields: [challengerClanId], references: [id], onDelete: Cascade)
+  defenderClan   Clan            @relation("WarDefender", fields: [defenderClanId], references: [id], onDelete: Cascade)
+  members        ClanWarMember[]
+  matches        ClanWarMatch[]
+
+  @@index([challengerClanId, status])
+  @@index([defenderClanId, status])
+  @@index([status, endsAt])
+}
+
+model ClanWarMember {
+  id         String   @id @default(uuid())
+  warId      String
+  userId     String
+  clanId     String
+  selectedAt DateTime @default(now())
+
+  war ClanWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+
+  @@unique([warId, userId])
+  @@unique([warId, clanId, userId])
+  @@index([warId, clanId])
+}
+
+model ClanWarMatch {
+  id          String             @id @default(uuid())
+  warId       String
+  playerAId   String
+  playerBId   String
+  winnerId    String?
+  status      ClanWarMatchStatus @default(READY)
+  duelMatchId String?            @unique
+  completedAt DateTime?
+
+  war       ClanWar    @relation(fields: [warId], references: [id], onDelete: Cascade)
+  duelMatch DuelMatch? @relation(fields: [duelMatchId], references: [id])
+
+  @@index([warId, status])
+  @@index([playerAId])
+  @@index([playerBId])
+}
+
+model ClanMember {
+  userId   String   @id // un joueur = un seul clan
+  clanId   String
+  role     String   @default("member") // "leader" | "officer" | "member"
+  joinedAt DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([clanId])
+}
+
+// Une candidature est distincte d'une adhésion : elle permet au chef de
+// filtrer les entrées sans divulguer de règle métier au client.
+model ClanJoinRequest {
+  id        String   @id @default(uuid())
+  clanId    String
+  userId    String
+  message   String?  @db.VarChar(180)
+  createdAt DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clanId, userId])
+  @@index([clanId, createdAt])
+}
+
+// Lien d'invitation révocable, réservé au chef/officiers. Le jeton est
+// aléatoire et opaque : une URL ne donne jamais de droits sans connexion.
+model ClanInvite {
+  id        String   @id @default(uuid())
+  clanId    String
+  token     String   @unique
+  createdBy String
+  expiresAt DateTime
+  maxUses   Int      @default(10)
+  uses      Int      @default(0)
+  createdAt DateTime @default(now())
+
+  clan Clan @relation(fields: [clanId], references: [id], onDelete: Cascade)
+
+  @@index([clanId, expiresAt])
 }

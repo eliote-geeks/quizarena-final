@@ -1,4 +1,4 @@
-/* v2.1 — QuestionIntro, real money, 13s timer */
+/* v2.1 - QuestionIntro, real money, 8s duel timer */
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
@@ -12,6 +12,7 @@ import QuizPlay from "./pages/QuizPlay";
 import DuelSetup from "./pages/DuelSetup";
 import DuelPlay from "./pages/DuelPlay";
 import Tournaments from "./pages/Tournaments";
+import TournamentDetail from "./pages/TournamentDetail";
 import Leaderboard from "./pages/Leaderboard";
 import Wallet from "./pages/Wallet";
 import Profile from "./pages/Profile";
@@ -61,6 +62,7 @@ function App() {
               <Route path="duel"              element={<DuelSetup />} />
               <Route path="duel/play"         element={<DuelPlay />} />
               <Route path="tournaments"       element={<Tournaments />} />
+              <Route path="tournaments/:tournamentId" element={<TournamentDetail />} />
               <Route path="leaderboard"       element={<Leaderboard />} />
               <Route path="wallet"            element={<Wallet />} />
               <Route path="profile"           element={<Profile />} />

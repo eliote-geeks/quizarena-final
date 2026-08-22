@@ -1,220 +1,159 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApp } from "../context/AppContext";
+import { AnimatePresence, motion } from "framer-motion";
 import { TOP_PLAYERS } from "../data/mockData";
 import { formatMoney } from "../lib/currency";
-import { Crown, Flame, Trophy, Clock, Gift, BarChart2 } from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { ArrowRight, Flame, Medal, Trophy, Users } from "lucide-react";
 
-const WEEKLY_REWARDS = [5000, 2500, 1000];
 const TABS = [
   { id: "week", label: "Cette semaine" },
-  { id: "all",  label: "Tous les temps" },
+  { id: "all", label: "Tous les temps" },
 ];
-
-function nextMondayMidnight() {
-  const now = new Date();
-  const d = new Date(now);
-  const day = d.getDay();
-  const daysUntilMonday = ((8 - day) % 7) || 7;
-  d.setDate(d.getDate() + daysUntilMonday);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function useCountdown(target) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  const diff = Math.max(0, target.getTime() - now);
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return { days, hours, minutes, seconds };
-}
 
 export default function Leaderboard() {
   const navigate = useNavigate();
   const { currency } = useApp();
   const [tab, setTab] = useState("week");
+  const [switching, setSwitching] = useState(false);
+  const players = useMemo(() => (
+    tab === "week"
+      ? TOP_PLAYERS.map((p, i) => ({ ...p, earnings: Math.round(p.earnings * (0.10 + (0.9 / (i + 1)))) }))
+      : TOP_PLAYERS
+  ), [tab]);
 
-  const target = useMemo(nextMondayMidnight, []);
-  const cd = useCountdown(target);
-
-  const weekly = useMemo(
-    () => TOP_PLAYERS.map((p, i) => ({ ...p, earnings: Math.round(p.earnings * (0.10 + (0.9 / (i + 1))))})),
-    []
-  );
-
-  const players = tab === "week" ? weekly : TOP_PLAYERS;
-  const top3 = players.slice(0, 3);
-  const rest = players.slice(3);
+  const selectTab = (nextTab) => {
+    if (nextTab === tab) return;
+    setSwitching(true);
+    setTimeout(() => {
+      setTab(nextTab);
+      setSwitching(false);
+    }, 420);
+  };
 
   return (
-    <div className="min-h-full px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-8">
-
-      <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center gap-2 text-xs font-medium mb-3" style={{ color: "var(--text-faint)" }}>
-          <Trophy className="w-3.5 h-3.5" />
-          <span>Classement</span>
+    <div className="qa-shell space-y-7 py-8">
+      <header>
+        <div className="flex items-center gap-2 text-xs font-bold uppercase text-orange-qa">
+          <Trophy className="w-4 h-4" />
+          Classement
         </div>
-        <h1 className="font-display font-semibold text-4xl sm:text-5xl leading-[1.05] tracking-tight" style={{ color: "var(--text)" }}>
-          {tab === "week" ? "Cette " : "Tous les "}
-          <span className="serif-italic" style={{ color: "var(--accent)" }}>
-            {tab === "week" ? "semaine" : "temps"}
-          </span>
+        <h1 className="mt-2 text-3xl font-extrabold text-ink-qa lg:text-4xl">
+          Top joueurs
         </h1>
-      </motion.header>
+        <p className="mt-2 text-sm text-ink-soft-qa">
+          Classement remis à zéro chaque lundi. Les gains sont affichés en FCFA.
+        </p>
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="inline-flex gap-1 p-1 rounded-xl"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-      >
+      <div className="card inline-flex gap-1 rounded-2xl p-1">
         {TABS.map((tb) => (
           <button
             key={tb.id}
-            onClick={() => setTab(tb.id)}
-            data-testid={`lb-tab-${tb.id}`}
-            className={tab === tb.id ? "btn-primary px-4 py-1.5 rounded-lg text-sm" : "btn-ghost px-4 py-1.5 rounded-lg text-sm"}
+            onClick={() => selectTab(tb.id)}
+            className={tab === tb.id ? "btn-primary rounded-xl px-4 py-2 text-sm" : "btn-ghost rounded-xl px-4 py-2 text-sm"}
           >
             {tb.label}
           </button>
         ))}
-      </motion.div>
+      </div>
 
-      {tab === "week" && (
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="card rounded-2xl p-5 mesh-subtle"
-        >
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2 text-xs font-medium" style={{ color: "var(--text-faint)" }}>
-                <Clock className="w-3.5 h-3.5" />
-                Reset dans
+      <AnimatePresence mode="wait">
+        {switching ? (
+          <motion.section
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid gap-3 lg:grid-cols-3"
+          >
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="card h-[170px] overflow-hidden rounded-2xl p-4">
+                <div className="h-full animate-pulse rounded-xl" style={{ background: "var(--surface-2)" }} />
               </div>
-              <div className="font-display font-semibold text-3xl mt-1 tabular-nums tracking-tight" style={{ color: "var(--text)" }}>
-                {cd.days}j {String(cd.hours).padStart(2, "0")}:{String(cd.minutes).padStart(2, "0")}:{String(cd.seconds).padStart(2, "0")}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Gift className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              {WEEKLY_REWARDS.map((amount, i) => (
-                <div key={i} className="chip chip-accent">
-                  #{i + 1} · {formatMoney(amount, currency)}
-                </div>
-              ))}
-            </div>
-          </div>
-          <p className="text-xs mt-3" style={{ color: "var(--text-sub)" }}>
-            Basé sur les gains cumulés en FCFA. Reset chaque lundi 00h. Récompense attribuée automatiquement.
-          </p>
-        </motion.section>
-      )}
-
-      {/* Podium */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-3 gap-3"
-      >
-        {[1, 0, 2].map((idx) => {
-          const p = top3[idx];
-          if (!p) return null;
-          const rank = idx + 1;
-          const isFirst = rank === 1;
-          return (
-            <button
-              key={p.id}
-              onClick={() => navigate("/player/" + p.name)}
-              className={`card card-hover flex flex-col items-center p-5 rounded-2xl transition ${isFirst ? "card-glow" : "self-end"}`}
-            >
-              {isFirst && <Crown className="w-5 h-5 -mt-1 mb-1" style={{ color: "var(--accent)" }} />}
-              <div
-                className={`${isFirst ? "w-16 h-16" : "w-14 h-14"} rounded-full flex items-center justify-center font-semibold ${isFirst ? "text-lg" : "text-base"} mb-2`}
-                style={{
-                  background: isFirst ? "var(--accent-soft)" : "var(--surface-2)",
-                  color: isFirst ? "var(--accent-hover)" : "var(--text)",
-                  border: "1px solid var(--border-md)",
-                }}
+            ))}
+          </motion.section>
+        ) : (
+          <motion.section
+            key={tab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.24 }}
+            className="grid gap-3 lg:grid-cols-3"
+          >
+            {players.slice(0, 3).map((p, i) => (
+              <motion.button
+                key={p.id}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.06 }}
+                onClick={() => navigate(`/player/${p.name}`)}
+                className="card card-hover rounded-2xl p-4 text-left"
               >
-                {p.avatar}
-              </div>
-              <div className="text-sm font-semibold truncate w-full text-center" style={{ color: "var(--text)" }}>
-                {p.name}
-              </div>
-              <div className={`font-display font-semibold ${isFirst ? "text-lg" : "text-base"} mt-1 tracking-tight`}
-                style={{ color: isFirst ? "var(--accent)" : "var(--text-sub)" }}>
-                #{rank}
-              </div>
-              <div className="text-xs mt-0.5" style={{ color: "var(--text-sub)" }}>
-                {formatMoney(p.earnings, currency)}
-              </div>
-            </button>
-          );
-        })}
-      </motion.section>
+                <div className="flex items-center justify-between">
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-orange-soft-qa text-sm font-extrabold text-orange-qa">
+                    {p.avatar}
+                  </span>
+                  <span className="rounded-full bg-orange-qa px-3 py-1 text-xs font-bold text-white">#{i + 1}</span>
+                </div>
+                <p className="mt-3 text-base font-extrabold text-ink-qa">{p.name}</p>
+                <p className="mt-1 text-xs text-ink-soft-qa">{p.wins} victoires · classé par gains</p>
+                <p className="mt-3 text-lg font-extrabold text-orange-qa">{formatMoney(p.earnings, currency)}</p>
+              </motion.button>
+            ))}
+          </motion.section>
+        )}
+      </AnimatePresence>
 
-      {/* Full list */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart2 className="w-4 h-4" style={{ color: "var(--accent)" }} />
-          <h2 className="font-display font-semibold text-lg tracking-tight" style={{ color: "var(--text)" }}>
-            Classement complet
-          </h2>
-        </div>
-
-        <div className="card rounded-2xl overflow-hidden divide-y" style={{ borderColor: "var(--divider)" }}>
-          {rest.map((p, i) => (
+      <section>
+        <SectionTitle icon={Users} title="Classement complet" />
+        <div className="card overflow-hidden rounded-2xl">
+          {players.slice(3).map((p, i) => (
             <button
               key={p.id}
-              onClick={() => navigate("/player/" + p.name)}
-              data-testid={`lb-row-${i + 4}`}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:opacity-95"
+              onClick={() => navigate(`/player/${p.name}`)}
+              className="grid w-full grid-cols-[auto_auto_1fr_auto] items-center gap-3 border-b px-4 py-3 text-left last:border-b-0"
+              style={{ borderColor: "var(--border)" }}
             >
-              <div className="w-8 flex-shrink-0 text-sm font-semibold text-center" style={{ color: "var(--text-faint)" }}>
-                {i + 4}
-              </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0" style={{ background: "var(--surface-2)", color: "var(--text)", border: "1px solid var(--border)" }}>
-                {p.avatar}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>{p.name}</div>
-                <div className="text-xs mt-0.5 flex items-center gap-2" style={{ color: "var(--text-sub)" }}>
-                  <span>Niveau {p.level}</span>
-                  <span>·</span>
-                  <span>{p.wins} victoires</span>
-                  {p.streak > 0 && (
-                    <>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-0.5">
-                        <Flame className="w-3 h-3" style={{ color: "var(--accent)" }} />
-                        {p.streak}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
-                {formatMoney(p.earnings, currency)}
-              </div>
+              <span className="w-8 text-center text-sm font-extrabold text-ink-soft-qa">{i + 4}</span>
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-cream-qa text-sm font-bold text-ink-qa">{p.avatar}</span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-extrabold text-ink-qa">{p.name}</span>
+                <span className="flex items-center gap-2 text-xs text-ink-soft-qa">
+                  {p.wins} victoires
+                  {p.streak > 0 && <><Flame className="w-3 h-3 text-orange-qa" /> {p.streak}</>}
+                </span>
+              </span>
+              <span className="text-sm font-extrabold text-orange-qa">{formatMoney(p.earnings, currency)}</span>
             </button>
           ))}
         </div>
-      </motion.section>
+      </section>
+
+      <section className="card rounded-3xl p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-orange-soft-qa text-orange-qa">
+            <Medal className="w-6 h-6" />
+          </span>
+          <div className="flex-1">
+            <p className="text-lg font-extrabold text-ink-qa">Récompenses hebdomadaires</p>
+            <p className="text-sm text-ink-soft-qa">Les trois meilleurs joueurs reçoivent un bonus automatique.</p>
+          </div>
+          <button className="hidden items-center gap-1 text-sm font-bold text-orange-qa sm:flex">
+            Détails <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, title }) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <Icon className="w-5 h-5 text-orange-qa" />
+      <h2 className="text-lg font-extrabold text-ink-qa">{title}</h2>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
-import { credit, debit, getBalance, listTransactions, InsufficientBalanceError } from "./ledger.js";
+import { credit, debit, getBalance, listTransactions, listTransactionsPaged, InsufficientBalanceError } from "./ledger.js";
 import { getPaymentProvider } from "./payment-provider.js";
 import { resolvePendingTransaction } from "./reconcile.js";
 
@@ -18,6 +18,14 @@ export async function walletRoutes(app: FastifyInstance) {
       listTransactions(req.user.userId),
     ]);
     return reply.send({ balanceCoins: balance, transactions });
+  });
+
+  // Historique paginé — utilisé par la page Portefeuille pour afficher
+  // toutes les transactions sans limite arbitraire.
+  app.get("/api/wallet/transactions", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { page = "1", perPage = "20" } = req.query as { page?: string; perPage?: string };
+    const result = await listTransactionsPaged(req.user.userId, parseInt(page), parseInt(perPage));
+    return reply.send(result);
   });
 
   // Filet de sécurité : le webhook SharePay n'est pas garanti "exactement

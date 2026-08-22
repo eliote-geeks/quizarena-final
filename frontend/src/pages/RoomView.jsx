@@ -10,7 +10,6 @@ import {
   ALL_REPLAYS,
   getCategory,
 } from "../data/mockData";
-import { getRank } from "../lib/eloEngine";
 import { formatMoney } from "../lib/currency";
 import SpectateModal from "../components/SpectateModal";
 import ReplayModal from "../components/ReplayModal";
@@ -269,7 +268,6 @@ export default function RoomView() {
           ) : (
             <div className="grid gap-2">
               {roomPlayers.slice(0, 6).map((p) => {
-                const pRank = getRank(p.elo);
                 const st = STATUS[p.status];
                 const isOpen = challenged === p.name;
 
@@ -300,8 +298,6 @@ export default function RoomView() {
                           {p.name}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: "var(--qa-text-sub)" }}>
-                          <span style={{ color: pRank.color }}>{pRank.emoji} {p.elo}</span>
-                          <span>·</span>
                           <span style={{ color: st.color === "var(--qa-text-faint)" ? "var(--qa-text-faint)" : st.color }}>
                             {st.label}
                           </span>

@@ -2,7 +2,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { getMockPlayerProfile, getCategory } from "../data/mockData";
-import { getRank } from "../lib/eloEngine";
 import { X, Swords, Trophy, Target, Zap, Brain, Crown, Star } from "lucide-react";
 
 const AMBER = "#E5A800";
@@ -12,7 +11,6 @@ export default function PlayerProfileModal({ playerName, onClose }) {
   const { lang } = useApp();
   const navigate = useNavigate();
   const p = getMockPlayerProfile(playerName);
-  const rank = getRank(p.elo);
   const xpPct = (p.wins / p.games) * 100;
 
   const handleChallenge = () => {
@@ -59,7 +57,6 @@ export default function PlayerProfileModal({ playerName, onClose }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="text-sm font-semibold text-white">{p.name}</span>
-                  <span className="text-xs" style={{ color: rank.color }}>{rank.emoji} {rank.name}</span>
                 </div>
                 <div className="text-[10px] text-white/30">Membre depuis {p.joined}</div>
                 <div className="mt-1.5 h-1 rounded-full bg-white/[0.06] overflow-hidden">
@@ -67,8 +64,8 @@ export default function PlayerProfileModal({ playerName, onClose }) {
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className="font-arcade text-xl leading-none" style={{ color: AMBER }}>{p.elo}</div>
-                <div className="text-[10px] text-white/25 mt-0.5">ELO</div>
+                <div className="font-display text-xl font-extrabold leading-none" style={{ color: AMBER }}>{p.wins}</div>
+                <div className="text-[10px] text-white/25 mt-0.5">victoires</div>
               </div>
             </div>
 

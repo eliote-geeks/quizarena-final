@@ -78,7 +78,7 @@ export default function Refund() {
         <Block title="2. Coins gagnés ou perdus en jeu">
           <p>
             La perte de coins résultant d'une partie jouée normalement — qu'il s'agisse d'une défaite en Duel,
-            d'un mauvais score en Solo Challenge ou d'une élimination en Tournoi — est définitive et ne peut
+            d'un mauvais score en Solo ou d'une élimination en Tournoi — est définitive et ne peut
             faire l'objet d'aucune réclamation.
           </p>
           <p>

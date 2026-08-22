@@ -15,7 +15,7 @@ export default function Profile() {
   const { t, lang, resetOnboarding } = useApp();
   const navigate = useNavigate();
   const p = USER_PROFILE;
-  const xpPct = (p.xp / p.xpNext) * 100;
+  const duelPct = Math.round((p.wins / Math.max(p.games, 1)) * 100);
 
   return (
     <div className="min-h-full px-4 sm:px-6 py-8 max-w-4xl mx-auto space-y-8">
@@ -24,51 +24,50 @@ export default function Profile() {
       <motion.header
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-5"
+        className="card rounded-3xl p-5"
       >
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center font-display font-semibold text-2xl flex-shrink-0"
-          style={{
-            background: "var(--accent-soft)",
-            color: "var(--accent-hover)",
-            border: "1px solid var(--border-md)",
-          }}
-        >
-          {p.avatar}
+        <div className="flex items-center gap-5">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center font-display font-extrabold text-2xl flex-shrink-0"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent-hover)",
+              border: "1px solid var(--border-md)",
+            }}
+          >
+            {p.avatar}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display font-extrabold text-3xl sm:text-4xl leading-tight tracking-tight" style={{ color: "var(--text)" }}>
+              {p.name}
+            </h1>
+            <div className="text-sm font-bold mt-1" style={{ color: "var(--text-sub)" }}>
+              Membre depuis {p.joined}
+            </div>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-display font-semibold text-3xl sm:text-4xl leading-tight tracking-tight" style={{ color: "var(--text)" }}>
-            {p.name}
-          </h1>
-          <div className="text-sm mt-1" style={{ color: "var(--text-sub)" }}>
-            Niveau <span className="font-semibold" style={{ color: "var(--accent)" }}>{p.level}</span> · Rang #142 · Membre depuis {p.joined}
+
+        <div className="mt-5 rounded-2xl p-4" style={{ background: "var(--surface-2)" }}>
+          <div className="flex items-center justify-between text-xs mb-3">
+            <span className="font-extrabold uppercase text-ink-soft-qa">Victoires / Duels</span>
+            <span className="font-extrabold tabular-nums text-orange-qa">
+              {p.wins} / {p.games}
+            </span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--active)" }}>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${duelPct}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className="h-full rounded-full"
+              style={{ background: "var(--accent)" }}
+            />
+          </div>
+          <div className="mt-2 text-xs font-bold text-ink-soft-qa">
+            {duelPct}% de réussite
           </div>
         </div>
       </motion.header>
-
-      {/* XP */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="card rounded-2xl p-5"
-      >
-        <div className="flex items-center justify-between text-xs mb-3" style={{ color: "var(--text-sub)" }}>
-          <span className="font-medium">Progression</span>
-          <span className="font-medium tabular-nums" style={{ color: "var(--accent)" }}>
-            {p.xp.toLocaleString()} / {p.xpNext.toLocaleString()} XP
-          </span>
-        </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--active)" }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${xpPct}%` }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="h-full rounded-full"
-            style={{ background: "var(--accent)" }}
-          />
-        </div>
-      </motion.div>
 
       {/* Stats */}
       <motion.div
@@ -79,16 +78,16 @@ export default function Profile() {
       >
         {[
           { icon: Trophy, label: "Victoires", value: p.wins },
-          { icon: Swords, label: "Parties",   value: p.games },
-          { icon: Target, label: "Win rate",  value: `${p.winRate}%` },
-          { icon: Zap,    label: "Streak",    value: p.bestStreak },
+          { icon: Swords, label: "Duels",     value: p.games },
+          { icon: Target, label: "Réussite",  value: `${duelPct}%` },
+          { icon: Zap,    label: "Série",     value: p.bestStreak },
         ].map((s) => {
           const Icon = s.icon;
           return (
             <div key={s.label} className="card rounded-2xl p-4">
               <Icon className="w-4 h-4 mb-2" style={{ color: "var(--accent)" }} strokeWidth={2} />
-              <div className="text-xs font-medium" style={{ color: "var(--text-sub)" }}>{s.label}</div>
-              <div className="font-display font-semibold text-2xl mt-1 tracking-tight" style={{ color: "var(--text)" }}>
+              <div className="text-xs font-bold" style={{ color: "var(--text-sub)" }}>{s.label}</div>
+              <div className="font-display font-extrabold text-2xl mt-1 tracking-tight" style={{ color: "var(--text)" }}>
                 {s.value}
               </div>
             </div>

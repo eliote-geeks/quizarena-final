@@ -446,7 +446,6 @@ export default function DuelPlay() {
                 <span className="text-sm font-medium">Vous</span>
                 <Swords className="w-4 h-4" style={{ color: "var(--accent)" }} />
                 <span className="text-sm font-medium">{opponentName}</span>
-                <span className="text-xs" style={{ color: "var(--text-faint)" }}>ELO {opponentElo}</span>
               </div>
               <motion.div
                 key={countdownVal}

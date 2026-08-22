@@ -6,27 +6,52 @@ import { TOURNAMENT_CAPACITIES, isTournamentCapacity } from "./payout.js";
 import { maybeStartTournament, withTournamentLock } from "./bracket.js";
 import { QUESTIONS_PER_SESSION } from "../quiz/questions.js";
 
+// Jamais un upload libre (pas de modération sur une appli d'argent
+// réel) — le créateur choisit parmi les photos déjà vérifiées et
+// servies par le frontend (§quizarena-v2/public/categories, mêmes
+// fichiers que CATEGORY_PHOTO côté client). Whitelist stricte : une
+// valeur hors de cette liste est silencieusement ignorée (ni erreur, ni
+// image cassée).
+const COVER_IMAGE_ALLOWLIST = new Set(
+  [
+    "football-cm", "musique-cm", "histoire-cm", "societe-cm", "gastronomie-cm",
+    "culture", "histoire", "geographie", "sciences", "sport", "afrique", "cinema",
+    "musique", "celebrites", "technologie", "nature", "gastronomie", "litterature", "anime",
+  ].map((id) => `/categories/${id}.webp`)
+);
+
 const createSchema = z.object({
-  categoryId: z.string().min(1),
+  name: z.string().trim().min(1).max(60),
+  categoryId: z.string().min(1).optional(), // absent = questions mélangées sur tout le bank
+  coverImage: z.string().optional(),
   stakeCoins: z.number().int().min(100).max(50_000),
   capacity: z.number().int().refine(isTournamentCapacity, "capacité invalide (4, 8 ou 16)"),
 });
 
+const MIXED_LABEL = "Mélangé · toutes catégories";
+
 /** Vue résumée pour une liste (écran "tournois ouverts"). */
 async function serializeSummary(t: {
   id: string;
-  categoryId: string;
+  name: string | null;
+  coverImage: string | null;
+  categoryId: string | null;
   stakeCoins: number;
   capacity: number;
   status: string;
   createdAt: Date;
   entries: { userId: string }[];
 }) {
-  const category = await prisma.category.findUnique({ where: { id: t.categoryId }, select: { nameFr: true } });
+  const category = t.categoryId
+    ? await prisma.category.findUnique({ where: { id: t.categoryId }, select: { nameFr: true } })
+    : null;
+  const categoryName = t.categoryId ? category?.nameFr ?? t.categoryId : MIXED_LABEL;
   return {
     id: t.id,
+    name: t.name ?? categoryName, // repli pour les tournois créés avant l'ajout du nom (19/08)
+    coverImage: t.coverImage,
     categoryId: t.categoryId,
-    categoryName: category?.nameFr ?? t.categoryId,
+    categoryName,
     stakeCoins: t.stakeCoins,
     capacity: t.capacity,
     status: t.status,
@@ -47,7 +72,10 @@ async function serializeDetail(tournamentId: string, myUserId: string) {
   });
   if (!t) return null;
 
-  const category = await prisma.category.findUnique({ where: { id: t.categoryId }, select: { nameFr: true } });
+  const category = t.categoryId
+    ? await prisma.category.findUnique({ where: { id: t.categoryId }, select: { nameFr: true } })
+    : null;
+  const categoryName = t.categoryId ? category?.nameFr ?? t.categoryId : MIXED_LABEL;
   const userIds = new Set<string>();
   for (const m of t.matches) {
     if (m.playerAId) userIds.add(m.playerAId);
@@ -90,8 +118,10 @@ async function serializeDetail(tournamentId: string, myUserId: string) {
 
   return {
     id: t.id,
+    name: t.name ?? categoryName,
+    coverImage: t.coverImage,
     categoryId: t.categoryId,
-    categoryName: category?.nameFr ?? t.categoryId,
+    categoryName,
     stakeCoins: t.stakeCoins,
     capacity: t.capacity,
     status: t.status,
@@ -142,22 +172,27 @@ export async function tournamentRoutes(app: FastifyInstance) {
 
   app.post("/api/tournaments", { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = createSchema.parse(req.body);
-    const category = await prisma.category.findUnique({
-      where: { id: body.categoryId },
-      include: { _count: { select: { questions: { where: { active: true } } } } },
-    });
-    if (!category) return reply.badRequest("Catégorie inconnue");
-    // Chaque match du bracket pioche QUESTIONS_PER_SESSION questions
-    // dans cette catégorie (§duel/engine.ts createTournamentMatch) —
-    // sans assez de contenu vérifié, un round planterait en plein
-    // tournoi une fois les droits d'entrée déjà débités.
-    if (category._count.questions < QUESTIONS_PER_SESSION) return reply.badRequest("Catégorie pas encore assez fournie pour un tournoi");
+
+    // Catégorie facultative depuis le 19/08 : si choisie, il faut assez
+    // de contenu vérifié (sinon un round planterait en plein tournoi une
+    // fois les droits d'entrée débités) ; si absente, le pool mélangé
+    // (445+ questions, §quiz/questions.ts) est toujours assez fourni.
+    if (body.categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: body.categoryId },
+        include: { _count: { select: { questions: { where: { active: true } } } } },
+      });
+      if (!category) return reply.badRequest("Catégorie inconnue");
+      if (category._count.questions < QUESTIONS_PER_SESSION) return reply.badRequest("Catégorie pas encore assez fournie pour un tournoi");
+    }
 
     const balance = await getBalance(req.user.userId);
     if (balance < body.stakeCoins) return reply.badRequest("Solde insuffisant pour ce droit d'entrée");
 
+    const coverImage = body.coverImage && COVER_IMAGE_ALLOWLIST.has(body.coverImage) ? body.coverImage : null;
+
     const tournament = await prisma.tournament.create({
-      data: { categoryId: body.categoryId, stakeCoins: body.stakeCoins, capacity: body.capacity },
+      data: { name: body.name, coverImage, categoryId: body.categoryId ?? null, stakeCoins: body.stakeCoins, capacity: body.capacity },
     });
 
     try {

@@ -41,7 +41,7 @@ export default function Privacy() {
           <p>Nous collectons uniquement les données strictement nécessaires au fonctionnement du service :</p>
           <ul className="list-disc list-inside space-y-1 text-white/40">
             <li><strong className="text-white/60">Données d'inscription :</strong> adresse email, pseudonyme choisi</li>
-            <li><strong className="text-white/60">Données de jeu :</strong> scores, historique des parties, ELO, solde de coins</li>
+            <li><strong className="text-white/60">Données de jeu :</strong> scores, historique des parties, gains, solde de coins</li>
             <li><strong className="text-white/60">Données techniques :</strong> adresse IP (anonymisée après 30 jours), type de navigateur, logs d'erreurs</li>
             <li><strong className="text-white/60">Données de session :</strong> cookies de session (durée : 30 jours)</li>
           </ul>

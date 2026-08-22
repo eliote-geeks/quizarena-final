@@ -1,12 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, BarChart2, Crown, Wallet, User } from "lucide-react";
+import { Home, Trophy, BarChart2, Wallet, User, Crown } from "lucide-react";
 
 const NAV = [
   { to: "/",            icon: Home,      label: "Accueil"    },
   { to: "/tournaments", icon: Trophy,    label: "Tournois"   },
-  { to: "/vip",         icon: Crown,     label: "VIP"        },
+  { to: "/leaderboard", icon: BarChart2, label: "Classement" },
   { to: "/wallet",      icon: Wallet,    label: "Wallet"     },
   { to: "/profile",     icon: User,      label: "Profil"     },
+  { to: "/vip",         icon: Crown,     label: "VIP"        },
 ];
 
 function isActive(pathname, to) {

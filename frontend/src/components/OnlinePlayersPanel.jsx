@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { ONLINE_PLAYERS } from "../data/mockData";
-import { getRank } from "../lib/eloEngine";
 import { Swords, User } from "lucide-react";
 
 const AMBER = "#E5A800";
@@ -32,7 +31,6 @@ export default function OnlinePlayersPanel() {
 
       <div className="divide-y divide-white/[0.04]">
         {ONLINE_PLAYERS.map((p, i) => {
-          const rank = getRank(p.elo);
           const st = STATUS[p.status];
           return (
             <motion.div
@@ -64,9 +62,6 @@ export default function OnlinePlayersPanel() {
                     {p.name}
                   </button>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[9px]" style={{ color: rank.color }}>{rank.emoji}</span>
-                    <span className="font-arcade text-[10px] leading-none" style={{ color: rank.color }}>{p.elo}</span>
-                    <span className="text-[9px] text-white/20">·</span>
                     <span className="text-[9px]" style={{ color: st.color }}>{st.label}</span>
                   </div>
                 </div>

@@ -16,3 +16,14 @@ export function setTournamentMatchDoneHandler(fn: TournamentMatchDoneHandler) {
 export async function notifyTournamentMatchDone(tournamentMatchId: string, winnerId: string | null) {
   if (handler) await handler(tournamentMatchId, winnerId);
 }
+
+export type ClanWarMatchDoneHandler = (clanWarMatchId: string, winnerId: string | null) => Promise<void>;
+let clanWarHandler: ClanWarMatchDoneHandler | null = null;
+
+export function setClanWarMatchDoneHandler(fn: ClanWarMatchDoneHandler) {
+  clanWarHandler = fn;
+}
+
+export async function notifyClanWarMatchDone(clanWarMatchId: string, winnerId: string | null) {
+  if (clanWarHandler) await clanWarHandler(clanWarMatchId, winnerId);
+}

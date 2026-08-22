@@ -1,10 +1,9 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useApp } from "../context/AppContext";
-import { getRank } from "../lib/eloEngine";
 import { formatMoney } from "../lib/currency";
 import CurrencyBadge from "./CurrencyBadge";
 import {
-  Home, Trophy, BarChart2, Wallet, User, Crown,
+  Home, Trophy, BarChart2, Wallet, User, Crown, BrainCircuit,
   LogOut, Sun, Moon, ChevronRight,
 } from "lucide-react";
 
@@ -12,9 +11,9 @@ const NAV = [
   { to: "/",            icon: Home,      label: "Accueil"    },
   { to: "/tournaments", icon: Trophy,    label: "Tournois"   },
   { to: "/leaderboard", icon: BarChart2, label: "Classement" },
-  { to: "/vip",         icon: Crown,     label: "VIP"        },
   { to: "/wallet",      icon: Wallet,    label: "Wallet"     },
   { to: "/profile",     icon: User,      label: "Profil"     },
+  { to: "/vip",         icon: Crown,     label: "VIP"        },
 ];
 
 function isActive(pathname, to) {
@@ -25,8 +24,7 @@ function isActive(pathname, to) {
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { coins, elo, user, logout, currency, theme, toggleTheme } = useApp();
-  const rank = getRank(elo);
+  const { coins, user, logout, currency, theme, toggleTheme } = useApp();
 
   return (
     <aside
@@ -51,10 +49,10 @@ export default function Sidebar() {
               boxShadow: "0 8px 24px -6px var(--accent-glow)",
             }}
           >
-            Q
+            <BrainCircuit className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <div className="font-display font-semibold text-base leading-none" style={{ color: "var(--text)" }}>
+            <div className="font-display font-extrabold text-base leading-none" style={{ color: "var(--text)" }}>
               QuizArena
             </div>
             <div className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
@@ -77,18 +75,17 @@ export default function Sidebar() {
           <div className="text-xs font-medium mb-1" style={{ color: "var(--text-faint)" }}>
             Solde
           </div>
-          <div className="font-display font-semibold text-2xl leading-none tracking-tight" style={{ color: "var(--text)" }}>
+          <div className="animate-balance font-display font-extrabold text-2xl leading-none tracking-tight" style={{ color: "var(--text)" }}>
             {formatMoney(coins, currency)}
           </div>
           <div className="flex items-center gap-2 mt-3">
             <span
               className="w-1.5 h-1.5 rounded-full"
-              style={{ background: rank.color }}
+              style={{ background: "var(--accent)" }}
             />
             <span className="text-xs font-medium" style={{ color: "var(--text-sub)" }}>
-              {rank.name}
+              Solde disponible
             </span>
-            <span className="text-xs" style={{ color: "var(--text-faint)" }}>· {elo}</span>
             <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "var(--text-faint)" }} />
           </div>
         </button>

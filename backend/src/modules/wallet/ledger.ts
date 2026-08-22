@@ -127,3 +127,17 @@ export async function listTransactions(userId: string, limit = 30) {
     take: limit,
   });
 }
+
+export async function listTransactionsPaged(userId: string, page = 1, perPage = 20) {
+  const skip = (page - 1) * perPage;
+  const [transactions, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: perPage,
+      skip,
+    }),
+    prisma.transaction.count({ where: { userId } }),
+  ]);
+  return { transactions, total, page, pages: Math.ceil(total / perPage) };
+}

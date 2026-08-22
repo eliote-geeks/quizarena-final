@@ -8,7 +8,7 @@ const AMBER = "#E5A800";
 const GREEN = "#5DD66E";
 const RED   = "#FF5555";
 const LABELS = ["A", "B", "C", "D"];
-const TIME_PER_Q = 15;
+const TIME_PER_Q = 8;
 
 function pickRandom(arr, n) {
   const copy = [...arr];

@@ -1,5 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma.js";
+import { readFileSync, existsSync, writeFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+const SETTINGS_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../settings.json");
+function getSettings() {
+  if (!existsSync(SETTINGS_PATH)) return {};
+  try { return JSON.parse(readFileSync(SETTINGS_PATH, "utf8")); } catch { return {}; }
+}
+
+const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
+function getMusicPublic() {
+  if (!existsSync(MUSIC_PATH)) return { tracks: [] };
+  try { return JSON.parse(readFileSync(MUSIC_PATH, "utf8")); } catch { return { tracks: [] }; }
+}
 
 /** Chiffres publics pour la landing page (avant connexion) — plus jamais
  * de nombres inventés. Tout vient de la base, exclut les comptes bots
@@ -30,6 +45,15 @@ export async function publicRoutes(app: FastifyInstance) {
     });
   });
 
+  // Endpoint public consulté par le frontend au chargement
+  app.get("/api/public/maintenance", async (_req, reply) => {
+    const s = getSettings();
+    return reply.send({
+      maintenance: s.maintenance ?? false,
+      message: s.maintenanceMessage ?? "Le site est temporairement en maintenance. Revenez bientôt !",
+    });
+  });
+
   app.get("/api/public/leaderboard", async (_req, reply) => {
     const grouped = await prisma.transaction.groupBy({
       by: ["userId"],
@@ -55,5 +79,10 @@ export async function publicRoutes(app: FastifyInstance) {
       }));
 
     return reply.send({ leaderboard });
+  });
+
+  // Pistes musicales actives pour le frontend
+  app.get("/api/public/music", async (_req, reply) => {
+    return reply.send(getMusicPublic());
   });
 }

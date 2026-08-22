@@ -43,34 +43,93 @@ const SCHEMA = {
   required: ["questions"],
 };
 
-function buildPrompt(categoryName, n, existingTexts) {
+// Catégories dont le sujet EST le Cameroun — la diversité n'a pas de
+// sens ici, on veut au contraire rester strictement dans le sujet.
+// Toutes les autres catégories sont "génériques" : le public visé est
+// francophone, mais le SUJET des questions doit couvrir le monde entier,
+// pas se replier sur le Cameroun/la France par défaut (retour explicite
+// de Paul le 19/08 : "ne te limite pas au Cameroun, diversifie").
+const CAMEROON_CATEGORY_IDS = new Set(["football-cm", "musique-cm", "histoire-cm", "societe-cm", "gastronomie-cm"]);
+
+function buildPrompt(categoryId, categoryName, n, existingTexts) {
   const avoid = existingTexts.length
     ? `\nNe répète aucune de ces questions déjà existantes :\n- ${existingTexts.join("\n- ")}`
     : "";
+  const diversity = CAMEROON_CATEGORY_IDS.has(categoryId)
+    ? ""
+    : ` Diversifie largement les sujets à travers le monde entier — Afrique ` +
+      `(pas seulement le Cameroun), Europe, Asie, Amériques, Océanie — ` +
+      `sans surreprésenter un seul pays ou une seule culture.`;
   return (
     `Génère ${n} questions de quiz à choix multiple en français, catégorie ` +
-    `"${categoryName}", niveau moyen, adaptées à un public camerounais/` +
-    `francophone. Chaque question doit porter sur un fait VÉRIFIABLE et ` +
+    `"${categoryName}", niveau moyen, adaptées à un public francophone.` +
+    diversity +
+    ` Chaque question doit porter sur un fait VÉRIFIABLE et ` +
     `largement connu — pas de détail obscur, pas de nom propre dont tu ` +
-    `n'es pas certain de l'exactitude. Pour chaque question : un texte ` +
-    `clair, exactement 4 options plausibles (une seule correcte), et ` +
-    `answerIndex = l'index (0 à 3) de la bonne réponse dans le tableau ` +
-    `options. N'ajoute jamais l'index entre parenthèses dans le texte ` +
-    `des options.${avoid}`
+    `n'es pas certain de l'exactitude.` +
+    // Resserré le 20/08 après relecture d'un échantillon du premier lot :
+    // ~1 question sur 5 avait un fait faux ou un index de bonne réponse
+    // erroné, concentré sur les questions à valeur précise (hauteurs,
+    // dates de naissance, records) — un modèle local se trompe plus
+    // souvent sur un CHIFFRE exact que sur une association/reconnaissance.
+    ` Évite absolument les questions dont la réponse est un chiffre précis, ` +
+    `une mesure (hauteur, distance, superficie, population), une date ` +
+    `exacte (année, jour de naissance) ou un record numérique — ce sont ` +
+    `les catégories de questions où tu te trompes le plus souvent. ` +
+    `Préfère des questions de reconnaissance et d'association : à quel ` +
+    `pays/auteur/artiste/événement appartient telle chose, quel est le ` +
+    `nom de tel élément, dans quel contexte tel fait s'inscrit-il — ` +
+    `des faits que tu es VRAIMENT certain de connaître, pas une ` +
+    `estimation plausible.` +
+    ` Évite également les questions de type "le plus grand / le plus long / ` +
+    `le plus haut / le seul au monde" sauf si tu en es ABSOLUMENT certain ` +
+    `— ce sont des questions où tu hallucines souvent. ` +
+    `Règle impérative : ne mets JAMAIS la réponse correcte dans le texte ` +
+    `de la question. Si la réponse est "France", la question ne peut pas ` +
+    `contenir le mot "France". ` +
+    ` Pour chaque question : un texte clair, exactement 4 options ` +
+    `plausibles (une seule correcte), et answerIndex = l'index (0 à 3) de ` +
+    `la bonne réponse dans le tableau options. N'ajoute JAMAIS de lettre ` +
+    `ou de chiffre au début ou à la fin d'une option (jamais "A) ", ` +
+    `jamais "(1)") — le texte de l'option seul, rien d'autre.${avoid}`
   );
 }
 
+// Un modèle local suit rarement à 100% la consigne "jamais de lettre
+// devant l'option" (vu dans le premier lot : "A) Mont McKinley") — filet
+// de sécurité en plus du prompt, pas à sa place.
 function cleanOption(s) {
-  return s.replace(/\s*\(\d\)\s*$/, "").trim();
+  return s
+    .replace(/^\s*[A-Da-d][).:]\s*/, "")
+    .replace(/\s*\(\d\)\s*$/, "")
+    .trim();
 }
 
-async function generateBatch(categoryName, n, existingTexts) {
+// Filet de sécurité programmatique : rejette une question dont la
+// réponse dépend d'un chiffre précis (an, mesure, %, record) même si le
+// modèle a ignoré la consigne — c'est exactement là que se concentraient
+// les erreurs trouvées le 20/08 (hauteur du Mont Fuji, date de
+// naissance de Zidane...).
+const RISKY_PATTERN = /\b\d{3,4}\s*(m|km|kg|cm|mm|°c?|%|ans?)\b|\b(19|20)\d{2}\b|\b\d{1,3}[.,]\d+\s*%/i;
+function isRisky(q) {
+  const correctOption = q.options[q.answerIndex];
+  if (!correctOption) return true;
+  if (RISKY_PATTERN.test(q.text) || RISKY_PATTERN.test(correctOption)) return true;
+  // Rejette si la réponse correcte est littéralement dans le texte de la question
+  // (ex. "sommet du Japon" → réponse "Japon" — trivial et signale une hallucination de structure).
+  const questionLower = q.text.toLowerCase();
+  const answerLower = correctOption.toLowerCase().trim();
+  if (answerLower.length > 3 && questionLower.includes(answerLower)) return true;
+  return false;
+}
+
+async function generateBatch(categoryId, categoryName, n, existingTexts) {
   const res = await fetch(`${OLLAMA_URL}/api/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: MODEL,
-      prompt: buildPrompt(categoryName, n, existingTexts),
+      prompt: buildPrompt(categoryId, categoryName, n, existingTexts),
       stream: false,
       format: SCHEMA,
       // num_thread plafonné : le serveur est PARTAGÉ avec d'autres
@@ -120,7 +179,7 @@ async function main() {
     const batchN = Math.min(BATCH_SIZE, count - created);
     let batch;
     try {
-      batch = await generateBatch(category.nameFr, batchN, existingTexts.slice(-40)); // borne la taille du prompt
+      batch = await generateBatch(categoryId, category.nameFr, batchN, existingTexts.slice(-40)); // borne la taille du prompt
     } catch (err) {
       console.error("Échec génération, on continue :", err.message);
       continue;
@@ -136,6 +195,11 @@ async function main() {
       if (existingTexts.some((t) => t.toLowerCase() === text.toLowerCase())) {
         rejected += 1;
         console.warn("Rejetée (doublon) :", text);
+        continue;
+      }
+      if (isRisky(q)) {
+        rejected += 1;
+        console.warn("Rejetée (réponse à chiffre précis, trop risquée) :", text);
         continue;
       }
       const options = q.options.map(cleanOption);

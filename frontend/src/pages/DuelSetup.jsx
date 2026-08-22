@@ -1,23 +1,28 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { TOTAL_QUESTIONS } from "../data/mockData";
 import { formatMoney } from "../lib/currency";
-import { BookOpen, Coins, Minus, Plus, Search, Swords } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Coins, Copy, Link2, Minus, Plus, Search, Share2, Swords, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 const STAKE_PRESETS = [100, 250, 500, 1000, 2500, 5000];
 
 export default function DuelSetup() {
-  const { coins, currency } = useApp();
+  const { coins, currency, user } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const quickOpponent = location.state?.quickOpponent;
+  const inviteId = searchParams.get("invite");
+  const inviteStake = Number(searchParams.get("stake")) || 500;
+  const inviteHost = searchParams.get("host") || "Un ami";
 
   const [stake, setStake] = useState(location.state?.defaultStake || 500);
   const [searching, setSearching] = useState(false);
   const [matched, setMatched] = useState(!!quickOpponent);
+  const [inviteLink, setInviteLink] = useState("");
 
   const opponentName = quickOpponent?.name || "QuantumKid";
   const opponentElo  = quickOpponent?.elo  || 1120;
@@ -31,7 +36,94 @@ export default function DuelSetup() {
   const startDuel = () =>
     navigate("/duel/play", { state: { category: "random", stake, opponentName, opponentElo } });
 
+  const acceptInvite = () => {
+    if (inviteStake > coins) {
+      toast.error("Solde insuffisant", { description: `Il vous faut ${formatMoney(inviteStake, currency)}.` });
+      return;
+    }
+    navigate("/duel/play", {
+      state: {
+        category: "random",
+        stake: inviteStake,
+        opponentName: inviteHost,
+        opponentElo: 1050,
+        inviteId,
+      },
+    });
+  };
+
+  const createInviteLink = () => {
+    if (stake > coins) { toast.error("Solde insuffisant"); return; }
+    const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+    const host = encodeURIComponent(user?.name || "Joueur");
+    const origin = window.location.origin;
+    const link = `${origin}/duel?invite=${id}&stake=${stake}&host=${host}`;
+    setInviteLink(link);
+    navigator.clipboard?.writeText(link)
+      .then(() => toast.success("Lien copié"))
+      .catch(() => toast.success("Lien créé"));
+  };
+
+  const copyInviteLink = () => {
+    if (!inviteLink) return;
+    navigator.clipboard?.writeText(inviteLink);
+    toast.success("Lien copié");
+  };
+
+  const shareInviteLink = async () => {
+    if (!inviteLink) return;
+    if (navigator.share) {
+      await navigator.share({
+        title: "Challenge QuizArena",
+        text: `${user?.name || "Un ami"} te défie sur QuizArena.`,
+        url: inviteLink,
+      }).catch(() => {});
+      return;
+    }
+    copyInviteLink();
+  };
+
   const potentialWin = stake * 2 - Math.round(stake * 0.05);
+
+  if (inviteId) {
+    return (
+      <div className="min-h-full px-4 sm:px-6 py-8 max-w-xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-5"
+        >
+          <section className="overflow-hidden rounded-3xl p-6" style={{ background: "linear-gradient(135deg, var(--surface-2), var(--surface))" }}>
+            <div className="inline-flex items-center gap-2 rounded-full bg-orange-soft-qa px-3 py-1 text-xs font-extrabold uppercase text-orange-qa">
+              <Swords className="h-4 w-4" />
+              Invitation duel
+            </div>
+            <h1 className="mt-5 font-display text-4xl font-extrabold leading-tight text-ink-qa">
+              {inviteHost} te défie.
+            </h1>
+            <p className="mt-2 text-sm font-medium text-ink-soft-qa">
+              10 questions mélangées. Le plus juste gagne la cagnotte.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <MiniStat label="Mise" value={formatMoney(inviteStake, currency)} />
+              <MiniStat label="Cagnotte" value={formatMoney(inviteStake * 2, currency)} />
+            </div>
+            <button
+              onClick={acceptInvite}
+              className="btn-primary mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base"
+            >
+              <Swords className="h-5 w-5" />
+              Accepter le challenge
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </section>
+          <button onClick={() => navigate("/duel")} className="btn-secondary w-full rounded-2xl py-3 text-sm">
+            Créer mon propre duel
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full px-4 sm:px-6 py-8 max-w-xl mx-auto">
@@ -118,19 +210,56 @@ export default function DuelSetup() {
               </div>
             </section>
 
-            <button
-              onClick={startSearch}
-              data-testid="bet-confirm-btn"
-              disabled={stake > coins}
-              className="btn-primary w-full py-4 rounded-2xl text-base inline-flex items-center justify-center gap-2 disabled:opacity-40"
-            >
-              <Search className="w-5 h-5" />
-              Trouver un adversaire
-            </button>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                onClick={startSearch}
+                data-testid="bet-confirm-btn"
+                disabled={stake > coins}
+                className="btn-primary py-4 rounded-2xl text-base inline-flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                <Search className="w-5 h-5" />
+                Trouver un adversaire
+              </button>
+              <button
+                onClick={createInviteLink}
+                disabled={stake > coins}
+                className="btn-secondary py-4 rounded-2xl text-base inline-flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                <UserPlus className="w-5 h-5" />
+                Inviter un ami
+              </button>
+            </div>
             {stake > coins && (
               <p className="text-center text-sm font-medium" style={{ color: "var(--danger)" }}>
                 Solde insuffisant — rechargez votre wallet
               </p>
+            )}
+
+            {inviteLink && (
+              <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card rounded-2xl p-4"
+              >
+                <div className="mb-3 flex items-center gap-2 text-sm font-extrabold text-ink-qa">
+                  <Check className="h-4 w-4 text-orange-qa" />
+                  Lien de challenge prêt
+                </div>
+                <div className="flex items-center gap-2 rounded-xl p-3" style={{ background: "var(--surface-2)" }}>
+                  <Link2 className="h-4 w-4 shrink-0 text-orange-qa" />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-ink-soft-qa">{inviteLink}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button onClick={copyInviteLink} className="btn-secondary inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm">
+                    <Copy className="h-4 w-4" />
+                    Copier
+                  </button>
+                  <button onClick={shareInviteLink} className="btn-primary inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm">
+                    <Share2 className="h-4 w-4" />
+                    Envoyer
+                  </button>
+                </div>
+              </motion.section>
             )}
           </motion.div>
         )}
@@ -177,7 +306,7 @@ export default function DuelSetup() {
             <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
               <PlayerCard name="Vous" subtitle="Prêt" />
               <div className="font-serif-i text-2xl px-2" style={{ color: "var(--accent)" }}>vs</div>
-              <PlayerCard name={opponentName} subtitle={`ELO ${opponentElo}`} />
+              <PlayerCard name={opponentName} subtitle="Prêt" />
             </div>
 
             <div className="card rounded-2xl p-5">
@@ -201,6 +330,15 @@ export default function DuelSetup() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: "var(--bg)" }}>
+      <p className="text-xs font-bold uppercase text-ink-soft-qa">{label}</p>
+      <p className="mt-1 text-lg font-extrabold text-ink-qa">{value}</p>
     </div>
   );
 }

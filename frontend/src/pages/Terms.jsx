@@ -72,7 +72,7 @@ export default function Terms() {
           </p>
           <p>
             Les coins sont utilisés uniquement à l'intérieur de QuizArena pour participer aux parties
-            Challenge, Duels et Tournois. Tout solde de coins reste acquis à l'utilisateur mais ne peut faire
+            Solo, Duels et Tournois. Tout solde de coins reste acquis à l'utilisateur mais ne peut faire
             l'objet d'aucun remboursement, sauf disposition contraire explicite.
           </p>
           <p>
@@ -83,7 +83,7 @@ export default function Terms() {
 
         <Block title="4. Règles du jeu et frais">
           <p>
-            Les règles détaillées de chaque mode de jeu (Solo Libre, Solo Challenge, Duel 1v1, Tournoi) sont
+            Les règles détaillées de chaque mode de jeu (Solo, Duel 1v1, Tournoi) sont
             disponibles sur la page <Link to="/rules" className="underline hover:text-white/70 transition" style={{ color: AMBER }}>Règles du jeu</Link>.
           </p>
           <p>
@@ -93,7 +93,7 @@ export default function Terms() {
             <li>Duel — Victoire : 10% du pot total</li>
             <li>Duel — Égalité : 5% de la mise par joueur</li>
             <li>Tournoi : 15% du prize pool total</li>
-            <li>Solo Challenge : intégré dans la grille de payout</li>
+            <li>Solo : payout selon le niveau choisi</li>
           </ul>
           <p>
             Ces frais sont définitifs et non négociables. En participant à une partie avec mise, vous acceptez

@@ -77,7 +77,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.get("/api/auth/me", { preHandler: [app.authenticate] }, async (req, reply) => {
-    const user = await prisma.user.findUnique({ where: { id: req.user.userId }, include: { stats: true } });
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId }, include: { stats: true } }) as any;
     if (!user) return reply.notFound();
     return reply.send({
       user: toPublicUser(user),
@@ -102,6 +102,7 @@ function toPublicUser(user: {
 }) {
   // Ne jamais renvoyer passwordHash ni riskScore (§10 du spec :
   // ne jamais montrer à l'utilisateur ce qui l'a fait flaguer).
-  const { id, username, email, phone, eloRating, accountStatus, region, createdAt } = user;
-  return { id, username, email, phone, eloRating, accountStatus, region, createdAt };
+  const { id, username, email, phone, eloRating, accountStatus, region, createdAt } = user as any;
+  const isAdmin = (user as any).isAdmin ?? false;
+  return { id, username, email, phone, eloRating, accountStatus, region, createdAt, isAdmin };
 }

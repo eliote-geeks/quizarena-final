@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { formatMoney } from "../lib/currency";
-import { Banknote, CircleEqual, Skull, Trophy, Zap, Swords, TrendingUp, TrendingDown, Home } from "lucide-react";
+import { Banknote, CircleEqual, Skull, Trophy, Zap, Swords, Home } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -53,8 +53,6 @@ export default function ResultScreen({
   myScore,      // correct answers (number)
   oppScore,     // opponent correct answers (number | undefined)
   total,        // total questions
-  eloNew,       // number
-  eloDelta,     // signed number
   streak,       // number (for solo)
   isDaily,      // bool
   opponentName, // string | undefined (duel only)
@@ -195,9 +193,8 @@ export default function ResultScreen({
           style={{
             gridTemplateColumns: [
               myScore !== undefined,
-              eloDelta !== undefined,
               streak >= 3,
-            ].filter(Boolean).length === 3 ? "1fr 1fr 1fr" : "1fr 1fr",
+            ].filter(Boolean).length === 2 ? "1fr 1fr" : "1fr",
           }}
         >
           {myScore !== undefined && (
@@ -205,15 +202,6 @@ export default function ResultScreen({
               label="Score"
               value={`${myScore}/${total}`}
               color={opponentName !== undefined ? (result === "win" ? "#5DD66E" : result === "draw" ? AMBER : "#FF6B6B") : myScore >= Math.ceil(total * 0.7) ? "#5DD66E" : myScore >= Math.ceil(total * 0.5) ? AMBER : "#FF6B6B"}
-            />
-          )}
-          {eloDelta !== undefined && (
-            <StatCard
-              label="ELO"
-              value={`${eloDelta >= 0 ? "+" : ""}${eloDelta}`}
-              sub={String(eloNew)}
-              color={eloDelta >= 0 ? "#5DD66E" : "#FF6B6B"}
-              Icon={eloDelta >= 0 ? TrendingUp : TrendingDown}
             />
           )}
           {streak >= 3 && (

@@ -3,7 +3,11 @@ import { prisma } from "../../lib/prisma.js";
 import { clientMessageSchema } from "./protocol.js";
 import {
   enqueue, startBotDuel, cancelQueue, handleAnswer, handleForfeit, attachSocket, detachSocket,
-  createInvite, joinInvite, cancelInvite, enterTournamentMatch,
+  createInvite, joinInvite, cancelInvite, declineInvite, enterTournamentMatch,
+  enterClanWarMatch,
+  handleReady, handleTabHidden, handleTabVisible,
+  registerSend, unregisterSend,
+  spectateMatch, leaveSpectate,
 } from "./engine.js";
 
 /**
@@ -66,7 +70,7 @@ export async function duelWsRoutes(app: FastifyInstance) {
           cancelQueue(userId);
           break;
         case "create_invite":
-          void createInvite({ userId, username, eloRating, send, stakeCoins: msg.stakeCoins });
+          void createInvite({ userId, username, eloRating, send, stakeCoins: msg.stakeCoins }, msg.isPublic ?? false, msg.targetUsername);
           break;
         case "join_invite":
           void joinInvite({ userId, username, eloRating, send }, msg.code);
@@ -74,14 +78,35 @@ export async function duelWsRoutes(app: FastifyInstance) {
         case "cancel_invite":
           cancelInvite(userId);
           break;
+        case "decline_invite":
+          declineInvite(userId, msg.code);
+          break;
         case "tournament_enter":
           void enterTournamentMatch({ userId, username, eloRating, send }, msg.tournamentMatchId);
+          break;
+        case "clan_war_enter":
+          void enterClanWarMatch({ userId, username, eloRating, send }, msg.clanWarMatchId);
+          break;
+        case "spectate":
+          spectateMatch(userId, msg.matchId, send);
+          break;
+        case "leave_spectate":
+          leaveSpectate(userId, msg.matchId);
           break;
         case "answer":
           handleAnswer(userId, msg.questionId, msg.chosenIndex);
           break;
         case "forfeit":
           handleForfeit(userId);
+          break;
+        case "ready":
+          handleReady(userId);
+          break;
+        case "tab_hidden":
+          handleTabHidden(userId);
+          break;
+        case "tab_visible":
+          handleTabVisible(userId);
           break;
         case "ping":
           send({ type: "pong" });
@@ -97,7 +122,33 @@ export async function duelWsRoutes(app: FastifyInstance) {
       handleMessage(raw);
     });
 
-    socket.on("close", () => detachSocket(userId));
+    // Heartbeat côté serveur : détecte les connexions "zombie" (téléphone
+    // dont le réseau est coupé sans fermeture propre du WebSocket).
+    // Le navigateur répond automatiquement aux pings WebSocket (niveau
+    // protocole, invisible JS côté client). Si on n'a pas reçu de pong
+    // avant le prochain ping, la socket est considérée morte → terminate()
+    // force le `close` event → detachSocket → toute la logique de
+    // déconnexion s'applique (réponse nulle, timer de forfait, etc.).
+    const PING_INTERVAL_MS = 15_000;
+    let pongReceived = true; // vrai au départ : on donne le premier cycle entier
+    const pingInterval = setInterval(() => {
+      if (!pongReceived) {
+        // Pas de pong depuis le dernier ping → connexion zombie → on coupe
+        socket.terminate();
+        return;
+      }
+      pongReceived = false;
+      if (socket.readyState === socket.OPEN) socket.ping();
+    }, PING_INTERVAL_MS);
+
+    socket.on("pong", () => { pongReceived = true; });
+
+    socket.on("close", () => {
+      clearInterval(pingInterval);
+      unregisterSend(userId);
+      leaveSpectate(userId);
+      detachSocket(userId);
+    });
 
     void (async () => {
       const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -109,6 +160,9 @@ export async function duelWsRoutes(app: FastifyInstance) {
       username = user.username;
       eloRating = user.eloRating;
       ready = true;
+
+      // Enregistre cette socket dans le registry broadcast (§duel_opened)
+      registerSend(userId, send);
 
       // Reconnexion : si ce joueur avait un match en cours (coupure
       // réseau récente), on le raccroche directement au lieu de repartir

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { CATEGORIES, QUESTIONS, getCategory } from "../data/mockData";
@@ -13,7 +13,6 @@ import AmbientBackground from "../components/AmbientBackground";
 import Celebration from "../components/Celebration";
 import CountUp from "../components/CountUp";
 
-const TIME_PER_Q   = 8;
 const ROUND_SIZE   = 10;
 const QUESTION_REVEAL_MS = 650;
 const AMBER        = "var(--accent)";
@@ -31,10 +30,12 @@ const PRAISE_WORDS = [
 ];
 const LABELS       = ["A", "B", "C", "D"];
 const STAKES       = [100, 250, 500, 1000, 2500];
+const SOLO_LEVELS = [
+  { id: "easy", label: "Facile", odd: 1.05, time: 10, text: "Confort", icon: ShieldQuestion },
+  { id: "medium", label: "Moyen", odd: 1.10, time: 8, text: "Équilibre", icon: Zap },
+  { id: "hard", label: "Difficile", odd: 1.30, time: 7, text: "Risque", icon: Flame },
+];
 const QUESTION_FORMATS = ["text", "audio", "image"];
-// Payout multipliers indexed by score (0–10)
-// Below 7/10 → player loses some or all; 7+ → net positive
-const PAYOUT_MULT = [0, 0, 0, 0, 0, 0.60, 0.85, 1.20, 1.60, 2.20, 3.00];
 
 function shuffleOptions(q) {
   const perm = [0, 1, 2, 3];
@@ -117,29 +118,6 @@ const STATE_STYLE = {
   wrong:   { bg: "rgba(244,63,94,0.14)",       border: "rgba(244,63,94,0.55)",  text: "var(--danger)",  lBg: "rgba(244,63,94,0.22)",   lCol: "var(--danger)",  glow: "0 0 20px rgba(244,63,94,0.24)" },
 };
 
-// ── Payout table row ──────────────────────────────────────────────────────────
-function PayoutRow({ score, mult, stake, currency }) {
-  const isWin  = mult >= 1.0;
-  const net    = Math.round(stake * mult) - stake;
-  return (
-    <div
-      className="flex items-center justify-between py-1.5 px-2.5 rounded-lg border"
-      style={{
-        background: isWin ? "rgba(8,31,19,0.88)" : "rgba(32,13,13,0.88)",
-        borderColor: isWin ? "rgba(93,214,110,0.16)" : "rgba(255,85,85,0.16)",
-      }}
-    >
-      <span className="text-xs font-semibold" style={{ color: isWin ? "#5DD66E" : "#FF6B6B", minWidth: 40 }}>
-        {typeof score === "string" ? `${score}/10` : `${score}/10`}
-      </span>
-      <span className="font-arcade text-xs text-white/65">×{mult.toFixed(2)}</span>
-      <span className="font-arcade text-xs font-bold" style={{ color: isWin ? "#5DD66E" : "#FF6B6B" }}>
-        {formatMoney(net, currency, { showPlus: true })}
-      </span>
-    </div>
-  );
-}
-
 function SetupStat({ label, value }) {
   return (
     <div className="rounded-xl px-3 py-2" style={{ background: "var(--qa-active)" }}>
@@ -155,25 +133,25 @@ function SetupStat({ label, value }) {
 
 export default function QuizPlay() {
   const { categoryId }    = useParams();
-  const [searchParams]    = useSearchParams();
-  const isDaily           = searchParams.get("daily") === "1";
   const navigate          = useNavigate();
-  const { lang, coins, addCoins, elo, updateElo, setDailyDone, currency } = useApp();
+  const { lang, coins, addCoins, elo, updateElo, currency } = useApp();
 
   const questions = useMemo(
     () => withDisplayFormats(pickRandom(buildQuestionPool(categoryId), ROUND_SIZE).map(shuffleOptions)),
     [categoryId],
   );
 
-  // Game mode state
-  const [isChallenge,    setIsChallenge]   = useState(false);
+  // Solo challenge state
+  const [selectedLevelId, setSelectedLevelId] = useState("medium");
   const [selectedStake,  setSelectedStake] = useState(500);
+  const selectedLevel = SOLO_LEVELS.find((level) => level.id === selectedLevelId) || SOLO_LEVELS[1];
+  const currentTimeLimit = selectedLevel.time;
 
   // Phase machine: setup → ready → playing → ceremony → done
-  const [phase,        setPhase]        = useState(isDaily ? "ready" : "setup");
+  const [phase,        setPhase]        = useState("setup");
   const [countdown,    setCountdown]    = useState(3);
   const [qIdx,         setQIdx]         = useState(0);
-  const [timeLeft,     setTimeLeft]     = useState(TIME_PER_Q);
+  const [timeLeft,     setTimeLeft]     = useState(currentTimeLimit);
   const [chosen,       setChosen]       = useState(null);
   const [answersReady, setAnswersReady] = useState(false);
   const [totalPoints,  setTotalPoints]  = useState(0);
@@ -195,7 +173,8 @@ export default function QuizPlay() {
   const streakRef  = useRef(0);
   const timerRef   = useRef(null);
   const revealTimerRef = useRef(null);
-  const phaseRef   = useRef(isDaily ? "ready" : "setup");
+  const phaseRef   = useRef("setup");
+  const forfeitedRef = useRef(false);
 
   const toggleMusic = useCallback(() => {
     setMuted((m) => {
@@ -210,7 +189,7 @@ export default function QuizPlay() {
   const isMixed = categoryId === "random";
   const questionBankSize = CATEGORIES.reduce((sum, item) => sum + item.questions, 0);
   const mult   = getMult(streak);
-  const urgent = timeLeft <= 5 && phase === "playing";
+  const urgent = timeLeft <= Math.min(5, currentTimeLimit - 1) && phase === "playing";
   const isGameScreen = phase !== "setup";
 
   const speakQuestion = useCallback(() => {
@@ -249,7 +228,7 @@ export default function QuizPlay() {
   // Per-question timer
   useEffect(() => {
     if (phase !== "playing") return;
-    setTimeLeft(TIME_PER_Q);
+    setTimeLeft(currentTimeLimit);
     setChosen(null);
     setFlash(null);
     setAnswersReady(false);
@@ -261,7 +240,7 @@ export default function QuizPlay() {
       if (phaseRef.current !== "playing") return;
       setAnswersReady(true);
 
-      let t = TIME_PER_Q;
+      let t = currentTimeLimit;
       timerRef.current = setInterval(() => {
         if (phaseRef.current !== "playing") { clearInterval(timerRef.current); return; }
         t -= 1;
@@ -276,7 +255,7 @@ export default function QuizPlay() {
       clearTimeout(revealTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qIdx, phase]);
+  }, [qIdx, phase, currentTimeLimit]);
 
   // Ceremony → countdown → next question / finalize
   useEffect(() => {
@@ -301,30 +280,47 @@ export default function QuizPlay() {
     clearInterval(timerRef.current);
     const correct = correctRef.current;
 
-    // ── Coins calculation ──────────────────────────────────────────────────
-    let netCoins, quizResult;
-    if (isChallenge) {
-      // Challenge: stake × multiplier table, can be negative
-      const payout = Math.round(selectedStake * PAYOUT_MULT[correct]);
-      netCoins    = payout - selectedStake;
-      quizResult  = netCoins >= 0 ? "win" : "loss";
-    } else {
-      // Libre: 10 pts per correct answer + optional daily bonus
-      netCoins   = correct * 10 + (isDaily ? 500 : 0);
-      quizResult = correct >= 7 ? "win" : correct >= 5 ? "draw" : "loss";
-    }
+    const won = correct >= 7;
+    const payout = won ? Math.round(selectedStake * selectedLevel.odd) : 0;
+    const netCoins = payout - selectedStake;
+    const quizResult = won ? "win" : "loss";
 
     // ELO always tracks performance regardless of mode
     const { newElo, delta } = calcNewElo(elo, 1050, correct >= 7 ? "win" : correct >= 5 ? "draw" : "loss");
     updateElo(newElo);
     setEloResult({ newElo, delta });
     addCoins(netCoins);
-    if (isDaily) setDailyDone(true);
     setTotalPoints(netCoins);
     if (quizResult === "win") playSfx(SFX.victory); else playSfx(SFX.defeat);
     setPhase("done");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isChallenge, selectedStake, isDaily, elo]);
+  }, [selectedStake, selectedLevel, elo]);
+
+  const forfeitGame = useCallback(() => {
+    if (forfeitedRef.current || phaseRef.current !== "playing") return;
+    forfeitedRef.current = true;
+    clearInterval(timerRef.current);
+    clearTimeout(revealTimerRef.current);
+    const { newElo, delta } = calcNewElo(elo, 1050, "loss");
+    updateElo(newElo);
+    setEloResult({ newElo, delta });
+    setTotalPoints(-selectedStake);
+    addCoins(-selectedStake);
+    playSfx(SFX.defeat);
+    setPhase("done");
+  }, [addCoins, elo, playSfx, selectedStake, updateElo]);
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const onVisibility = () => { if (document.hidden) forfeitGame(); };
+    const onBlur = () => forfeitGame();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [phase, forfeitGame]);
 
   const onTimeout = () => {
     streakRef.current = 0;
@@ -341,7 +337,7 @@ export default function QuizPlay() {
     if (optIdx === q.answer) {
       streakRef.current += 1;
       const m    = getMult(streakRef.current);
-      const base = Math.round(200 + (timeLeft / TIME_PER_Q) * 800);
+      const base = Math.round(200 + (timeLeft / currentTimeLimit) * 800);
       const pts  = Math.round(base * m);
       correctRef.current += 1;
       pointsRef.current  += pts;
@@ -360,7 +356,7 @@ export default function QuizPlay() {
     }
     setPhase("ceremony");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, answersReady, chosen, q, timeLeft]);
+  }, [phase, answersReady, chosen, q, timeLeft, currentTimeLimit]);
 
   useEffect(() => {
     const map = { a: 0, b: 1, c: 2, d: 3 };
@@ -382,9 +378,7 @@ export default function QuizPlay() {
     return (
       <ResultScreen
         result={
-          isChallenge
-            ? (totalPoints >= 0 ? "win" : "loss")
-            : (correctCount >= 7 ? "win" : correctCount >= 5 ? "draw" : "loss")
+          totalPoints >= 0 ? "win" : "loss"
         }
         coinsGained={totalPoints}
         myScore={correctCount}
@@ -392,8 +386,8 @@ export default function QuizPlay() {
         eloNew={eloResult?.newElo}
         eloDelta={eloResult?.delta}
         streak={streak}
-        isDaily={isDaily}
-        modeLabel="Mix global"
+        isDaily={false}
+        modeLabel={`Solo ${selectedLevel.label}`}
         onReplay={() => window.location.reload()}
         onLobby={() => navigate("/")}
       />
@@ -516,125 +510,110 @@ export default function QuizPlay() {
                   style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
                 >
                   <SetupStat label="Banque" value={`${questionBankSize} Q`} />
-                  <SetupStat label="Chrono" value={`${TIME_PER_Q}s`} />
+                  <SetupStat label="Chrono" value={`${currentTimeLimit}s`} />
                   <SetupStat label="Format" value="Mix A/V" />
                 </div>
               </motion.header>
 
-              {/* Mode selector */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Libre */}
-                <button
-                  onClick={() => setIsChallenge(false)}
-                  className="flex flex-col gap-2 p-3 rounded-xl border text-left transition-all"
-                  style={{
-                    background: !isChallenge ? `linear-gradient(145deg, ${AMBER}, #c99500)` : "var(--qa-surface)",
-                    borderColor: !isChallenge ? `${AMBER}50` : "rgba(216,238,218,0.14)",
-                    boxShadow: !isChallenge ? `0 0 20px ${AMBER}10` : "none",
-                    color: !isChallenge ? "#07070F" : "var(--qa-text)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold" style={{ color: !isChallenge ? "#07070F" : "var(--qa-text-sub)" }}>LIBRE</span>
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: !isChallenge ? AMBER : "rgba(255,255,255,0.2)" }}>
-                      {!isChallenge && <div className="w-2 h-2 rounded-full" style={{ background: AMBER }} />}
-                    </div>
-                  </div>
-                  <p className="text-[10px] leading-relaxed" style={{ color: !isChallenge ? "rgba(7,7,15,0.72)" : "var(--qa-text-sub)" }}>Sans risque · +10 FCFA par bonne réponse</p>
-                  <div className="text-xs font-semibold" style={{ color: !isChallenge ? "#07070F" : "var(--qa-text)" }}>Max +100 FCFA</div>
-                </button>
-
-                {/* Challenge */}
-                <button
-                  onClick={() => setIsChallenge(true)}
-                  className="flex flex-col gap-2 p-3 rounded-xl border text-left transition-all"
-                  style={{
-                    background: isChallenge ? `linear-gradient(145deg, ${AMBER}, #c99500)` : "var(--qa-surface)",
-                    borderColor: isChallenge ? `${AMBER}50` : "rgba(216,238,218,0.14)",
-                    boxShadow: isChallenge ? `0 0 20px ${AMBER}10` : "none",
-                    color: isChallenge ? "#07070F" : "var(--qa-text)",
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold flex items-center gap-1.5" style={{ color: isChallenge ? "#07070F" : "var(--qa-text-sub)" }}><Zap className="w-3 h-3" style={{ color: isChallenge ? "#07070F" : AMBER }} /> CHALLENGE</span>
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: isChallenge ? AMBER : "rgba(255,255,255,0.2)" }}>
-                      {isChallenge && <div className="w-2 h-2 rounded-full" style={{ background: AMBER }} />}
-                    </div>
-                  </div>
-                  <p className="text-[10px] leading-relaxed" style={{ color: isChallenge ? "rgba(7,7,15,0.72)" : "var(--qa-text-sub)" }}>Mise des coins · gain selon ton score</p>
-                  <div className="text-xs font-semibold" style={{ color: isChallenge ? "#07070F" : AMBER }}>Jackpot ×3.00</div>
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {SOLO_LEVELS.map((level) => {
+                  const selected = selectedLevelId === level.id;
+                  const LevelIcon = level.icon;
+                  return (
+                    <button
+                      key={level.id}
+                      onClick={() => setSelectedLevelId(level.id)}
+                      className="relative overflow-hidden rounded-2xl p-4 text-left transition-all"
+                      style={{
+                        background: selected ? AMBER : "var(--qa-surface)",
+                        color: selected ? "#07070F" : "var(--qa-text)",
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="grid h-10 w-10 place-items-center rounded-xl"
+                          style={{
+                            background: selected ? "rgba(7,7,15,0.12)" : "var(--accent-soft)",
+                            color: selected ? "#07070F" : AMBER,
+                          }}
+                        >
+                          <LevelIcon className="h-5 w-5" />
+                        </span>
+                        <div className="w-4 h-4 rounded-full border-2 flex items-center justify-center" style={{ borderColor: selected ? "#07070F" : "var(--qa-text-faint)" }}>
+                          {selected && <div className="w-2 h-2 rounded-full" style={{ background: "#07070F" }} />}
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <div className="text-lg font-extrabold">{level.label}</div>
+                        <div className="text-xs font-bold" style={{ color: selected ? "rgba(7,7,15,0.70)" : "var(--qa-text-sub)" }}>
+                          {level.text}
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-extrabold">
+                        <span className="rounded-xl px-2.5 py-2" style={{ background: selected ? "rgba(7,7,15,0.10)" : "var(--qa-surface-2)" }}>
+                          ×{level.odd.toFixed(2)}
+                        </span>
+                        <span className="rounded-xl px-2.5 py-2 text-right" style={{ background: selected ? "rgba(7,7,15,0.10)" : "var(--qa-surface-2)" }}>
+                          {level.time}s
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Challenge: stake + payout */}
-              <AnimatePresence>
-                {isChallenge && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-4">
-                      {/* Stake picker */}
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "var(--qa-text-faint)" }}>Ta mise</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {STAKES.map(s => {
-                            const canAfford = coins >= s;
-                            return (
-                              <button
-                                key={s}
-                                onClick={() => canAfford && setSelectedStake(s)}
-                                disabled={!canAfford}
-                                className="px-3 py-1.5 rounded-lg text-xs font-bold transition border"
-                                style={{
-                                  background: selectedStake === s ? AMBER : "var(--qa-surface)",
-                                  borderColor: selectedStake === s ? AMBER : canAfford ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)",
-                                  color: selectedStake === s ? "#07070F" : canAfford ? "var(--qa-text-sub)" : "var(--qa-text-faint)",
-                                  cursor: canAfford ? "pointer" : "not-allowed",
-                                }}
-                              >
-                                {formatMoney(s, currency)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {coins < selectedStake && (
-                          <div className="flex items-center gap-1.5 mt-2 text-[11px]" style={{ color: "#FF6B6B" }}>
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            Solde insuffisant — solde : {formatMoney(coins, currency)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Payout table */}
-                      <div>
-                        <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "var(--qa-text-faint)" }}>Grille de gain</p>
-                        <div className="space-y-1">
-                          <PayoutRow score="0–4" mult={0}    stake={selectedStake} currency={currency} />
-                          <PayoutRow score={5}   mult={0.60} stake={selectedStake} currency={currency} />
-                          <PayoutRow score={6}   mult={0.85} stake={selectedStake} currency={currency} />
-                          <PayoutRow score={7}   mult={1.20} stake={selectedStake} currency={currency} />
-                          <PayoutRow score={8}   mult={1.60} stake={selectedStake} currency={currency} />
-                          <PayoutRow score={9}   mult={2.20} stake={selectedStake} currency={currency} />
-                          <PayoutRow score={10}  mult={3.00} stake={selectedStake} currency={currency} />
-                        </div>
-                      </div>
+              <div className="card rounded-2xl p-4">
+                <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "var(--qa-text-faint)" }}>Ta mise</p>
+                <div className="flex gap-2 flex-wrap">
+                  {STAKES.map(s => {
+                    const canAfford = coins >= s;
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => canAfford && setSelectedStake(s)}
+                        disabled={!canAfford}
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition border"
+                        style={{
+                          background: selectedStake === s ? AMBER : "var(--qa-surface-2)",
+                          borderColor: selectedStake === s ? AMBER : "var(--qa-border)",
+                          color: selectedStake === s ? "#07070F" : canAfford ? "var(--qa-text-sub)" : "var(--qa-text-faint)",
+                          cursor: canAfford ? "pointer" : "not-allowed",
+                        }}
+                      >
+                        {formatMoney(s, currency)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl p-3" style={{ background: "var(--qa-active)" }}>
+                    <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--qa-text-faint)" }}>Gain si 7/10+</div>
+                    <div className="text-base font-bold mt-1" style={{ color: "var(--success)" }}>
+                      {formatMoney(Math.round(selectedStake * selectedLevel.odd) - selectedStake, currency, { showPlus: true })}
                     </div>
-                  </motion.div>
+                  </div>
+                  <div className="rounded-xl p-3" style={{ background: "var(--qa-active)" }}>
+                    <div className="text-[10px] uppercase tracking-widest" style={{ color: "var(--qa-text-faint)" }}>Règle</div>
+                    <div className="text-xs font-semibold mt-1" style={{ color: "var(--qa-text)" }}>Sortie de page = mise perdue</div>
+                  </div>
+                </div>
+                {coins < selectedStake && (
+                  <div className="flex items-center gap-1.5 mt-3 text-[11px]" style={{ color: "var(--danger)" }}>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Solde insuffisant — solde : {formatMoney(coins, currency)}
+                  </div>
                 )}
-              </AnimatePresence>
+              </div>
 
               {/* Start button */}
               <div className="mt-auto pt-2">
                 <button
                   onClick={() => setPhase("ready")}
-                  disabled={isChallenge && coins < selectedStake}
+                  disabled={coins < selectedStake}
                   className="w-full py-3 rounded-xl text-sm font-bold transition disabled:opacity-40"
                   style={{ background: AMBER, color: "#07070F" }}
                 >
-                  {isChallenge ? `Miser ${formatMoney(selectedStake, currency)} & Jouer` : "Jouer en Libre"}
+                  Miser {formatMoney(selectedStake, currency)} et jouer en {selectedLevel.label}
                 </button>
                 <p className="text-center text-[10px] text-white/20 mt-2">
                   <Link to="/rules" className="underline hover:text-white/40 transition">Lire les règles complètes</Link>
@@ -663,14 +642,9 @@ export default function QuizPlay() {
               </motion.div>
               <div>
                 <p className="text-xs text-white/30 mb-2 uppercase tracking-widest">{ROUND_SIZE} questions · {modeName}</p>
-                {isChallenge && (
-                  <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>
-                    Challenge · Mise {formatMoney(selectedStake, currency)}
-                  </p>
-                )}
-                {isDaily && (
-                  <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>Défi du Jour · +500 pts bonus</p>
-                )}
+                <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>
+                  {selectedLevel.label} · Côte ×{selectedLevel.odd.toFixed(2)} · Mise {formatMoney(selectedStake, currency)}
+                </p>
               </div>
               <motion.div
                 key={countdown}
@@ -700,17 +674,15 @@ export default function QuizPlay() {
               <div className="flex items-center justify-between mb-5 relative">
                 <div className="text-center min-w-[80px]">
                   <p className="text-[10px] uppercase tracking-widest font-medium mb-1" style={{ color: "var(--text-faint)" }}>
-                    {isChallenge ? "Mise" : "Gains"}
+                    Mise
                   </p>
                   <p className="font-display font-semibold text-base leading-none tabular-nums tracking-tight" style={{ color: "var(--accent)" }}>
-                    {isChallenge
-                      ? formatMoney(selectedStake, currency)
-                      : <><CountUp to={totalPoints} format={(v) => formatMoney(v, currency, { showPlus: true })} /></>}
+                    {formatMoney(selectedStake, currency)}
                   </p>
                 </div>
 
                 <div className="relative">
-                  <CircularTimer timeLeft={timeLeft} total={TIME_PER_Q} urgent={urgent} />
+                  <CircularTimer timeLeft={timeLeft} total={currentTimeLimit} urgent={urgent} />
                   {/* Celebration burst au correct */}
                   <Celebration show={flash === "correct"} />
                 </div>
@@ -800,12 +772,10 @@ export default function QuizPlay() {
                           <span className="text-sm font-bold text-[#5DD66E]">Correct</span>
                           {streak >= 3 && <span className="text-xs font-semibold" style={{ color: AMBER }}>{streak >= 5 ? "En feu" : "Série"}</span>}
                         </div>
-                        {!isChallenge && (
-                          <div className="flex items-center gap-1 font-semibold text-xs" style={{ color: AMBER }}>
-                            {formatMoney(lastPts, currency, { showPlus: true })}
-                            {mult > 1 && <span className="text-[10px] opacity-60 ml-0.5">×{mult}</span>}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 font-semibold text-xs" style={{ color: AMBER }}>
+                          {formatMoney(lastPts, currency, { showPlus: true })}
+                          {mult > 1 && <span className="text-[10px] opacity-60 ml-0.5">×{mult}</span>}
+                        </div>
                       </>
                     ) : chosen === -1 ? (
                       <>

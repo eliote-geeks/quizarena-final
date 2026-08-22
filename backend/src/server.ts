@@ -17,12 +17,15 @@ import { quizRoutes } from "./modules/quiz/routes.js";
 import { playerRoutes } from "./modules/players/routes.js";
 import { publicRoutes } from "./modules/public/routes.js";
 import { duelWsRoutes } from "./modules/duel/ws.js";
+import { duelRestRoutes } from "./modules/duel/routes.js";
 import { ensureBotUsers } from "./modules/duel/bot.js";
-import { setTournamentMatchDoneHandler } from "./modules/duel/hooks.js";
+import { setTournamentMatchDoneHandler, setClanWarMatchDoneHandler } from "./modules/duel/hooks.js";
 import { tournamentRoutes } from "./modules/tournament/routes.js";
 import { advanceBracket } from "./modules/tournament/bracket.js";
 import { adminRoutes } from "./modules/admin/routes.js";
 import { avatarRoutes } from "./modules/avatar/routes.js";
+import { clanRoutes } from "./modules/clans/routes.js";
+import { clanWarRoutes, finalizeClanWarMatch, sweepExpiredClanWars } from "./modules/clan-wars/routes.js";
 import { sweepPendingTransactions } from "./modules/wallet/reconcile.js";
 
 const app = Fastify({
@@ -74,8 +77,11 @@ await app.register(playerRoutes);
 await app.register(publicRoutes);
 await app.register(tournamentRoutes);
 await app.register(adminRoutes);
+await app.register(clanRoutes);
+await app.register(clanWarRoutes);
 await app.register(avatarRoutes);
 await app.register(duelWsRoutes);
+await app.register(duelRestRoutes);
 
 // Dashboard admin — une seule page HTML statique, servie directement
 // (pas de build front séparé pour un outil interne à un seul
@@ -99,6 +105,7 @@ await ensureBotUsers();
 // voir duel/hooks.ts pour la raison de ce registre plutôt qu'un import
 // direct (duel/engine.ts ne doit rien savoir des tournois).
 setTournamentMatchDoneHandler(advanceBracket);
+setClanWarMatchDoneHandler(finalizeClanWarMatch);
 
 app.listen({ port: env.PORT, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);
@@ -116,3 +123,7 @@ setInterval(() => {
     })
     .catch((err) => app.log.error(err, "[reconcile] balayage échoué"));
 }, 20_000);
+
+setInterval(() => {
+  sweepExpiredClanWars().catch((err) => app.log.error(err, "[clan-wars] clôture automatique échouée"));
+}, 60_000);

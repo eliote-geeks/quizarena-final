@@ -40,13 +40,12 @@ export function AppProvider({ children }) {
     catch { return null; }
   });
 
-  // VIP progression — 30 victoires ET 5 parrainages validés
+  // VIP progression: 30 Duel wins over the current monthly window.
   const [wins, setWins]             = useState(() => Number(localStorage.getItem("qa_wins")) || 12);
   const [referrals, setReferrals]   = useState(() => Number(localStorage.getItem("qa_referrals")) || 2);
 
   const VIP_WINS_TARGET     = 30;
-  const VIP_REFERRAL_TARGET = 5;
-  const isVip = wins >= VIP_WINS_TARGET && referrals >= VIP_REFERRAL_TARGET;
+  const isVip = wins >= VIP_WINS_TARGET;
 
   const addWin = useCallback(() => {
     setWins((w) => {
@@ -127,7 +126,7 @@ export function AppProvider({ children }) {
       referrals,
       addReferral,
       isVip,
-      vipTargets: { wins: VIP_WINS_TARGET, referrals: VIP_REFERRAL_TARGET },
+      vipTargets: { wins: VIP_WINS_TARGET },
       onboardingSeen,
       markOnboardingSeen,
       resetOnboarding,

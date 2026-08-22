@@ -1,0 +1,2 @@
+ALTER TABLE "Clan"
+ADD COLUMN "emblemKey" TEXT NOT NULL DEFAULT 'shogun';

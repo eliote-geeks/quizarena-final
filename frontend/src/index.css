@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,10 +15,10 @@ html {
 
 body {
     margin: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
-    font-weight: 400;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+    font-weight: 500;
     font-feature-settings: "cv11", "ss01", "ss03";
-    letter-spacing: -0.011em;
+    letter-spacing: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: var(--bg);
@@ -26,17 +28,17 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.025em;
-    font-weight: 600;
+    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0;
+    font-weight: 800;
 }
 
-/* Display italic style for hero accents */
+/* Keep old markup compatible, but remove decorative serif accents. */
 .serif-italic {
-    font-family: 'Instrument Serif', ui-serif, Georgia, serif;
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.015em;
+    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0;
 }
 
 code {
@@ -55,27 +57,27 @@ code {
     --sidebar:         #0B0B10;
     --topbar:          rgba(11,11,16,0.72);
 
-    --border:          rgba(255,255,255,0.06);
-    --border-md:       rgba(255,255,255,0.12);
-    --border-strong:   rgba(255,255,255,0.18);
-    --divider:         rgba(255,255,255,0.05);
+    --border:          rgba(255,255,255,0.07);
+    --border-md:       rgba(255,255,255,0.13);
+    --border-strong:   rgba(255,255,255,0.20);
+    --divider:         rgba(255,255,255,0.06);
 
-    --text:            #F5F5F4;
-    --text-sub:        #A1A1AA;
-    --text-faint:      #71717A;
-    --text-dim:        #52525B;
+    --text:            #F8FAFC;
+    --text-sub:        #A7AFBC;
+    --text-faint:      #69707D;
+    --text-dim:        #4B5563;
 
     --input-bg:        rgba(255,255,255,0.04);
-    --hover:           rgba(255,255,255,0.04);
-    --active:          rgba(255,255,255,0.07);
+    --hover:           rgba(229,168,0,0.06);
+    --active:          rgba(229,168,0,0.10);
 
-    /* Accent — Indigo */
-    --accent:          #6366F1;
-    --accent-hover:    #818CF8;
-    --accent-active:   #4F46E5;
-    --accent-soft:     rgba(99,102,241,0.14);
-    --accent-glow:     rgba(99,102,241,0.28);
-    --accent-fg:       #F5F5F4;
+    /* Accent — QuizArena gold */
+    --accent:          #E5A800;
+    --accent-hover:    #C99000;
+    --accent-active:   #A77700;
+    --accent-soft:     rgba(229,168,0,0.14);
+    --accent-glow:     rgba(229,168,0,0.30);
+    --accent-fg:       #FFFFFF;
 
     /* Semantic */
     --success:         #10B981;
@@ -132,11 +134,11 @@ html.light {
     --hover:           rgba(9,9,11,0.04);
     --active:          rgba(9,9,11,0.07);
 
-    --accent:          #4F46E5;
-    --accent-hover:    #6366F1;
-    --accent-active:   #4338CA;
-    --accent-soft:     rgba(79,70,229,0.10);
-    --accent-glow:     rgba(79,70,229,0.20);
+    --accent:          #E5A800;
+    --accent-hover:    #C99000;
+    --accent-active:   #A77700;
+    --accent-soft:     rgba(229,168,0,0.14);
+    --accent-glow:     rgba(229,168,0,0.30);
     --accent-fg:       #FFFFFF;
 
     --success:         #059669;
@@ -146,6 +148,15 @@ html.light {
     --warning:         #D97706;
     --warning-soft:    rgba(217,119,6,0.10);
 }
+
+.bg-orange-qa { background: var(--accent); }
+.text-orange-qa { color: var(--accent); }
+.text-ink-qa { color: var(--text); }
+.text-ink-soft-qa { color: var(--text-sub); }
+.bg-cream-qa { background: var(--surface-2); }
+.bg-orange-soft-qa { background: var(--accent-soft); }
+.qa-shell { width: 100%; max-width: 80rem; margin-inline: auto; padding-inline: 1rem; }
+@media (min-width: 1024px) { .qa-shell { padding-inline: 2rem; } }
 
 /* ═══════════════════════════════════════════════════════════════
    Shadcn/Tailwind semantic tokens (kept for existing UI)
@@ -208,47 +219,40 @@ html.light {
 
     /* ── Fonts ── */
     .font-display {
-        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-        letter-spacing: -0.028em;
-        font-weight: 600;
+        font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: 0;
+        font-weight: 800;
     }
     .font-serif-i {
-        font-family: 'Instrument Serif', ui-serif, Georgia, serif;
-        font-style: italic;
-        letter-spacing: -0.015em;
+        font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-style: normal;
+        letter-spacing: 0;
+        font-weight: 800;
     }
 
     /* ── Primary button (indigo) ── */
     .btn-primary {
         background: var(--accent);
         color: var(--accent-fg);
-        font-weight: 500;
-        letter-spacing: -0.005em;
-        border: 1px solid rgba(255,255,255,0.10);
-        box-shadow:
-            0 1px 0 rgba(255,255,255,0.15) inset,
-            0 -6px 12px rgba(0,0,0,0.10) inset,
-            0 10px 24px -8px var(--accent-glow),
-            0 0 0 1px var(--accent);
-        transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+        font-weight: 700;
+        letter-spacing: 0;
+        border: 1px solid var(--accent);
+        box-shadow: none;
+        transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
     }
     .btn-primary:hover:not(:disabled) {
         background: var(--accent-hover);
-        transform: translateY(-1px);
-        box-shadow:
-            0 1px 0 rgba(255,255,255,0.20) inset,
-            0 -6px 12px rgba(0,0,0,0.10) inset,
-            0 14px 32px -8px var(--accent-glow),
-            0 0 0 1px var(--accent-hover);
+        border-color: var(--accent-hover);
+        box-shadow: none;
     }
-    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:active:not(:disabled) { opacity: 0.92; }
 
     /* ── Secondary (outlined) ── */
     .btn-secondary {
         background: var(--surface);
         color: var(--text);
         border: 1px solid var(--border-md);
-        font-weight: 500;
+        font-weight: 700;
         transition: background 0.15s ease, border-color 0.15s ease;
     }
     .btn-secondary:hover:not(:disabled) {
@@ -260,7 +264,7 @@ html.light {
     .btn-ghost {
         background: transparent;
         color: var(--text-sub);
-        font-weight: 500;
+        font-weight: 600;
         transition: background 0.15s ease, color 0.15s ease;
     }
     .btn-ghost:hover:not(:disabled) {
@@ -279,7 +283,7 @@ html.light {
     }
     .card-hover:hover {
         border-color: var(--border-md);
-        background: var(--surface-2);
+        background: var(--surface);
     }
     .card-elevated {
         background: var(--surface);
@@ -297,7 +301,7 @@ html.light {
 
     /* ── Glass (for modals, sticky bars) ── */
     .glass {
-        background: rgba(17,17,23,0.68);
+        background: rgba(11,11,16,0.86);
         border: 1px solid var(--border-md);
         backdrop-filter: blur(24px) saturate(1.4);
         -webkit-backdrop-filter: blur(24px) saturate(1.4);
@@ -328,8 +332,8 @@ html.light {
         padding: 0.25rem 0.625rem;
         border-radius: 9999px;
         font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: -0.005em;
+        font-weight: 700;
+        letter-spacing: 0;
     }
     .chip-accent { background: var(--accent-soft); color: var(--accent-hover); }
     .chip-success { background: var(--success-soft); color: var(--success); }
@@ -381,9 +385,22 @@ html.light {
     .border-gold { border-color: var(--accent); }
 
     /* Legacy font aliases */
-    .font-arcade { font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
-    .font-pixel { font-family: 'Inter', sans-serif; font-weight: 700; }
-    .font-body { font-family: 'Inter', sans-serif; }
+    .font-arcade { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 700; letter-spacing: 0; }
+    .font-pixel { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 700; }
+    .font-body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
+}
+
+/* Keep the product typography visually consistent with the VIP page. */
+.App .font-medium,
+.App .font-semibold {
+    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+}
+
+.App .font-bold,
+.App .font-extrabold,
+.App .font-black {
+    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -418,30 +435,13 @@ html.light [class*="bg-[#16162A]"] { background-color: var(--surface-2) !importa
 html.light [class*="bg-black/"] { background-color: var(--input-bg) !important; }
 html.light [class*="border-white/"] { border-color: var(--border) !important; }
 
-html.light [class*="text-white/1"],
-html.light [class*="text-white/2"] { color: var(--text-faint) !important; }
+html.light [class*="bg-white/"] { background-color: rgba(255,255,255,0.16) !important; }
+html.light .player-page [class*="text-white"] { color: var(--text-sub) !important; }
+html.light .player-page h1[class*="text-white"],
+html.light .player-page [class*="font-semibold"][class*="text-white"],
+html.light .player-page [class*="font-medium"][class*="text-white"] { color: var(--text) !important; }
 
-html.light [class*="text-white/3"],
-html.light [class*="text-white/4"],
-html.light [class*="text-white/5"],
-html.light [class*="text-white/6"],
-html.light [class*="text-white/7"],
-html.light [class*="text-white/[0.3]"],
-html.light [class*="text-white/[0.4]"],
-html.light [class*="text-white/[0.5]"],
-html.light [class*="text-white/[0.6]"],
-html.light [class*="text-white/[0.7]"] { color: var(--text-sub) !important; }
-
-html.light [class*="text-white/8"],
-html.light [class*="text-white/9"],
-html.light [class*="text-white/[0.8]"],
-html.light [class*="text-white/[0.9]"] { color: var(--text) !important; }
-
-html.light .text-white { color: var(--text) !important; }
-html.light [class*="bg-white/"] { background-color: var(--active) !important; }
-
-/* Amber (#E5A800) legacy references → accent */
-[style*="#E5A800"] { color: inherit; }
+/* Amber legacy references keep the product accent */
 [class*="border-amber"] { border-color: var(--accent) !important; }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -458,6 +458,28 @@ html.light [class*="bg-white/"] { background-color: var(--active) !important; }
     50% { opacity: 0.6; }
 }
 .pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+@keyframes clash-pop {
+    0%, 100% { transform: rotate(-8deg) scale(1); }
+    50% { transform: rotate(8deg) scale(1.08); }
+}
+.animate-clash { animation: clash-pop 1.8s ease-in-out infinite; }
+
+@keyframes balance-pop {
+    0%, 100% { transform: translateY(0); }
+    45% { transform: translateY(-1px); }
+}
+.animate-balance { animation: balance-pop 2.4s ease-in-out infinite; }
+
+@keyframes ticker-slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+.animate-ticker { animation: ticker-slide 18s linear infinite; }
+.animate-ticker:hover { animation-play-state: paused; }
+
+.animate-carousel { animation: ticker-slide 28s linear infinite; }
+.animate-carousel:hover { animation-play-state: paused; }
 
 @keyframes shimmer {
     0% { background-position: -200% 0; }

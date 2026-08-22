@@ -120,6 +120,47 @@ export async function quizRoutes(app: FastifyInstance) {
     });
   });
 
+  // ── Révélation per-question ──────────────────────────────────────
+  // Appelé APRÈS que le joueur a validé son choix côté client (le client
+  // ne peut pas l'appeler avant d'avoir affiché la question, et une même
+  // question ne peut être révélée qu'une seule fois par session).
+  app.post("/api/quiz/reveal", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { sessionId, questionId } = req.body as { sessionId: string; questionId: string };
+    if (!sessionId || !questionId) return reply.badRequest("sessionId et questionId requis");
+
+    const session = await prisma.quizSession.findUnique({ where: { id: sessionId } });
+    if (!session || session.userId !== req.user.userId) return reply.notFound();
+    if (session.status !== "STARTED") return reply.conflict("Session déjà terminée");
+
+    const sessionQuestions = session.questionIds as unknown as (SessionQuestion & { revealed?: boolean })[];
+    const sq = sessionQuestions.find((q) => q.questionId === questionId);
+    if (!sq) return reply.notFound();
+
+    // Une question ne peut être révélée qu'une seule fois pour éviter qu'un
+    // client malicieux itère les 4 options en appelant reveal sur la même
+    // question : la deuxième tentative est rejetée.
+    if (sq.revealed) return reply.conflict("Déjà révélé");
+
+    const question = await prisma.question.findUnique({ where: { id: questionId } });
+    if (!question) return reply.notFound();
+
+    // shuffledCorrectIndex = position dans le tableau d'options mélangées
+    // qui correspond à la bonne réponse canonique.
+    const shuffledCorrectIndex = sq.permutation.indexOf(question.answerIndex);
+
+    // Marque la question comme révélée dans le JSON de session.
+    await prisma.quizSession.update({
+      where: { id: session.id },
+      data: {
+        questionIds: sessionQuestions.map((q) =>
+          q.questionId === questionId ? { ...q, revealed: true } : q
+        ),
+      },
+    });
+
+    return reply.send({ shuffledCorrectIndex });
+  });
+
   app.post("/api/quiz/submit", { preHandler: [app.authenticate] }, async (req, reply) => {
     const body = submitSchema.parse(req.body);
 
