@@ -1,0 +1,92 @@
+[
+  {
+    "id": "culture",
+    "nameFr": "Culture générale",
+    "nameEn": "General knowledge",
+    "difficulty": "mixte"
+  },
+  {
+    "id": "histoire",
+    "nameFr": "Histoire",
+    "nameEn": "History",
+    "difficulty": "moyen"
+  },
+  {
+    "id": "geographie",
+    "nameFr": "Géographie",
+    "nameEn": "Geography",
+    "difficulty": "moyen"
+  },
+  {
+    "id": "sciences",
+    "nameFr": "Sciences",
+    "nameEn": "Science",
+    "difficulty": "difficile"
+  },
+  {
+    "id": "sport",
+    "nameFr": "Sport",
+    "nameEn": "Sport",
+    "difficulty": "facile"
+  },
+  {
+    "id": "afrique",
+    "nameFr": "Afrique",
+    "nameEn": "Africa",
+    "difficulty": "moyen"
+  },
+  {
+    "id": "cinema",
+    "nameFr": "Cinéma",
+    "nameEn": "Cinema",
+    "difficulty": "facile"
+  },
+  {
+    "id": "musique",
+    "nameFr": "Musique",
+    "nameEn": "Music",
+    "difficulty": "facile"
+  },
+  {
+    "id": "celebrites",
+    "nameFr": "Célébrités",
+    "nameEn": "Celebrities",
+    "difficulty": "facile"
+  },
+  {
+    "id": "technologie",
+    "nameFr": "Tech",
+    "nameEn": "Tech",
+    "difficulty": "difficile"
+  },
+  {
+    "id": "nature",
+    "nameFr": "Nature",
+    "nameEn": "Nature",
+    "difficulty": "moyen"
+  },
+  {
+    "id": "gastronomie",
+    "nameFr": "Gastronomie",
+    "nameEn": "Food",
+    "difficulty": "facile"
+  },
+  {
+    "id": "litterature",
+    "nameFr": "Littérature",
+    "nameEn": "Literature",
+    "difficulty": "difficile"
+  },
+  {
+    "id": "anime",
+    "nameFr": "Anime & Manga",
+    "nameEn": "Anime & Manga",
+    "difficulty": "moyen"
+  },
+  {
+    "id": "logique",
+    "nameFr": "Logique",
+    "nameEn": "Logic",
+    "difficulty": "moyen"
+  }
+]
