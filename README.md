@@ -7,8 +7,7 @@ Voir [`ARCHITECTURE.md`](./ARCHITECTURE.md) pour une description complète et à
 ## Structure
 
 - `backend/` : API Fastify, WebSocket, Prisma/PostgreSQL et moteur serveur-autoritaire. Partagé entre les deux éditions ci-dessous (même code, bases de données et secrets séparés).
-- `frontend/` : interface React (CRA) **réellement utilisée en production** — c'est elle qui sert `quizarenaworld.com` (édition Classic, port 3010) via `frontend/server.js`.
-- `frontend-v2/` : refonte visuelle (React/Vite) commencée en août 2026, **abandonnée depuis le 22/08** au profit de la poursuite de l'itération sur `frontend/`. Conservée pour référence de design uniquement, pas déployée.
+- `frontend/` : interface React (CRA), la seule utilisée en production — c'est elle qui sert `quizarenaworld.com` (édition Classic, port 3010) via `frontend/server.js`.
 
 ## Éditions
 

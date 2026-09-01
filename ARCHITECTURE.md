@@ -15,7 +15,7 @@ Aucune donnée n'est partagée entre les deux au runtime — même code, exécut
 
 ## 2. Frontend
 
-**`frontend/`** (React 18, Create React App/craco) est la seule interface réellement en production — c'est elle qui sert Classic. `frontend-v2/` (React/Vite, refonte visuelle) a été abandonnée le 22/08/2026 ; ne pas y développer.
+**`frontend/`** (React 18, Create React App/craco) est la seule interface du dépôt — c'est elle qui sert Classic en production.
 
 ### Structure
 
@@ -113,6 +113,6 @@ Pipeline de contenu versionné et vérifiable :
 
 ## 8. Décisions notables / dette technique connue
 
-- `frontend-v2/` et l'ancien service `_legacy-emergent-stub` côté Main : morts, à ne pas toucher sans raison explicite.
+- Ancien service `_legacy-emergent-stub` côté Main : mort, à ne pas toucher sans raison explicite.
 - Plusieurs dossiers `*.bak-*` traînent sur le serveur (déploiements précédents) — laissés en l'état, pas de suppression sans confirmation.
 - Le dépôt local accumule fréquemment un retard important entre le code réellement déployé et les derniers commits — toujours vérifier `git status`/diffs avant de supposer que `main` reflète la prod.
