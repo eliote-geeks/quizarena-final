@@ -42,6 +42,47 @@ export const SFX = {
     );
   },
   opponentLocked() { tone(440, 0.04, "square", 0.05); },
+
+  // ── Retours sonores des confirmations (29/08) ──────────────────────
+  // Même principe que les SFX de jeu au-dessus : ils informent, ils ne
+  // décorent pas. Sur une appli d'argent réel, chaque action engageante
+  // (miser, s'inscrire, lancer un tournoi, retirer) doit être audible —
+  // l'utilisateur sait que le geste est passé sans relire l'écran.
+
+  /** Un modal engageant vient de s'ouvrir : deux notes montantes discrètes. */
+  modalOpen() {
+    tone(587, 0.05, "sine", 0.10);
+    setTimeout(() => tone(784, 0.07, "sine", 0.10), 55);
+  },
+  /** Action confirmée et acceptée par le serveur (inscription, mise, prêt). */
+  confirm() {
+    tone(523, 0.06, "sine", 0.20);
+    setTimeout(() => tone(698, 0.06, "sine", 0.20), 60);
+    setTimeout(() => tone(880, 0.13, "sine", 0.18), 120);
+  },
+  /** Action annulée ou abandonnée : deux notes descendantes, jamais alarmantes. */
+  cancel() {
+    tone(494, 0.06, "sine", 0.14);
+    setTimeout(() => tone(370, 0.10, "sine", 0.12), 65);
+  },
+  /** Le serveur a refusé (solde insuffisant, tournoi complet, etc.). */
+  error() {
+    tone(311, 0.09, "sawtooth", 0.15);
+    setTimeout(() => tone(233, 0.13, "sawtooth", 0.13), 85);
+  },
+  /** Lien copié dans le presse-papier : un seul clic net. */
+  copy() { tone(1047, 0.045, "sine", 0.13); },
+  /** Le créateur lance le tournoi — fanfare courte, plus solennelle. */
+  tournamentStart() {
+    [523, 659, 784, 1047].forEach((f, i) =>
+      setTimeout(() => tone(f, 0.11, "triangle", 0.19), i * 90)
+    );
+  },
+  /** Un joueur a confirmé sa présence pendant le check. */
+  ready() {
+    tone(784, 0.05, "sine", 0.16);
+    setTimeout(() => tone(1047, 0.09, "sine", 0.16), 55);
+  },
   cashOut() {
     tone(392, 0.07);
     setTimeout(() => tone(523, 0.07), 75);

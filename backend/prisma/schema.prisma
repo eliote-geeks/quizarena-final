@@ -29,6 +29,16 @@ model User {
   id               String        @id @default(uuid())
   username         String        @unique
   email            String?       @unique
+  emailVerified    Boolean       @default(false)
+  emailVerifyCodeHash      String?   // sha256 du code à 6 chiffres, jamais l'e-mail lui-même en clair côté DB
+  emailVerifyCodeExpiresAt DateTime?
+  emailVerifyLastSentAt    DateTime? // anti-spam du bouton "renvoyer" (§auth/routes.ts)
+  passwordResetCodeHash      String?   // même principe que emailVerifyCodeHash, code distinct
+  passwordResetCodeExpiresAt DateTime?
+  passwordResetLastSentAt    DateTime?
+  avatarUrl        String?   // photo uploadée (§modules/uploads/routes.ts) ; absent = portrait généré à partir du pseudo (AnimeAvatar.jsx)
+  lastCampaignSentAt DateTime? // §modules/campaigns — anti-spam, un message par joueur au minimum tous les CAMPAIGN_COOLDOWN_DAYS
+  lastCampaignType   String?   // évite d'envoyer deux fois de suite le même type de message au même joueur
   phone            String        @unique
   passwordHash     String
   region           String?
@@ -37,6 +47,9 @@ model User {
   riskScore        Float         @default(0) // recalculé par le job d'analyse comportementale (§5-6 du spec)
   isBot            Boolean       @default(false) // compte "Ordinateur" (§duel/bot.ts) — jamais crédité, jamais classé
   isAdmin          Boolean       @default(false) // accès au dashboard admin (§modules/admin/) — jamais via l'inscription publique, uniquement scripts/make-admin.mjs
+  // Attribution VIP manuelle. Null = aucune dérogation admin. L'autre voie
+  // d'accès reste calculée côté serveur à partir des victoires sur 30 jours.
+  vipGrantedAt     DateTime?
   createdAt        DateTime      @default(now())
   lastLoginAt      DateTime?
   lastDailyBonusAt DateTime? // gate serveur du bonus quotidien (§ QuizPlay.jsx isDaily) — le client ne peut pas le déclarer deux fois
@@ -48,11 +61,49 @@ model User {
   duelsAsA          DuelMatch[]       @relation("DuelPlayerA")
   duelsAsB          DuelMatch[]       @relation("DuelPlayerB")
   tournamentEntries TournamentEntry[]
+  tournamentInvitesReceived TournamentInvite[] @relation("TournamentInviteReceived")
+  tournamentInvitesSent     TournamentInvite[] @relation("TournamentInviteSent")
   clanMembership    ClanMember?
   clanJoinRequests  ClanJoinRequest[]
+  questionExposures QuestionExposure[]
+  pushSubscriptions PushSubscription[]
+  loginSessions     LoginSession[]
 
   @@index([riskScore])
   @@index([accountStatus])
+}
+
+// Un abonnement par navigateur/appareil (pas par compte) : un joueur
+// connecté sur téléphone ET ordinateur reçoit le push sur les deux.
+// L'endpoint est la clé naturelle du navigateur (§lib/push.ts).
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Une session par connexion (login ou inscription) — le JWT porte son id
+// (§lib/sessions.ts), pas seulement userId, pour pouvoir en révoquer une
+// précise (déconnexion à distance) sans invalider les autres. Visible
+// dans Profil (retour Paul du 31/08 : "affiche aussi les sessions de
+// connexion de l'utilisateur dans son profil").
+model LoginSession {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+
+  @@index([userId])
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -84,6 +135,10 @@ model Transaction {
   user                 User              @relation(fields: [userId], references: [id])
   type                 TransactionType
   amountCoins          Int // signé : dépôt/gain positif, retrait/mise négatif
+  // Part du mouvement provenant du bonus promotionnel. Elle suit le même
+  // signe que amountCoins : le solde retirable est donc toujours
+  // SUM(amountCoins - bonusAmountCoins), jamais une valeur client mutable.
+  bonusAmountCoins     Int               @default(0)
   status               TransactionStatus @default(COMPLETED)
   provider             String? // "sharepay" | "simulated"
   providerRef          String? // référence SharePay, pour rapprochement + idempotence webhook
@@ -124,10 +179,38 @@ model Question {
   answerIndex Int // index dans `options`, jamais envoyé au client avant submit
   active      Boolean  @default(true)
   source      String   @default("manual") // "manual" | "ai" — généré hors ligne par un modèle local (§scripts/generate-questions.mjs), jamais en direct pendant une partie
+  subcategory String?
+  // URL d'un visuel approuvé (ou asset local). Ne jamais accepter une image
+  // utilisateur non modérée dans une question monétisée.
+  mediaUrl    String?
+  mediaAlt    String?
+  sourceUrl   String? // source éditoriale, visible seulement au backoffice
+  verifiedAt  DateTime?
+  expiresAt   DateTime? // utile aux questions d'actualité, exclues après échéance
+  tournamentEligible Boolean @default(true)
   createdAt   DateTime @default(now())
+  exposures   QuestionExposure[]
 
   @@index([categoryId, active])
   @@index([source])
+  @@index([subcategory])
+  @@index([expiresAt])
+}
+
+// Historique permanent, individuel et compact : une même question reste
+// disponible pour tous les autres joueurs, mais n'est plus servie à celui
+// qui l'a déjà reçue, même s'il a quitté la manche sans répondre.
+model QuestionExposure {
+  userId     String
+  questionId String
+  seenAt     DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+  @@index([userId, seenAt])
+  @@index([questionId])
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -266,6 +349,7 @@ model DuelAnswer {
 
 enum TournamentStatus {
   REGISTERING
+  READY_CHECK // capacité atteinte, le créateur a lancé : on attend que chaque joueur clique "Prêt"
   IN_PROGRESS
   COMPLETED
 }
@@ -292,6 +376,7 @@ model Tournament {
 
   entries TournamentEntry[]
   matches TournamentMatch[]
+  invites TournamentInvite[]
 
   @@index([status])
 }
@@ -306,10 +391,39 @@ model TournamentEntry {
   eliminatedRound Int? // round où éliminé ; null tant qu'en course
   placement       Int? // rang final : 1=vainqueur, 2=finaliste, 3=demi-finaliste, 0=éliminé plus tôt ; null tant que le tournoi n'est pas terminé
   payoutCoins     Int? // gain réellement crédité (0 si non placé)
+  readyAt         DateTime? // le joueur a confirmé sa présence pendant le READY_CHECK ; null = pas encore prêt
   joinedAt        DateTime   @default(now())
 
   @@unique([tournamentId, userId])
   @@index([tournamentId])
+}
+
+enum TournamentInviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED // le tournoi a démarré ou le créateur a retiré l'invitation
+}
+
+/// Invitation nominative envoyée par le créateur (29/08). Purement
+/// optionnelle : un tournoi reste rejoignable librement depuis la liste
+/// publique. L'invitation ne réserve PAS de place et ne débite RIEN —
+/// le droit d'entrée n'est prélevé qu'au moment où l'invité accepte, par
+/// le même chemin que /join (§routes.ts), donc jamais deux fois.
+model TournamentInvite {
+  id           String                  @id @default(uuid())
+  tournamentId String
+  tournament   Tournament              @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String // l'invité
+  user         User                    @relation("TournamentInviteReceived", fields: [userId], references: [id])
+  invitedById  String // le créateur au moment de l'envoi
+  invitedBy    User                    @relation("TournamentInviteSent", fields: [invitedById], references: [id])
+  status       TournamentInviteStatus  @default(PENDING)
+  createdAt    DateTime                @default(now())
+  respondedAt  DateTime?
+
+  @@unique([tournamentId, userId]) // une seule invitation par joueur et par tournoi
+  @@index([userId, status]) // liste "mes invitations en attente"
 }
 
 model TournamentMatch {

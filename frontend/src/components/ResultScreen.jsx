@@ -86,13 +86,7 @@ export default function ResultScreen({
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-10"
       style={{ background: "var(--qa-page)" }}
     >
-      {/* Ambient radial glow */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(ellipse 65% 55% at 50% 38%, ${cfg.glow}18 0%, transparent 72%)`,
-        }}
-      />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: `${cfg.glow}0D` }} />
 
       {/* Confetti particles (win only) */}
       {cfg.particles && PARTICLES.map(p => (

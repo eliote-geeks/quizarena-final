@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Scale } from "lucide-react";
 
 const AMBER = "#E5A800";
-const UPDATED = "23 juin 2026";
+const UPDATED = "31 août 2026";
 
 function Block({ title, children }) {
   return (
@@ -101,7 +101,27 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="5. Comportements interdits">
+        <Block title="5. Dépôts et retraits (Mobile Money)">
+          <p>
+            Les dépôts et retraits de coins en monnaie réelle sont traités via <strong className="text-white/70">SharePay</strong>,
+            notre prestataire de paiement agréé pour le Mobile Money au Cameroun (MTN Mobile Money et Orange Money).
+            L'Éditeur ne stocke jamais vos identifiants Mobile Money : chaque opération est initiée directement
+            depuis votre numéro et confirmée par votre opérateur (code USSD), sans passer par une page tierce.
+          </p>
+          <p>
+            Un dépôt est crédité sur votre solde QuizArena dès confirmation par SharePay. Un retrait débite
+            immédiatement votre solde disponible à la demande ; si le virement échoue côté opérateur pour une
+            raison indépendante de votre volonté, le montant est automatiquement recrédité sur votre compte
+            (voir la <Link to="/refund" className="underline hover:text-white/70 transition" style={{ color: AMBER }}>Politique de remboursement</Link>).
+          </p>
+          <p>
+            L'Éditeur peut suspendre temporairement les dépôts et/ou les retraits (maintenance, contrôle de
+            sécurité, décision opérationnelle) sans préavis ; toute mise déjà engagée dans une partie reste
+            traitée normalement.
+          </p>
+        </Block>
+
+        <Block title="6. Comportements interdits">
           <p>Il est strictement interdit de :</p>
           <ul className="list-disc list-inside space-y-1 text-white/40">
             <li>Utiliser des outils automatisés, bots ou scripts pendant les parties</li>
@@ -117,7 +137,7 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="6. Disponibilité du service">
+        <Block title="7. Disponibilité du service">
           <p>
             L'Éditeur s'efforce de maintenir la Plateforme disponible 24h/24 et 7j/7.
             Cependant, des interruptions peuvent survenir pour maintenance, mise à jour ou cas de force majeure.
@@ -129,7 +149,7 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="7. Propriété intellectuelle">
+        <Block title="8. Propriété intellectuelle">
           <p>
             L'ensemble des contenus de la Plateforme (design, questions, code, images, logotypes) est la propriété
             exclusive de l'Éditeur et est protégé par les lois françaises et internationales sur la propriété
@@ -137,7 +157,7 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="8. Limitation de responsabilité">
+        <Block title="9. Limitation de responsabilité">
           <p>
             QuizArena est un jeu de loisir. L'Éditeur ne garantit pas de gains et ne saurait être tenu responsable
             des pertes de coins résultant des performances du joueur lors des parties. Les coins ne représentent
@@ -149,7 +169,7 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="9. Modification des CGU">
+        <Block title="10. Modification des CGU">
           <p>
             L'Éditeur se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront
             notifiés par email et/ou notification dans l'application avec un préavis de 15 jours.
@@ -157,14 +177,14 @@ export default function Terms() {
           </p>
         </Block>
 
-        <Block title="10. Droit applicable">
+        <Block title="11. Droit applicable">
           <p>
             Les présentes CGU sont régies par le droit français. Tout litige relatif à leur interprétation
             ou exécution relève de la compétence exclusive des tribunaux français compétents.
             En cas de litige, une solution amiable sera recherchée en priorité.
           </p>
           <p>
-            Contact : <span className="text-white/70">legal@quizarena.app</span>
+            Contact : <span className="text-white/70">support@quizarenaworld.com</span>
           </p>
         </Block>
 

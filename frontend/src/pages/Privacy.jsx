@@ -33,7 +33,7 @@ export default function Privacy() {
         <Block title="1. Responsable du traitement">
           <p>
             Le responsable du traitement de vos données personnelles est QuizArena SAS, joignable à l'adresse
-            <span className="text-white/70"> privacy@quizarena.app</span>.
+            <span className="text-white/70"> support@quizarenaworld.com</span>.
           </p>
         </Block>
 
@@ -102,7 +102,7 @@ export default function Privacy() {
             <li><strong className="text-white/60">Limitation :</strong> restreindre temporairement le traitement</li>
           </ul>
           <p>
-            Pour exercer ces droits, contactez-nous à <span className="text-white/70">privacy@quizarena.app</span>.
+            Pour exercer ces droits, contactez-nous à <span className="text-white/70">support@quizarenaworld.com</span>.
             Nous répondons dans un délai maximum de 30 jours. Vous pouvez également saisir la CNIL si vous
             estimez que vos droits ne sont pas respectés.
           </p>

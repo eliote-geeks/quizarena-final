@@ -1,0 +1,782 @@
+{
+ "tour-eiffel": {
+  "file": "Tour Eiffel Wikimedia Commons.jpg",
+  "license": "Public domain",
+  "artist": "Benh LIEU SONG",
+  "source": "https://commons.wikimedia.org/wiki/File:Tour_Eiffel_Wikimedia_Commons.jpg"
+ },
+ "colisee": {
+  "file": "Colosseo 2020.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "FeaturedPics",
+  "source": "https://commons.wikimedia.org/wiki/File:Colosseo_2020.jpg"
+ },
+ "taj-mahal": {
+  "file": "Taj Mahal (Edited).jpeg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Yann; edited by Jim Carter",
+  "source": "https://commons.wikimedia.org/wiki/File:Taj_Mahal_(Edited).jpeg"
+ },
+ "pyramides-gizeh": {
+  "file": "Kheops-Pyramid.jpg",
+  "license": "CC BY 2.5",
+  "artist": "Nina",
+  "source": "https://commons.wikimedia.org/wiki/File:Kheops-Pyramid.jpg"
+ },
+ "statue-liberte": {
+  "file": "Statue of Liberty, NY.jpg",
+  "license": "CC BY 2.0",
+  "artist": "William Warby",
+  "source": "https://commons.wikimedia.org/wiki/File:Statue_of_Liberty,_NY.jpg"
+ },
+ "kilimandjaro": {
+  "file": "Mount Kilimanjaro.jpg",
+  "license": "GFDL 1.2",
+  "artist": "Muhammad Mahdi Karim",
+  "source": "https://commons.wikimedia.org/wiki/File:Mount_Kilimanjaro.jpg"
+ },
+ "girafe": {
+  "file": "Giraffe Mikumi National Park.jpg",
+  "license": "GFDL 1.2",
+  "artist": "Muhammad Mahdi Karim Facebook\n\n\n\n\n\nThe making of this document was supported by Wikimedia CH. (Submit your project!)\nFor all the files concerned, please see the category Supported by Wikimedia CH.\n\n\nالعربية ∙ বাংলা ∙ čeština ∙ Deutsch ∙ English ∙ Esperanto ∙ español ∙ français ∙ galego ∙ हिन्दी ∙ magyar ∙ italiano ∙ 日本語 ∙ македонски ∙ Nederlands ∙ português do Brasil ∙ rumantsch ∙ русский ∙ sicilianu ∙ slovenščina ∙ தமிழ் ∙ українська ∙ 中文 ∙ +/−",
+  "source": "https://commons.wikimedia.org/wiki/File:Giraffe_Mikumi_National_Park.jpg"
+ },
+ "guepard": {
+  "file": "TheCheethcat.jpg",
+  "license": "CC BY 2.0",
+  "artist": "James Temple",
+  "source": "https://commons.wikimedia.org/wiki/File:TheCheethcat.jpg"
+ },
+ "elephant-afrique": {
+  "file": "African Bush Elephant.jpg",
+  "license": "GFDL 1.2",
+  "artist": "Muhammad Mahdi Karim Facebook\n\n\n\n\n\nThe making of this document was supported by Wikimedia CH. (Submit your project!)\nFor all the files concerned, please see the category Supported by Wikimedia CH.\n\n\nالعربية ∙ বাংলা ∙ čeština ∙ Deutsch ∙ English ∙ Esperanto ∙ español ∙ français ∙ galego ∙ हिन्दी ∙ magyar ∙ italiano ∙ 日本語 ∙ македонски ∙ Nederlands ∙ português do Brasil ∙ rumantsch ∙ русский ∙ sicilianu ∙ slovenščina ∙ தமிழ் ∙ українська ∙ 中文 ∙ +/−",
+  "source": "https://commons.wikimedia.org/wiki/File:African_Bush_Elephant.jpg"
+ },
+ "baobab": {
+  "file": "Adansonia grandidieri04.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Bernard Gagnon",
+  "source": "https://commons.wikimedia.org/wiki/File:Adansonia_grandidieri04.jpg"
+ },
+ "drapeau-cameroun": {
+  "file": "Flag of Cameroon.svg",
+  "license": "Public domain",
+  "artist": "(of code) -xfi-",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Cameroon.svg"
+ },
+ "drapeau-bresil": {
+  "file": "Flag of Brazil.svg",
+  "license": "Public domain",
+  "artist": "Raimundo Teixeira Mendes",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Brazil.svg"
+ },
+ "drapeau-japon": {
+  "file": "Flag of Japan.svg",
+  "license": "Public domain",
+  "artist": "Various",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Japan.svg"
+ },
+ "joconde": {
+  "file": "Mona Lisa, by Leonardo da Vinci, from C2RMF retouched.jpg",
+  "license": "Public domain",
+  "artist": "Leonardo da Vinci",
+  "source": "https://commons.wikimedia.org/wiki/File:Mona_Lisa,_by_Leonardo_da_Vinci,_from_C2RMF_retouched.jpg"
+ },
+ "nuit-etoilee": {
+  "file": "Van Gogh - Starry Night - Google Art Project.jpg",
+  "license": "Public domain",
+  "artist": "Vincent van Gogh",
+  "source": "https://commons.wikimedia.org/wiki/File:Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg"
+ },
+ "machu-picchu": {
+  "file": "Machu Picchu, Peru.jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "Pedro Szekely at https://www.flickr.com/photos/pedrosz/",
+  "source": "https://commons.wikimedia.org/wiki/File:Machu_Picchu,_Peru.jpg"
+ },
+ "opera-sydney": {
+  "file": "Sydney Opera House - Dec 2008.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Diliff",
+  "source": "https://commons.wikimedia.org/wiki/File:Sydney_Opera_House_-_Dec_2008.jpg"
+ },
+ "christ-redempteur": {
+  "file": "Christ on Corcovado mountain.JPG",
+  "license": "CC BY-SA 3.0",
+  "artist": "Artyominc",
+  "source": "https://commons.wikimedia.org/wiki/File:Christ_on_Corcovado_mountain.JPG"
+ },
+ "grande-muraille": {
+  "file": "Badaling China Great-Wall-of-China-01.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "CEphoto, Uwe Aranas",
+  "source": "https://commons.wikimedia.org/wiki/File:Badaling_China_Great-Wall-of-China-01.jpg"
+ },
+ "petra": {
+  "file": "Al Khazneh Petra edit 2.jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "Al_Khazneh_Petra.jpg: Graham Racher from London, UK\nderivative work: MrPanyGoff",
+  "source": "https://commons.wikimedia.org/wiki/File:Al_Khazneh_Petra_edit_2.jpg"
+ },
+ "angkor-vat": {
+  "file": "Angkor Wat with its reflection (cropped).jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Satdeep Gill",
+  "source": "https://commons.wikimedia.org/wiki/File:Angkor_Wat_with_its_reflection_(cropped).jpg"
+ },
+ "stonehenge": {
+  "file": "Stonehenge Heel Stone.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "DeFacto",
+  "source": "https://commons.wikimedia.org/wiki/File:Stonehenge_Heel_Stone.jpg"
+ },
+ "acropole-athenes": {
+  "file": "Attica 06-13 Athens 50 View from Philopappos - Acropolis Hill.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "A.Savin",
+  "source": "https://commons.wikimedia.org/wiki/File:Attica_06-13_Athens_50_View_from_Philopappos_-_Acropolis_Hill.jpg"
+ },
+ "tour-pise": {
+  "file": "The Duomo and Tower of Pisa at sunrise.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "MHoser",
+  "source": "https://commons.wikimedia.org/wiki/File:The_Duomo_and_Tower_of_Pisa_at_sunrise.jpg"
+ },
+ "big-ben": {
+  "file": "Big Ben at sunset - 2014-10-27 17-30.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Colin",
+  "source": "https://commons.wikimedia.org/wiki/File:Big_Ben_at_sunset_-_2014-10-27_17-30.jpg"
+ },
+ "sagrada-familia": {
+  "file": "Barcelona - Exterior of the Apse of the Sagrada Família - Western exposure.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Didier Descouens",
+  "source": "https://commons.wikimedia.org/wiki/File:Barcelona_-_Exterior_of_the_Apse_of_the_Sagrada_Fam%C3%ADlia_-_Western_exposure.jpg"
+ },
+ "mont-saint-michel": {
+  "file": "The view of the bay from the front of the Abbey of Mont-Saint-Michel, looking inland.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Hammondtravels",
+  "source": "https://commons.wikimedia.org/wiki/File:The_view_of_the_bay_from_the_front_of_the_Abbey_of_Mont-Saint-Michel,_looking_inland.jpg"
+ },
+ "chichen-itza": {
+  "file": "Chichen Itza 3.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Daniel Schwen",
+  "source": "https://commons.wikimedia.org/wiki/File:Chichen_Itza_3.jpg"
+ },
+ "kremlin-basile": {
+  "file": "Sant Vasily cathedral in Moscow.JPG",
+  "license": "CC BY-SA 4.0",
+  "artist": "Petar Milošević",
+  "source": "https://commons.wikimedia.org/wiki/File:Sant_Vasily_cathedral_in_Moscow.JPG"
+ },
+ "arc-triomphe": {
+  "file": "Arc de Triomphe, Paris 21 October 2010.jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "Jiuguang Wang",
+  "source": "https://commons.wikimedia.org/wiki/File:Arc_de_Triomphe,_Paris_21_October_2010.jpg"
+ },
+ "moai-paques": {
+  "file": "Ahu Tongariki cropped.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Rivi",
+  "source": "https://commons.wikimedia.org/wiki/File:Ahu_Tongariki_cropped.jpg"
+ },
+ "alhambra": {
+  "file": "Pavillon Cour des Lions Alhambra Granada Spain.jpg",
+  "license": "CC0",
+  "artist": "Jebulon",
+  "source": "https://commons.wikimedia.org/wiki/File:Pavillon_Cour_des_Lions_Alhambra_Granada_Spain.jpg"
+ },
+ "mosquee-djenne": {
+  "file": "MaliDjennéMosquée.JPG",
+  "license": "CC BY-SA 3.0",
+  "artist": "BluesyPete",
+  "source": "https://commons.wikimedia.org/wiki/File:MaliDjenn%C3%A9Mosqu%C3%A9e.JPG"
+ },
+ "lalibela": {
+  "file": "Bete Giyorgis 03.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Bernard Gagnon",
+  "source": "https://commons.wikimedia.org/wiki/File:Bete_Giyorgis_03.jpg"
+ },
+ "goree": {
+  "file": "Goree-island-senegal.png",
+  "license": "CC BY-SA 4.0",
+  "artist": "Warren McKenzie",
+  "source": "https://commons.wikimedia.org/wiki/File:Goree-island-senegal.png"
+ },
+ "lion": {
+  "file": "Lion Panthera leo 01.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Nikhil More",
+  "source": "https://commons.wikimedia.org/wiki/File:Lion_Panthera_leo_01.jpg"
+ },
+ "zebre": {
+  "file": "Plains zebras (Equus quagga) Maputo.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Charles J. Sharp",
+  "source": "https://commons.wikimedia.org/wiki/File:Plains_zebras_(Equus_quagga)_Maputo.jpg"
+ },
+ "hippopotame": {
+  "file": "Hippopotamus Sculpture with Mouth Wide Open.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Mwintirew",
+  "source": "https://commons.wikimedia.org/wiki/File:Hippopotamus_Sculpture_with_Mouth_Wide_Open.jpg"
+ },
+ "rhinoceros": {
+  "file": "075 White rhinoceros mother and her newborn baby in the Kalahari Desert of Namibia Photo by Giles Laurent.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Giles Laurent",
+  "source": "https://commons.wikimedia.org/wiki/File:075_White_rhinoceros_mother_and_her_newborn_baby_in_the_Kalahari_Desert_of_Namibia_Photo_by_Giles_Laurent.jpg"
+ },
+ "gorille": {
+  "file": "Mountain gorilla silverback face.KMRA.jpg",
+  "license": "CC BY 2.5",
+  "artist": "Kurt Ackermann (English Wikipedia username KMRA)",
+  "source": "https://commons.wikimedia.org/wiki/File:Mountain_gorilla_silverback_face.KMRA.jpg"
+ },
+ "flamant-rose": {
+  "file": "Flamenco común (Phoenicopterus roseus), Walvis Bay, Namibia, 2018-08-05, DD 30.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Diego Delso",
+  "source": "https://commons.wikimedia.org/wiki/File:Flamenco_com%C3%BAn_(Phoenicopterus_roseus),_Walvis_Bay,_Namibia,_2018-08-05,_DD_30.jpg"
+ },
+ "autruche": {
+  "file": "Struthio camelus portrait Whipsnade Zoo.jpg",
+  "license": "CC BY 2.0",
+  "artist": "William Warby",
+  "source": "https://commons.wikimedia.org/wiki/File:Struthio_camelus_portrait_Whipsnade_Zoo.jpg"
+ },
+ "manchot-empereur": {
+  "file": "Penguin in Antarctica jumping out of the water.jpg",
+  "license": "CC BY 2.0",
+  "artist": "Christopher Michel",
+  "source": "https://commons.wikimedia.org/wiki/File:Penguin_in_Antarctica_jumping_out_of_the_water.jpg"
+ },
+ "ours-polaire": {
+  "file": "Polar bear (Ursus maritimus) in the drift ice region north of Svalbard.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Andreas Weith",
+  "source": "https://commons.wikimedia.org/wiki/File:Polar_bear_(Ursus_maritimus)_in_the_drift_ice_region_north_of_Svalbard.jpg"
+ },
+ "tigre": {
+  "file": "Bengal tiger (Panthera tigris tigris) female 3.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Charles J. Sharp",
+  "source": "https://commons.wikimedia.org/wiki/File:Bengal_tiger_(Panthera_tigris_tigris)_female_3.jpg"
+ },
+ "panda-geant": {
+  "file": "Lightmatter panda.jpg",
+  "license": "CC BY 1.0",
+  "artist": "Aaron Logan",
+  "source": "https://commons.wikimedia.org/wiki/File:Lightmatter_panda.jpg"
+ },
+ "kangourou": {
+  "file": "Red Kangaroos at Sturt National Park NSW.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "PotMart186",
+  "source": "https://commons.wikimedia.org/wiki/File:Red_Kangaroos_at_Sturt_National_Park_NSW.jpg"
+ },
+ "koala": {
+  "file": "Koala in Zoo Duisburg.jpg",
+  "license": "CC BY 3.0",
+  "artist": "Till Niermann",
+  "source": "https://commons.wikimedia.org/wiki/File:Koala_in_Zoo_Duisburg.jpg"
+ },
+ "toucan": {
+  "file": "006 Toco toucan in Encontro das Águas State Park Photo by Giles Laurent.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Giles Laurent",
+  "source": "https://commons.wikimedia.org/wiki/File:006_Toco_toucan_in_Encontro_das_%C3%81guas_State_Park_Photo_by_Giles_Laurent.jpg"
+ },
+ "camelien-dromadaire": {
+  "file": "The camel driver and the dromedary.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Skander zarrad",
+  "source": "https://commons.wikimedia.org/wiki/File:The_camel_driver_and_the_dromedary.jpg"
+ },
+ "crocodile-nil": {
+  "file": "Nile crocodile in the Zambezi.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Bernard Gagnon",
+  "source": "https://commons.wikimedia.org/wiki/File:Nile_crocodile_in_the_Zambezi.jpg"
+ },
+ "tortue-marine": {
+  "file": "Total internal reflection of Chelonia mydas.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Brocken Inaglory",
+  "source": "https://commons.wikimedia.org/wiki/File:Total_internal_reflection_of_Chelonia_mydas.jpg"
+ },
+ "dauphin": {
+  "file": "010 Atlantic bottlenose dolphin jumping at Pelican point Photo by Giles Laurent.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Giles Laurent",
+  "source": "https://commons.wikimedia.org/wiki/File:010_Atlantic_bottlenose_dolphin_jumping_at_Pelican_point_Photo_by_Giles_Laurent.jpg"
+ },
+ "aigle-pygargue": {
+  "file": "Bald Eagle Head sq.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Martin Falbisoner",
+  "source": "https://commons.wikimedia.org/wiki/File:Bald_Eagle_Head_sq.jpg"
+ },
+ "hibou-grand-duc": {
+  "file": "Bubo bubo sibiricus - 01.JPG",
+  "license": "CC BY-SA 4.0",
+  "artist": "Carlos Delgado",
+  "source": "https://commons.wikimedia.org/wiki/File:Bubo_bubo_sibiricus_-_01.JPG"
+ },
+ "papillon-monarque": {
+  "file": "Monarch Butterfly Danaus plexippus Vertical Caterpillar 2000px.jpg",
+  "license": "GFDL 1.2",
+  "artist": "Photo (c)2007 Derek Ramsey (Ram-Man)",
+  "source": "https://commons.wikimedia.org/wiki/File:Monarch_Butterfly_Danaus_plexippus_Vertical_Caterpillar_2000px.jpg"
+ },
+ "abeille": {
+  "file": "Common crab spider (Xysticus cristatus) female with prey Carniolan honey bee (Apis melifera carnica).jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Charles J. Sharp",
+  "source": "https://commons.wikimedia.org/wiki/File:Common_crab_spider_(Xysticus_cristatus)_female_with_prey_Carniolan_honey_bee_(Apis_melifera_carnica).jpg"
+ },
+ "chutes-victoria": {
+  "file": "Cataratas Victoria, Zambia-Zimbabue, 2018-07-27, DD 30-34 PAN.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Diego Delso",
+  "source": "https://commons.wikimedia.org/wiki/File:Cataratas_Victoria,_Zambia-Zimbabue,_2018-07-27,_DD_30-34_PAN.jpg"
+ },
+ "everest": {
+  "file": "Everest North Face toward Base Camp Tibet Luca Galuzzi 2006.jpg",
+  "license": "CC BY-SA 2.5",
+  "artist": "Luca Galuzzi (Lucag)",
+  "source": "https://commons.wikimedia.org/wiki/File:Everest_North_Face_toward_Base_Camp_Tibet_Luca_Galuzzi_2006.jpg"
+ },
+ "grand-canyon": {
+  "file": "Grand Canyon South Rim at Sunset.jpg",
+  "license": "CC0",
+  "artist": "Mgimelfarb",
+  "source": "https://commons.wikimedia.org/wiki/File:Grand_Canyon_South_Rim_at_Sunset.jpg"
+ },
+ "sahara-dunes": {
+  "file": "Erg Chebbi sunset.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Thomas Fuhrmann",
+  "source": "https://commons.wikimedia.org/wiki/File:Erg_Chebbi_sunset.jpg"
+ },
+ "amazonie": {
+  "file": "Aerial view of the Amazon Rainforest.jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "lubasi",
+  "source": "https://commons.wikimedia.org/wiki/File:Aerial_view_of_the_Amazon_Rainforest.jpg"
+ },
+ "aurore-boreale": {
+  "file": "Multicolored aurora borealis pillar over Brastad.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "W.carter",
+  "source": "https://commons.wikimedia.org/wiki/File:Multicolored_aurora_borealis_pillar_over_Brastad.jpg"
+ },
+ "tournesol": {
+  "file": "Sunflowers helianthus annuus.jpg",
+  "license": "Public domain",
+  "artist": "Bruce Fritz, U.S. Department of Agriculture",
+  "source": "https://commons.wikimedia.org/wiki/File:Sunflowers_helianthus_annuus.jpg"
+ },
+ "cacaoyer": {
+  "file": "Cacao Tree (Theobroma cacao) green pods (17348751253).jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "Bernard DUPONT from FRANCE",
+  "source": "https://commons.wikimedia.org/wiki/File:Cacao_Tree_(Theobroma_cacao)_green_pods_(17348751253).jpg"
+ },
+ "cafeier": {
+  "file": "కాఫీ మొక్క (Coffee plant with berries).jpg",
+  "license": "CC0",
+  "artist": "డా. గన్నవరపు నరసింహమూర్తి",
+  "source": "https://commons.wikimedia.org/wiki/File:%E0%B0%95%E0%B0%BE%E0%B0%AB%E0%B1%80_%E0%B0%AE%E0%B1%8A%E0%B0%95%E0%B1%8D%E0%B0%95_(Coffee_plant_with_berries).jpg"
+ },
+ "bananier": {
+  "file": "Banana Plant with Developing Fruits (Musa).jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Johnnybam",
+  "source": "https://commons.wikimedia.org/wiki/File:Banana_Plant_with_Developing_Fruits_(Musa).jpg"
+ },
+ "palmier-dattier": {
+  "file": "Dates ripe.JPG",
+  "license": "CC BY 3.0",
+  "artist": "Noblevmy at Malayalam Wikipedia",
+  "source": "https://commons.wikimedia.org/wiki/File:Dates_ripe.JPG"
+ },
+ "drapeau-senegal": {
+  "file": "Flag of Senegal.svg",
+  "license": "Public domain",
+  "artist": "Original upload by Nightstallion",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Senegal.svg"
+ },
+ "drapeau-nigeria": {
+  "file": "Flag of Nigeria.svg",
+  "license": "Public domain",
+  "artist": "Jon Harald Søby.",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Nigeria.svg"
+ },
+ "drapeau-ghana": {
+  "file": "Flag of Ghana.svg",
+  "license": "Public domain",
+  "artist": "Theodosia Okoh",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Ghana.svg"
+ },
+ "drapeau-kenya": {
+  "file": "Flag of Kenya.svg",
+  "license": "Public domain",
+  "artist": "User:Pumbaa80",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Kenya.svg"
+ },
+ "drapeau-afsud": {
+  "file": "Flag of South Africa.svg",
+  "license": "Public domain",
+  "artist": "Flag design by Frederick Brownell, image by Wikimedia Commons users",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_South_Africa.svg"
+ },
+ "drapeau-maroc": {
+  "file": "Flag of Morocco.svg",
+  "license": "Public domain",
+  "artist": "Denelson83, Zscout370",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Morocco.svg"
+ },
+ "drapeau-egypte": {
+  "file": "Flag of Egypt.svg",
+  "license": "Public domain",
+  "artist": "See File history below for details.",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Egypt.svg"
+ },
+ "drapeau-ethiopie": {
+  "file": "Flag of Ethiopia.svg",
+  "license": "Public domain",
+  "artist": "Drawn by User:SKopp",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Ethiopia.svg"
+ },
+ "drapeau-cotedivoire": {
+  "file": "Flag of Côte d'Ivoire.svg",
+  "license": "Public domain",
+  "artist": "See File history below for details.",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_C%C3%B4te_d%27Ivoire.svg"
+ },
+ "drapeau-canada": {
+  "file": "Flag of Canada (Pantone).svg",
+  "license": "Public domain",
+  "artist": "Original: George F. G. Stanley\n\nModified by: The original uploader was Illegitimate Barrister at  Wikimedia Commons.  The current SVG encoding is a rewrite performed by MapGrid.",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Canada_(Pantone).svg"
+ },
+ "drapeau-inde": {
+  "file": "Flag of India.svg",
+  "license": "Public domain",
+  "artist": "Government of India",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_India.svg"
+ },
+ "drapeau-coreesud": {
+  "file": "Flag of South Korea.svg",
+  "license": "Public domain",
+  "artist": "Original: Government of the Republic of Korea Vector:  Great Brightstar and others",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_South_Korea.svg"
+ },
+ "drapeau-suisse": {
+  "file": "Flag of Switzerland.svg",
+  "license": "Public domain",
+  "artist": "Original: Unknown\nVector:\nUser:Marc Mongenet\nCredits:\n\nUser:-xfi-\nUser:Zscout370",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Switzerland.svg"
+ },
+ "drapeau-argentine": {
+  "file": "Flag of Argentina.svg",
+  "license": "Public domain",
+  "artist": "Manuel Belgrano",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Argentina.svg"
+ },
+ "drapeau-allemagne": {
+  "file": "Flag of Germany.svg",
+  "license": "Public domain",
+  "artist": "User:SKopp, User:Madden, and other users",
+  "source": "https://commons.wikimedia.org/wiki/File:Flag_of_Germany.svg"
+ },
+ "cri-munch": {
+  "file": "Edvard Munch, 1893, The Scream, oil, tempera and pastel on cardboard, 91 x 73 cm, National Gallery of Norway.jpg",
+  "license": "Public domain",
+  "artist": "Edvard Munch",
+  "source": "https://commons.wikimedia.org/wiki/File:Edvard_Munch,_1893,_The_Scream,_oil,_tempera_and_pastel_on_cardboard,_91_x_73_cm,_National_Gallery_of_Norway.jpg"
+ },
+ "jeune-fille-perle": {
+  "file": "1665 Girl with a Pearl Earring.jpg",
+  "license": "Public domain",
+  "artist": "Johannes Vermeer",
+  "source": "https://commons.wikimedia.org/wiki/File:1665_Girl_with_a_Pearl_Earring.jpg"
+ },
+ "naissance-venus": {
+  "file": "Sandro Botticelli 046.jpg",
+  "license": "Public domain",
+  "artist": "Sandro Botticelli",
+  "source": "https://commons.wikimedia.org/wiki/File:Sandro_Botticelli_046.jpg"
+ },
+ "guernica": {
+  "file": "\"Guernica\" by Picasso at MOMA, NYC.jpg",
+  "license": "Public domain",
+  "artist": "Gotfryd, Bernard",
+  "source": "https://commons.wikimedia.org/wiki/File:%22Guernica%22_by_Picasso_at_MOMA,_NYC.jpg"
+ },
+ "creation-adam": {
+  "file": "Michelangelo - Creation of Adam (cropped).jpg",
+  "license": "Public domain",
+  "artist": "Michelangelo",
+  "source": "https://commons.wikimedia.org/wiki/File:Michelangelo_-_Creation_of_Adam_(cropped).jpg"
+ },
+ "penseur-rodin": {
+  "file": "(Venice) Le Penseur - Auguste Rodin - Museo d'arte moderna.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Didier Descouens",
+  "source": "https://commons.wikimedia.org/wiki/File:(Venice)_Le_Penseur_-_Auguste_Rodin_-_Museo_d%27arte_moderna.jpg"
+ },
+ "nympheas-monet": {
+  "file": "Detail of \"The Water-Lily Pond\" by Claude Monet 02.jpg",
+  "license": "Public domain",
+  "artist": "Kritzolina",
+  "source": "https://commons.wikimedia.org/wiki/File:Detail_of_%22The_Water-Lily_Pond%22_by_Claude_Monet_02.jpg"
+ },
+ "persistance-memoire": {
+  "file": "Dargenta & Salvador Dali The persistance of Memory.png",
+  "license": "CC BY-SA 4.0",
+  "artist": "Saimonsays1991",
+  "source": "https://commons.wikimedia.org/wiki/File:Dargenta_%26_Salvador_Dali_The_persistance_of_Memory.png"
+ },
+ "venus-milo": {
+  "file": "Venus de Milo edited.jpg",
+  "license": "CC BY-SA 2.5",
+  "artist": "Unknown artistUnknown artist",
+  "source": "https://commons.wikimedia.org/wiki/File:Venus_de_Milo_edited.jpg"
+ },
+ "masque-toutankhamon": {
+  "file": "Golden mask of Tutankhamun.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Thomas Clouet",
+  "source": "https://commons.wikimedia.org/wiki/File:Golden_mask_of_Tutankhamun.jpg"
+ },
+ "adn-double-helice": {
+  "file": "DNA double helix 45.PNG",
+  "license": "Public domain",
+  "artist": "Jerome Walker,Dennis Myts",
+  "source": "https://commons.wikimedia.org/wiki/File:DNA_double_helix_45.PNG"
+ },
+ "systeme-solaire": {
+  "file": "The Solar System Montage - GPN-2000-000454.jpg",
+  "license": "Public domain",
+  "artist": "NASA",
+  "source": "https://commons.wikimedia.org/wiki/File:The_Solar_System_Montage_-_GPN-2000-000454.jpg"
+ },
+ "saturne": {
+  "file": "Top view of the rings of Saturn by Cassini - October 10, 2013.jpg",
+  "license": "Public domain",
+  "artist": "NASA/JPL-Caltech/SSI/Cornell",
+  "source": "https://commons.wikimedia.org/wiki/File:Top_view_of_the_rings_of_Saturn_by_Cassini_-_October_10,_2013.jpg"
+ },
+ "mars-planete": {
+  "file": "Hubble's Sharpest View Of Mars.jpg",
+  "license": "Public domain",
+  "artist": "David Crisp and the WFPC2 Science Team (Jet Propulsion Laboratory/California Institute of Technology)",
+  "source": "https://commons.wikimedia.org/wiki/File:Hubble%27s_Sharpest_View_Of_Mars.jpg"
+ },
+ "jupiter": {
+  "file": "PIA22946-Jupiter-RedSpot-JunoSpacecraft-20190212.jpg",
+  "license": "licence non précisée",
+  "artist": "NASA/JPL-Caltech/SwRI/MSSS/Kevin M. Gill",
+  "source": "https://commons.wikimedia.org/wiki/File:PIA22946-Jupiter-RedSpot-JunoSpacecraft-20190212.jpg"
+ },
+ "lune-surface": {
+  "file": "Full moon partially obscured by atmosphere.jpg",
+  "license": "Public domain",
+  "artist": "NASA",
+  "source": "https://commons.wikimedia.org/wiki/File:Full_moon_partially_obscured_by_atmosphere.jpg"
+ },
+ "galaxie-andromede": {
+  "file": "Andromeda Galaxy (with h-alpha).jpg",
+  "license": "CC BY 2.0",
+  "artist": "Adam Evans",
+  "source": "https://commons.wikimedia.org/wiki/File:Andromeda_Galaxy_(with_h-alpha).jpg"
+ },
+ "navette-spatiale": {
+  "file": "Space Shuttle Columbia launching.jpg",
+  "license": "Public domain",
+  "artist": "NASA",
+  "source": "https://commons.wikimedia.org/wiki/File:Space_Shuttle_Columbia_launching.jpg"
+ },
+ "station-spatiale": {
+  "file": "STS-134 International Space Station after undocking.jpg",
+  "license": "Public domain",
+  "artist": "NASA",
+  "source": "https://commons.wikimedia.org/wiki/File:STS-134_International_Space_Station_after_undocking.jpg"
+ },
+ "microscope": {
+  "file": "Binocular compound microscope.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Confidence24",
+  "source": "https://commons.wikimedia.org/wiki/File:Binocular_compound_microscope.jpg"
+ },
+ "table-periodique": {
+  "file": "Simple Periodic Table of Elements.jpg",
+  "license": "CC0",
+  "artist": "SCB2024",
+  "source": "https://commons.wikimedia.org/wiki/File:Simple_Periodic_Table_of_Elements.jpg"
+ },
+ "eolienne": {
+  "file": "Middelgrunden wind farm 2009-07-01 edit filtered.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Photo by Kim Hansen. Postprocessing (crop, rotation, color adjustment, dust spot removal and noise reduction) by Richard Bartz and Kim Hansen.",
+  "source": "https://commons.wikimedia.org/wiki/File:Middelgrunden_wind_farm_2009-07-01_edit_filtered.jpg"
+ },
+ "panneau-solaire": {
+  "file": "Solar array-2.jpg",
+  "license": "CC0",
+  "artist": "Wikideas1",
+  "source": "https://commons.wikimedia.org/wiki/File:Solar_array-2.jpg"
+ },
+ "pizza-margherita": {
+  "file": "Eq it-na pizza-margherita sep2005 sml.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Valerio Capello at English Wikipedia",
+  "source": "https://commons.wikimedia.org/wiki/File:Eq_it-na_pizza-margherita_sep2005_sml.jpg"
+ },
+ "croissant": {
+  "file": "Croissants au beurre (18953292873).jpg",
+  "license": "CC0",
+  "artist": "Herry Wibisono (herryway)",
+  "source": "https://commons.wikimedia.org/wiki/File:Croissants_au_beurre_(18953292873).jpg"
+ },
+ "safran": {
+  "file": "Saffron threads in a glass jar ( Viora Saffron packaging).jpg",
+  "license": "CC0",
+  "artist": "ulleo",
+  "source": "https://commons.wikimedia.org/wiki/File:Saffron_threads_in_a_glass_jar_(_Viora_Saffron_packaging).jpg"
+ },
+ "riz-jollof": {
+  "file": "Jollof rice.jpg",
+  "license": "Public domain",
+  "artist": "Salamisa, en.wikipedia",
+  "source": "https://commons.wikimedia.org/wiki/File:Jollof_rice.jpg"
+ },
+ "attieke": {
+  "file": "Attiéké, poisson frit et condiment, l’incontournable ivoirien.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "KAREN KOUADIO",
+  "source": "https://commons.wikimedia.org/wiki/File:Atti%C3%A9k%C3%A9,_poisson_frit_et_condiment,_l%E2%80%99incontournable_ivoirien.jpg"
+ },
+ "plantain-frit": {
+  "file": "Fried rice, baked beans with fried plantains and chicken.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Endee n",
+  "source": "https://commons.wikimedia.org/wiki/File:Fried_rice,_baked_beans_with_fried_plantains_and_chicken.jpg"
+ },
+ "ballon-football": {
+  "file": "Ball white black.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Pati.latek",
+  "source": "https://commons.wikimedia.org/wiki/File:Ball_white_black.jpg"
+ },
+ "anneaux-olympiques": {
+  "file": "Olympic flag border.png",
+  "license": "Public domain",
+  "artist": "Original author: Pierre de Coubertin (1863-1937)",
+  "source": "https://commons.wikimedia.org/wiki/File:Olympic_flag_border.png"
+ },
+ "raquette-tennis": {
+  "file": "Woman in long dress playing with a tennis racket and ball (rbm-QP301M8-1887-299a~24).jpg",
+  "license": "Public domain",
+  "artist": "Muybridge, Eadweard, 1830-1904",
+  "source": "https://commons.wikimedia.org/wiki/File:Woman_in_long_dress_playing_with_a_tennis_racket_and_ball_(rbm-QP301M8-1887-299a~24).jpg"
+ },
+ "panier-basket": {
+  "file": "Roy Wilkins Park td (2019-01-13) 082 - Basketball Court 3.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Tdorante10",
+  "source": "https://commons.wikimedia.org/wiki/File:Roy_Wilkins_Park_td_(2019-01-13)_082_-_Basketball_Court_3.jpg"
+ },
+ "velo-course": {
+  "file": "Transport bicycle racing, Velo 24, Berlin (VB243656).jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Matti Blume",
+  "source": "https://commons.wikimedia.org/wiki/File:Transport_bicycle_racing,_Velo_24,_Berlin_(VB243656).jpg"
+ },
+ "gants-boxe": {
+  "file": "Fuzzy Dice and Puerto Rican Boxing Gloves hanging from Mirror (54188936131).jpg",
+  "license": "CC BY-SA 2.0",
+  "artist": "Ethan Long",
+  "source": "https://commons.wikimedia.org/wiki/File:Fuzzy_Dice_and_Puerto_Rican_Boxing_Gloves_hanging_from_Mirror_(54188936131).jpg"
+ },
+ "stade-olympique": {
+  "file": "Sydney olympic stadium track and field.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Unknown authorUnknown author",
+  "source": "https://commons.wikimedia.org/wiki/File:Sydney_olympic_stadium_track_and_field.jpg"
+ },
+ "piano-queue": {
+  "file": "Steinway & Sons concert grand piano, model D-274, manufactured at Steinway's factory in Hamburg, Germany.png",
+  "license": "CC BY-SA 3.0",
+  "artist": "Steinway &amp; Sons, 10 Rondenbarg, Hamburg D-22525, Germany, eu.steinway.com.Steinway &amp; Sons, 1 Steinway Place, Long Island City, New York 11105, The United States, www.steinway.com.",
+  "source": "https://commons.wikimedia.org/wiki/File:Steinway_%26_Sons_concert_grand_piano,_model_D-274,_manufactured_at_Steinway%27s_factory_in_Hamburg,_Germany.png"
+ },
+ "guitare-classique": {
+  "file": "Boldini - Guitar Player.jpg",
+  "license": "Public domain",
+  "artist": "Giovanni Boldini",
+  "source": "https://commons.wikimedia.org/wiki/File:Boldini_-_Guitar_Player.jpg"
+ },
+ "trompette": {
+  "file": "Trumpet 1.png",
+  "license": "CC BY-SA 3.0",
+  "artist": "PJ, background cropped by EWikist",
+  "source": "https://commons.wikimedia.org/wiki/File:Trumpet_1.png"
+ },
+ "violon": {
+  "file": "Michaelkinglatfiol.jpg",
+  "license": "Public domain",
+  "artist": "Michael King",
+  "source": "https://commons.wikimedia.org/wiki/File:Michaelkinglatfiol.jpg"
+ },
+ "saxophone": {
+  "file": "Saksofon altowy Serie III GP firmy Selmer.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "https://muzyczny.pl",
+  "source": "https://commons.wikimedia.org/wiki/File:Saksofon_altowy_Serie_III_GP_firmy_Selmer.jpg"
+ },
+ "kora": {
+  "file": "Kora (African lute instrument).jpg",
+  "license": "CC BY 2.0",
+  "artist": "Steve Evans",
+  "source": "https://commons.wikimedia.org/wiki/File:Kora_(African_lute_instrument).jpg"
+ },
+ "djembe": {
+  "file": "Djembé's.jpg",
+  "license": "CC BY-SA 3.0",
+  "artist": "Edwin1971 at Dutch Wikipedia",
+  "source": "https://commons.wikimedia.org/wiki/File:Djemb%C3%A9%27s.jpg"
+ },
+ "batterie": {
+  "file": "A drum kit made by Mapex Drums - Cacon Photos- Copyleft - Creative Commons 06.jpg",
+  "license": "CC BY 4.0",
+  "artist": "Mostafameraji",
+  "source": "https://commons.wikimedia.org/wiki/File:A_drum_kit_made_by_Mapex_Drums_-_Cacon_Photos-_Copyleft_-_Creative_Commons_06.jpg"
+ },
+ "grand-zimbabwe": {
+  "file": "Great-zim-aerial-looking-West.JPG",
+  "license": "CC BY-SA 4.0",
+  "artist": "Janice Bell",
+  "source": "https://commons.wikimedia.org/wiki/File:Great-zim-aerial-looking-West.JPG"
+ },
+ "couscous": {
+  "file": "مسفوف تونسي بالرمان والزبيب.jpg",
+  "license": "CC BY-SA 4.0",
+  "artist": "Habib M'henni",
+  "source": "https://commons.wikimedia.org/wiki/File:%D9%85%D8%B3%D9%81%D9%88%D9%81_%D8%AA%D9%88%D9%86%D8%B3%D9%8A_%D8%A8%D8%A7%D9%84%D8%B1%D9%85%D8%A7%D9%86_%D9%88%D8%A7%D9%84%D8%B2%D8%A8%D9%8A%D8%A8.jpg"
+ },
+ "paella": {
+  "file": "Paella Valenciana tradicional.jpg",
+  "license": "CC0",
+  "artist": "Eruperti",
+  "source": "https://commons.wikimedia.org/wiki/File:Paella_Valenciana_tradicional.jpg"
+ }
+}

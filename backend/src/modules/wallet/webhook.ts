@@ -22,7 +22,11 @@ export async function webhookRoutes(app: FastifyInstance) {
     done(null, body);
   });
 
-  app.post("/api/webhook/sharepay", async (req, reply) => {
+  // Chemin sans préfixe /api : c'est celui déjà enregistré dans le
+  // dashboard SharePay (Applications → Webhooks) pour quizarenaworld.com.
+  // Le proxy du frontend (§server.js isBackendPath) doit reconnaître ce
+  // même préfixe pour relayer la requête jusqu'ici.
+  app.post("/webhook/sharepay", async (req, reply) => {
     const secret = env.SHAREPAY_WEBHOOK_SECRET;
     if (!secret) {
       req.log.error("SHAREPAY_WEBHOOK_SECRET absent — webhook reçu mais ignoré");

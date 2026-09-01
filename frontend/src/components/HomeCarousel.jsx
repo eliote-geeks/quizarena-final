@@ -75,8 +75,7 @@ export default function HomeCarousel() {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      {/* Static mesh background per slide */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${slide.hue} pointer-events-none transition-all duration-700`} />
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "var(--surface-2)" }} />
 
       <AnimatePresence mode="wait">
         <motion.button

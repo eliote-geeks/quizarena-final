@@ -6,7 +6,7 @@
 // construction.
 
 import { prisma } from "../../lib/prisma.js";
-import { credit } from "../wallet/ledger.js";
+import { bonusAmountForPayout, credit } from "../wallet/ledger.js";
 import { scheduleTournamentWalkover, TOURNAMENT_WALKOVER_MS } from "../duel/engine.js";
 import { tournamentShares } from "./payout.js";
 
@@ -19,15 +19,41 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** Appelé après chaque inscription — démarre le tournoi dès que la
- * capacité est atteinte (jamais avant : pas de tournoi à moitié rempli). */
-export async function maybeStartTournament(tournamentId: string) {
+/** Ouvre le check de présence : le créateur a cliqué "Lancer le tournoi"
+ * alors que la capacité est atteinte. Aucun match n'est créé ici — donc
+ * aucun compte à rebours de forfait ne tourne encore. Le bracket n'est
+ * généré que quand TOUS les inscrits ont cliqué "Prêt" (§startTournament).
+ *
+ * Bug corrigé le 29/08 : avant, le tournoi démarrait tout seul dès que la
+ * dernière place était prise et `scheduleTournamentWalkover` armait
+ * immédiatement un forfait à 3 min sur chaque match du premier tour. Un
+ * joueur qui n'était pas devant son écran à cet instant précis perdait
+ * (ou gagnait) sans qu'aucune question ne soit posée — d'où des demi-
+ * finales affichées "TERMINÉ" alors qu'elles n'avaient jamais été jouées. */
+export async function openReadyCheck(tournamentId: string) {
   const tournament = await prisma.tournament.findUniqueOrThrow({
     where: { id: tournamentId },
     include: { entries: true },
   });
-  if (tournament.status !== "REGISTERING") return;
+  if (tournament.status !== "REGISTERING") return { ok: false as const, message: "Ce tournoi n'est plus en phase d'inscription" };
+  if (tournament.entries.length < tournament.capacity) return { ok: false as const, message: "Le tournoi n'est pas encore complet" };
+
+  await prisma.tournament.update({ where: { id: tournamentId }, data: { status: "READY_CHECK" } });
+  return { ok: true as const };
+}
+
+/** Tous les inscrits ont confirmé leur présence — on tire le bracket et on
+ * lance réellement les matches du premier tour. C'est le SEUL endroit qui
+ * arme les compteurs de forfait : à ce moment, chaque joueur vient de
+ * cliquer "Prêt", il est donc bien devant son écran. */
+export async function startTournament(tournamentId: string) {
+  const tournament = await prisma.tournament.findUniqueOrThrow({
+    where: { id: tournamentId },
+    include: { entries: true },
+  });
+  if (tournament.status !== "READY_CHECK") return;
   if (tournament.entries.length < tournament.capacity) return;
+  if (tournament.entries.some((e) => !e.readyAt)) return; // il manque au moins une confirmation
 
   const seeded = shuffle(tournament.entries.map((e) => e.userId));
   await prisma.$transaction(
@@ -193,7 +219,7 @@ async function completeTournament(tournament: { id: string; capacity: number; st
 
   for (const p of payouts) {
     if (p.amount > 0) {
-      await credit({ userId: p.userId, type: "PAYOUT", amountCoins: p.amount, metadata: { tournamentId: tournament.id, placement: p.placement } });
+      await credit({ userId: p.userId, type: "PAYOUT", amountCoins: p.amount, bonusAmountCoins: await bonusAmountForPayout(p.amount, { metadata: { path: ["tournamentId"], equals: tournament.id } }), metadata: { tournamentId: tournament.id, placement: p.placement } });
     }
     await prisma.tournamentEntry.updateMany({
       where: { tournamentId: tournament.id, userId: p.userId },

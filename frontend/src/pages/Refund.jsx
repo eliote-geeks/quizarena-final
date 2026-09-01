@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Mail } from "lucide-react";
 
 const AMBER = "#E5A800";
-const UPDATED = "23 juin 2026";
+const UPDATED = "31 août 2026";
 
 function Block({ title, children }) {
   return (
@@ -105,7 +105,27 @@ export default function Refund() {
           </ul>
         </Block>
 
-        <Block title="4. Achats en monnaie réelle (si applicable)">
+        <Block title="4. Dépôts et retraits Mobile Money (SharePay)">
+          <p>
+            Les dépôts et retraits sont traités via <strong className="text-white/70">SharePay</strong>, notre
+            prestataire Mobile Money (MTN Mobile Money, Orange Money). Un dépôt validé par votre opérateur est
+            crédité automatiquement ; il n'y a rien à réclamer une fois la confirmation reçue.
+          </p>
+          <p>
+            Un retrait débite votre solde disponible dès la demande. Si le virement échoue côté opérateur
+            (réseau, compte Mobile Money invalide, solde insuffisant chez l'opérateur, etc.), le montant est
+            <strong className="text-white/70"> automatiquement recrédité</strong> sur votre solde QuizArena —
+            aucune démarche n'est nécessaire de votre part.
+          </p>
+          <p>
+            Si un dépôt a été débité sur votre Mobile Money sans jamais apparaître sur votre solde QuizArena
+            au-delà de 30 minutes, contactez le support avec la date, l'heure, le montant et si possible la
+            référence de la transaction affichée par votre opérateur — nous vérifions directement l'état de
+            la transaction auprès de SharePay avant tout remboursement.
+          </p>
+        </Block>
+
+        <Block title="5. Achats en monnaie réelle (si applicable)">
           <p>
             Si vous avez effectué un achat de coins en monnaie réelle via la Plateforme ou les stores
             officiels (App Store, Google Play), vous disposez d'un <strong className="text-white/70">droit de rétractation de 14 jours</strong> conformément
@@ -119,11 +139,11 @@ export default function Refund() {
           </p>
           <p>
             Pour exercer votre droit de rétractation, contactez-nous à{" "}
-            <span className="text-white/70">support@quizarena.app</span> dans le délai imparti.
+            <span className="text-white/70">support@quizarenaworld.com</span> dans le délai imparti.
           </p>
         </Block>
 
-        <Block title="5. Tournois — politique spécifique">
+        <Block title="6. Tournois — politique spécifique">
           <p>
             Les frais d'entrée à un tournoi sont <strong className="text-white/70">non remboursables</strong> une fois
             que le tournoi a officiellement démarré. Si un tournoi est annulé par l'Éditeur avant son lancement,
@@ -135,12 +155,12 @@ export default function Refund() {
           </p>
         </Block>
 
-        <Block title="6. Procédure de réclamation">
+        <Block title="7. Procédure de réclamation">
           <p>
             Pour toute réclamation relative à un remboursement, voici la procédure à suivre :
           </p>
           <ol className="list-decimal list-inside space-y-2 text-white/40">
-            <li>Envoyez un email à <span className="text-white/70">support@quizarena.app</span> avec l'objet « Réclamation remboursement »</li>
+            <li>Envoyez un email à <span className="text-white/70">support@quizarenaworld.com</span> avec l'objet « Réclamation remboursement »</li>
             <li>Décrivez précisément la situation et joignez toute preuve disponible (screenshot, date/heure)</li>
             <li>Notre équipe vous répondra dans un délai de <strong className="text-white/60">5 jours ouvrés</strong></li>
             <li>En cas de décision favorable, le crédit apparaît sur votre compte sous 48h</li>
@@ -159,8 +179,8 @@ export default function Refund() {
             <span className="text-sm font-semibold text-white">Nous contacter</span>
           </div>
           <div className="space-y-1.5 text-xs text-white/40">
-            <p>Support joueurs : <span className="text-white/70">support@quizarena.app</span></p>
-            <p>Questions légales : <span className="text-white/70">legal@quizarena.app</span></p>
+            <p>Support joueurs : <span className="text-white/70">support@quizarenaworld.com</span></p>
+            <p>Questions légales : <span className="text-white/70">support@quizarenaworld.com</span></p>
             <p>Délai de réponse : 5 jours ouvrés maximum</p>
           </div>
         </motion.div>

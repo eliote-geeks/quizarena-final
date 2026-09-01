@@ -1,12 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../../lib/prisma.js";
+import { isSessionValid, touchSession } from "../../lib/sessions.js";
 import { clientMessageSchema } from "./protocol.js";
 import {
   enqueue, startBotDuel, cancelQueue, handleAnswer, handleForfeit, attachSocket, detachSocket,
   createInvite, joinInvite, cancelInvite, declineInvite, enterTournamentMatch,
   enterClanWarMatch,
-  handleReady, handleTabHidden, handleTabVisible,
-  registerSend, unregisterSend,
+  handleReady, handlePresenceConfirm, handleTabHidden, handleTabVisible, handleQuestionReady,
+  registerSend, unregisterSend, isCurrentSend,
   spectateMatch, leaveSpectate,
 } from "./engine.js";
 
@@ -19,10 +20,12 @@ export async function duelWsRoutes(app: FastifyInstance) {
   app.get("/ws/duel", { websocket: true }, (socket, req) => {
     const token = (req.query as Record<string, string | undefined>)?.token;
     let userId: string;
+    let sessionId: string | undefined;
     try {
       if (!token) throw new Error("missing token");
-      const payload = app.jwt.verify<{ userId: string }>(token);
+      const payload = app.jwt.verify<{ userId: string; sessionId?: string }>(token);
       userId = payload.userId;
+      sessionId = payload.sessionId;
     } catch {
       socket.send(JSON.stringify({ type: "error", message: "Non authentifié" }));
       socket.close();
@@ -46,6 +49,16 @@ export async function duelWsRoutes(app: FastifyInstance) {
     const pending: Buffer[] = [];
 
     function handleMessage(raw: Buffer) {
+      // Une nouvelle connexion du même compte remplace atomiquement
+      // l'ancienne. Un ancien onglet ne peut donc plus répondre à sa place.
+      // Avant le 31/08 ce cas était totalement silencieux côté client :
+      // un joueur ayant deux onglets ouverts (cas réel en testant un
+      // lien privé) voyait un clic "Publier le duel" ne rien faire, sans
+      // le moindre message d'erreur — juste un onglet devenu fantôme.
+      if (!isCurrentSend(userId, send)) {
+        send({ type: "error", message: "Cet onglet n'est plus la connexion active de ton compte (ouvert ailleurs ?). Recharge la page." });
+        return;
+      }
       let parsed: unknown;
       try {
         parsed = JSON.parse(raw.toString());
@@ -96,11 +109,17 @@ export async function duelWsRoutes(app: FastifyInstance) {
         case "answer":
           handleAnswer(userId, msg.questionId, msg.chosenIndex);
           break;
+        case "question_ready":
+          handleQuestionReady(userId, msg.questionId);
+          break;
         case "forfeit":
           handleForfeit(userId);
           break;
         case "ready":
           handleReady(userId);
+          break;
+        case "resume_confirm":
+          handlePresenceConfirm(userId);
           break;
         case "tab_hidden":
           handleTabHidden(userId);
@@ -125,29 +144,41 @@ export async function duelWsRoutes(app: FastifyInstance) {
     // Heartbeat côté serveur : détecte les connexions "zombie" (téléphone
     // dont le réseau est coupé sans fermeture propre du WebSocket).
     // Le navigateur répond automatiquement aux pings WebSocket (niveau
-    // protocole, invisible JS côté client). Si on n'a pas reçu de pong
-    // avant le prochain ping, la socket est considérée morte → terminate()
-    // force le `close` event → detachSocket → toute la logique de
-    // déconnexion s'applique (réponse nulle, timer de forfait, etc.).
-    const PING_INTERVAL_MS = 15_000;
-    let pongReceived = true; // vrai au départ : on donne le premier cycle entier
+    // protocole, invisible JS côté client). Si deux pongs de suite manquent,
+    // la socket est considérée morte → terminate() force le `close` event
+    // → detachSocket → toute la logique de déconnexion s'applique (réponse
+    // nulle, timer de forfait, etc.).
+    //
+    // Correctif du 30/08/2026 : la version précédente coupait dès qu'UN
+    // SEUL pong dépassait 2 s — sur un réseau mobile avec du jitter normal
+    // (changement de cellule, pic de latence 3G/4G, quelques centaines de
+    // ms à 2-3 s de retard ponctuel), c'est un faux positif quasi garanti
+    // sur toute manche un peu longue, pas une vraie coupure. D'où les
+    // signalements de « coupures » en duel alors que la connexion était
+    // en réalité tout à fait valide. Exiger DEUX échecs consécutifs absorbe
+    // un pic isolé sans rien perdre côté détection d'une vraie coupure :
+    // pire cas ~2×PING_INTERVAL_MS, toujours largement sous la durée d'une
+    // manche de 8 s.
+    const PING_INTERVAL_MS = 2_500;
+    const MAX_MISSED_PONGS = 2;
+    let missedPongs = 0;
     const pingInterval = setInterval(() => {
-      if (!pongReceived) {
-        // Pas de pong depuis le dernier ping → connexion zombie → on coupe
+      if (missedPongs >= MAX_MISSED_PONGS) {
+        // Deux pings sans réponse de suite → connexion réellement morte.
         socket.terminate();
         return;
       }
-      pongReceived = false;
+      missedPongs += 1;
       if (socket.readyState === socket.OPEN) socket.ping();
     }, PING_INTERVAL_MS);
 
-    socket.on("pong", () => { pongReceived = true; });
+    socket.on("pong", () => { missedPongs = 0; });
 
     socket.on("close", () => {
       clearInterval(pingInterval);
-      unregisterSend(userId);
+      unregisterSend(userId, send);
       leaveSpectate(userId);
-      detachSocket(userId);
+      detachSocket(userId, send);
     });
 
     void (async () => {
@@ -157,6 +188,14 @@ export async function duelWsRoutes(app: FastifyInstance) {
         socket.close();
         return;
       }
+      // sessionId absent = token émis avant le 31/08, traité comme valide
+      // (§types/fastify.d.ts) — même règle que l'API REST.
+      if (sessionId && !(await isSessionValid(sessionId))) {
+        send({ type: "error", message: "Session révoquée" });
+        socket.close();
+        return;
+      }
+      if (sessionId) touchSession(sessionId);
       username = user.username;
       eloRating = user.eloRating;
       ready = true;

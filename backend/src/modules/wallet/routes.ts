@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
-import { credit, debit, getBalance, listTransactions, listTransactionsPaged, InsufficientBalanceError } from "./ledger.js";
+import { credit, debit, getBalance, getWalletSummary, listTransactions, listTransactionsPaged, InsufficientBalanceError, InsufficientWithdrawableBalanceError } from "./ledger.js";
 import { getPaymentProvider } from "./payment-provider.js";
 import { resolvePendingTransaction } from "./reconcile.js";
 import { env } from "../../lib/env.js";
+import { loadSettings } from "../../lib/settings.js";
 
 const amountSchema = z.object({
   amountCoins: z.number().int().min(100, "100 F minimum").max(500_000), // 100 = plus petite mise possible (§DuelSetup)
@@ -14,11 +15,11 @@ const amountSchema = z.object({
 
 export async function walletRoutes(app: FastifyInstance) {
   app.get("/api/wallet", { preHandler: [app.authenticate] }, async (req, reply) => {
-    const [balance, transactions] = await Promise.all([
-      getBalance(req.user.userId),
+    const [summary, transactions] = await Promise.all([
+      getWalletSummary(req.user.userId),
       listTransactions(req.user.userId),
     ]);
-    return reply.send({ balanceCoins: balance, transactions });
+    return reply.send({ ...summary, transactions });
   });
 
   // Historique paginé — utilisé par la page Portefeuille pour afficher
@@ -50,6 +51,11 @@ export async function walletRoutes(app: FastifyInstance) {
         error: "Service Unavailable",
         message: "Paiements temporairement indisponibles sur cette édition",
       });
+    }
+    // §lib/settings.ts — toggle admin (dashboard "Bloquer les dépôts") :
+    // avant le 31/08 il n'était vérifié nulle part, sans effet réel.
+    if (loadSettings().blockDeposits) {
+      return reply.code(503).send({ statusCode: 503, error: "Service Unavailable", message: "Dépôts temporairement suspendus" });
     }
     const body = amountSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
@@ -106,6 +112,9 @@ export async function walletRoutes(app: FastifyInstance) {
         message: "Paiements temporairement indisponibles sur cette édition",
       });
     }
+    if (loadSettings().blockWithdrawals) {
+      return reply.code(503).send({ statusCode: 503, error: "Service Unavailable", message: "Retraits temporairement suspendus" });
+    }
     const body = amountSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user.userId } });
     if (user.accountStatus === "BANNED" || user.accountStatus === "SUSPENDED") {
@@ -126,10 +135,11 @@ export async function walletRoutes(app: FastifyInstance) {
         userId: user.id,
         type: "WITHDRAWAL",
         amountCoins: body.amountCoins,
+        withdrawableOnly: true,
         provider: provider.name,
       });
     } catch (err) {
-      if (err instanceof InsufficientBalanceError) return reply.badRequest(err.message);
+      if (err instanceof InsufficientBalanceError || err instanceof InsufficientWithdrawableBalanceError) return reply.badRequest(err.message);
       throw err;
     }
 
@@ -164,6 +174,7 @@ export async function walletRoutes(app: FastifyInstance) {
         userId: user.id,
         type: "REFUND",
         amountCoins: body.amountCoins,
+        relatedTransactionId: tx.id,
         metadata: { reason: "withdrawal_provider_unreachable", failedTransactionId: tx.id },
       });
       req.log.error(err, "SharePay requestWithdrawal a échoué");

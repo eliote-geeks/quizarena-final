@@ -1,0 +1,153 @@
+// Images des questions illustrées — `file` pour un fichier Commons nommé,
+// `search` pour laisser l'outil chercher.
+//
+// Règle : l'image doit ÊTRE la question. On ne retient que des sujets
+// identifiables sans ambiguïté — un monument précis, un drapeau, une espèce,
+// une œuvre — jamais une scène générique. C'est exactement ce qui rendait le
+// lot `wikimedia_test_2026` injouable.
+//
+// Anime, cinéma récent et célébrités vivantes sont volontairement absents :
+// pas de matériel sous licence libre, et un quiz d'argent réel n'est pas le
+// lieu pour prendre des libertés avec le droit d'auteur.
+
+export default [
+  // ── Monuments et sites (géographie / histoire / culture) ───────────
+  { slug: "tour-eiffel",       file: "Tour Eiffel Wikimedia Commons.jpg" },
+  { slug: "colisee",           file: "Colosseo 2020.jpg" },
+  { slug: "taj-mahal",         file: "Taj Mahal (Edited).jpeg" },
+  { slug: "pyramides-gizeh",   file: "Kheops-Pyramid.jpg" },
+  { slug: "statue-liberte",    file: "Statue of Liberty, NY.jpg" },
+  { slug: "machu-picchu",      file: "Machu Picchu, Peru.jpg" },
+  { slug: "opera-sydney",      file: "Sydney Opera House - Dec 2008.jpg" },
+  { slug: "christ-redempteur", file: "Christ on Corcovado mountain.JPG" },
+  { slug: "grande-muraille",   search: "Great Wall of China Badaling" },
+  { slug: "petra",             search: "Al Khazneh Petra Jordan" },
+  { slug: "angkor-vat",        search: "Angkor Wat temple Cambodia" },
+  { slug: "acropole-athenes",  search: "Parthenon Acropolis Athens" },
+  { slug: "tour-pise",         search: "Leaning Tower of Pisa" },
+  { slug: "big-ben",           search: "Big Ben Elizabeth Tower London" },
+  { slug: "sagrada-familia",   search: "Sagrada Familia Barcelona exterior" },
+  { slug: "chichen-itza",      search: "El Castillo Chichen Itza pyramid" },
+  { slug: "kremlin-basile",    search: "Saint Basil's Cathedral Moscow" },
+  { slug: "arc-triomphe",      file: "Arc de Triomphe, Paris 21 October 2010.jpg" },
+  { slug: "moai-paques",       search: "Moai Easter Island Ahu Tongariki" },
+  { slug: "alhambra",          search: "Alhambra Granada Court of the Lions" },
+  { slug: "mosquee-djenne",    search: "Great Mosque of Djenne Mali" },
+  { slug: "lalibela",          search: "Bete Giyorgis Lalibela cross shaped church aerial" },
+  { slug: "grand-zimbabwe",    search: "Great Zimbabwe ruins conical tower" },
+
+  // ── Animaux (nature) ───────────────────────────────────────────────
+  { slug: "girafe",            file: "Giraffe Mikumi National Park.jpg" },
+  { slug: "guepard",           file: "TheCheethcat.jpg" },
+  { slug: "elephant-afrique",  file: "African Bush Elephant.jpg" },
+  { slug: "lion",              search: "Lion Panthera leo male mane" },
+  { slug: "zebre",             search: "Plains zebra Equus quagga" },
+  { slug: "hippopotame",       search: "Hippopotamus open mouth close up" },
+  { slug: "rhinoceros",        search: "White rhinoceros Ceratotherium simum" },
+  { slug: "gorille",           search: "Silverback mountain gorilla" },
+  { slug: "flamant-rose",      search: "Greater flamingo Phoenicopterus roseus" },
+  { slug: "autruche",          search: "Common ostrich Struthio camelus" },
+  { slug: "manchot-empereur",  search: "Emperor penguin Aptenodytes forsteri" },
+  { slug: "ours-polaire",      search: "Polar bear Ursus maritimus ice" },
+  { slug: "tigre",             search: "Bengal tiger Panthera tigris" },
+  { slug: "panda-geant",       search: "Giant panda Ailuropoda melanoleuca" },
+  { slug: "kangourou",         search: "Red kangaroo Macropus rufus" },
+  { slug: "koala",             search: "Koala Phascolarctos cinereus tree" },
+  { slug: "toucan",            search: "Toco toucan Ramphastos toco" },
+  { slug: "camelien-dromadaire", search: "Dromedary camel Camelus dromedarius" },
+  { slug: "crocodile-nil",     search: "Nile crocodile open jaws teeth basking" },
+  { slug: "tortue-marine",     search: "Green sea turtle Chelonia mydas" },
+  { slug: "dauphin",           search: "Bottlenose dolphin Tursiops truncatus" },
+  { slug: "aigle-pygargue",    search: "Bald eagle Haliaeetus leucocephalus" },
+  { slug: "hibou-grand-duc",   search: "Eurasian eagle-owl Bubo bubo" },
+  { slug: "abeille",           search: "Western honey bee Apis mellifera flower" },
+
+  // ── Plantes et paysages (nature / géographie) ──────────────────────
+  { slug: "baobab",            search: "Adansonia grandidieri avenue baobabs Madagascar" },
+  { slug: "kilimandjaro",      file: "Mount Kilimanjaro.jpg" },
+  { slug: "chutes-victoria",   search: "Victoria Falls Zambezi river" },
+  { slug: "everest",           search: "Mount Everest north face" },
+  { slug: "grand-canyon",      search: "Grand Canyon Arizona view" },
+  { slug: "sahara-dunes",      search: "Sahara desert sand dunes Erg Chebbi" },
+  { slug: "amazonie",          search: "Amazon river rainforest aerial view Brazil" },
+  { slug: "aurore-boreale",    search: "Aurora borealis northern lights" },
+  { slug: "tournesol",         search: "Sunflower Helianthus annuus field" },
+  { slug: "cacaoyer",          search: "Cacao pods Theobroma cacao tree" },
+  { slug: "cafeier",           search: "Coffee berries Coffea arabica plant" },
+  { slug: "bananier",          search: "Banana plant Musa bunch" },
+  { slug: "palmier-dattier",   search: "Date palm Phoenix dactylifera dates" },
+
+  // ── Drapeaux (géographie / Afrique) ────────────────────────────────
+  { slug: "drapeau-cameroun",  file: "Flag of Cameroon.svg" },
+  { slug: "drapeau-bresil",    file: "Flag of Brazil.svg" },
+  { slug: "drapeau-japon",     file: "Flag of Japan.svg" },
+  { slug: "drapeau-senegal",   file: "Flag of Senegal.svg" },
+  { slug: "drapeau-nigeria",   file: "Flag of Nigeria.svg" },
+  { slug: "drapeau-ghana",     file: "Flag of Ghana.svg" },
+  { slug: "drapeau-kenya",     file: "Flag of Kenya.svg" },
+  { slug: "drapeau-afsud",     file: "Flag of South Africa.svg" },
+  { slug: "drapeau-maroc",     file: "Flag of Morocco.svg" },
+  { slug: "drapeau-egypte",    file: "Flag of Egypt.svg" },
+  { slug: "drapeau-ethiopie",  file: "Flag of Ethiopia.svg" },
+  { slug: "drapeau-cotedivoire", file: "Flag of Côte d'Ivoire.svg" },
+  { slug: "drapeau-canada",    file: "Flag of Canada (Pantone).svg" },
+  { slug: "drapeau-inde",      file: "Flag of India.svg" },
+  { slug: "drapeau-coreesud",  file: "Flag of South Korea.svg" },
+  { slug: "drapeau-suisse",    file: "Flag of Switzerland.svg" },
+  { slug: "drapeau-argentine", file: "Flag of Argentina.svg" },
+  { slug: "drapeau-allemagne", file: "Flag of Germany.svg" },
+
+  // ── Art (culture) ──────────────────────────────────────────────────
+  { slug: "joconde",           file: "Mona Lisa, by Leonardo da Vinci, from C2RMF retouched.jpg" },
+  { slug: "nuit-etoilee",      file: "Van Gogh - Starry Night - Google Art Project.jpg" },
+  { slug: "cri-munch",         search: "The Scream Edvard Munch 1893" },
+  { slug: "jeune-fille-perle", search: "Girl with a Pearl Earring Vermeer" },
+  { slug: "naissance-venus",   search: "The Birth of Venus Botticelli" },
+  { slug: "guernica",          search: "Guernica Picasso painting" },
+  { slug: "creation-adam",     file: "Michelangelo - Creation of Adam (cropped).jpg" },
+  { slug: "penseur-rodin",     search: "The Thinker Rodin sculpture" },
+  { slug: "nympheas-monet",    search: "Water Lilies Claude Monet painting" },
+  { slug: "venus-milo",        search: "Venus de Milo Louvre statue" },
+  { slug: "masque-toutankhamon", search: "Tutankhamun golden funerary mask" },
+
+  // ── Sciences et technologie ────────────────────────────────────────
+  { slug: "adn-double-helice", search: "DNA double helix structure model" },
+  { slug: "systeme-solaire",   search: "Solar system planets montage NASA" },
+  { slug: "saturne",           search: "Saturn Cassini planet rings" },
+  { slug: "mars-planete",      search: "Mars planet Hubble global view" },
+  { slug: "jupiter",           search: "Jupiter Great Red Spot Juno" },
+  { slug: "lune-surface",      search: "Full moon photograph astronomy" },
+  { slug: "galaxie-andromede", search: "Andromeda Galaxy M31" },
+  { slug: "navette-spatiale",  search: "Space Shuttle launch NASA" },
+  { slug: "station-spatiale",  search: "International Space Station orbit" },
+  { slug: "microscope",        search: "Compound light microscope binocular laboratory" },
+  { slug: "table-periodique",  search: "Periodic table of elements chart" },
+  { slug: "eolienne",          search: "Wind turbine wind farm" },
+  { slug: "panneau-solaire",   search: "Photovoltaic solar panels array" },
+
+  // ── Gastronomie ────────────────────────────────────────────────────
+  { slug: "sushi",             search: "Sushi nigiri assortment plate" },
+  { slug: "pizza-margherita",  search: "Pizza Margherita Neapolitan" },
+  { slug: "couscous",          search: "Couscous dish semolina vegetables" },
+  { slug: "paella",            search: "Paella valenciana pan seafood" },
+  { slug: "croissant",         search: "Croissant pastry French" },
+  { slug: "safran",            search: "Saffron threads Crocus sativus spice" },
+  { slug: "riz-jollof",        search: "Jollof rice West African dish" },
+  { slug: "attieke",           search: "Attieke fish Ivorian dish plate" },
+  { slug: "plantain-frit",     search: "Fried plantain African dish" },
+
+  // ── Sport ──────────────────────────────────────────────────────────
+  { slug: "ballon-football",   search: "Association football ball white" },
+  { slug: "anneaux-olympiques", search: "Olympic rings symbol flag" },
+  { slug: "panier-basket",     search: "Basketball hoop backboard court" },
+  { slug: "stade-olympique",   search: "Olympic stadium athletics track" },
+
+  // ── Musique (instruments — pas d'artistes sous droits) ─────────────
+  { slug: "piano-queue",       search: "Grand piano instrument" },
+  { slug: "trompette",         search: "Trumpet brass instrument" },
+  { slug: "violon",            search: "Violin instrument strings" },
+  { slug: "saxophone",         search: "Alto saxophone instrument" },
+  { slug: "kora",              search: "Kora West African harp instrument" },
+  { slug: "djembe",            search: "Djembe African drum" },
+  { slug: "batterie",          search: "Drum kit set instrument" },
+];

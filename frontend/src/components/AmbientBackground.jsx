@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * Ambient background — cycles through curated calming photos.
- * Dark overlay + mesh gradient so foreground text stays legible.
+ * Dark flat overlay so foreground text stays legible.
  *
  * - Rotates every `intervalMs` (default 20s)
  * - Preloads next image
- * - CSS gradient fallback if a photo fails to load
+ * - solid-colour fallback if a photo fails to load
  */
 const IMAGES = [
   // Curated calm nature (Unsplash direct URLs, w=1600 q=60)
@@ -57,7 +57,7 @@ export default function AmbientBackground({ intervalMs = 20000, intensity = "cal
           setCurrent({ url: IMAGES[next], id: idRef.current });
         }
       } catch (_) {
-        // silent fallback — mesh gradient covers
+        // silent fallback — the solid base remains visible
       }
     };
 
@@ -98,43 +98,7 @@ export default function AmbientBackground({ intervalMs = 20000, intensity = "cal
         )}
       </AnimatePresence>
 
-      {/* Dark gradient overlay for text legibility */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(8,8,12,0.62) 0%, rgba(8,8,12,0.72) 55%, rgba(8,8,12,0.92) 100%)",
-        }}
-      />
-
-      {/* Ambient mesh light (indigo/violet) */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: urgent
-            ? `radial-gradient(ellipse 50% 40% at 20% 20%, rgba(244,63,94,0.22), transparent 60%),
-               radial-gradient(ellipse 40% 40% at 80% 30%, rgba(168,85,247,0.18), transparent 60%)`
-            : `radial-gradient(ellipse 50% 40% at 20% 20%, rgba(99,102,241,0.20), transparent 60%),
-               radial-gradient(ellipse 40% 40% at 80% 30%, rgba(168,85,247,0.14), transparent 60%),
-               radial-gradient(ellipse 60% 50% at 50% 100%, rgba(79,70,229,0.16), transparent 60%)`,
-        }}
-      />
-
-      {/* Fine grain / dots */}
-      <div
-        className="absolute inset-0 opacity-[0.10]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.28) 0 1px, transparent 1px), radial-gradient(circle at 82% 22%, rgba(255,255,255,0.18) 0 1px, transparent 1px)",
-          backgroundSize: "120px 120px, 180px 180px",
-        }}
-      />
-
-      {/* Light bottom vignette to fade into page content */}
-      <div
-        className="absolute inset-x-0 bottom-0 h-[30%]"
-        style={{ background: "linear-gradient(to top, var(--bg) 0%, transparent 100%)" }}
-      />
+      <div className="absolute inset-0" style={{ background: urgent ? "rgba(30,8,14,.78)" : "rgba(8,8,12,.78)" }} />
     </div>
   );
 }

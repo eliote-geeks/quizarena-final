@@ -476,4 +476,7 @@ export const QUESTIONS_BANK = {
     mk("Cinéma nigérian populaire ?", "Popular Nigerian cinema?", ["Bollywood", "Nollywood", "Hollywood", "Ghallywood"], 1),
     mk("Pays d'origine du yoga ?", "Yoga origin country?", ["Chine", "Inde", "Japon", "Népal"], 1),
   ],
+  // Compteur cosmétique uniquement (§CATEGORIES ci-dessus) — les vraies
+  // questions viennent du backend, cette liste locale ne sert plus au jeu.
+  logique: [],
 };

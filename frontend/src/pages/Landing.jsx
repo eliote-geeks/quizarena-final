@@ -104,13 +104,6 @@ export default function Landing() {
               <div className="absolute inset-0 bg-[#0B0B14] rounded-[2.5rem] p-6 flex flex-col border border-white/10 shadow-[0_0_50px_rgba(229,168,0,0.15)]">
                 {/* Screen */}
                 <div className="flex-1 bg-black rounded-2xl border-2 relative overflow-hidden noise" style={{ borderColor: `${AMBER}55` }}>
-                  <div
-                    className="absolute inset-0 opacity-30"
-                    style={{
-                      backgroundImage: `linear-gradient(to right, ${AMBER}22 1px, transparent 1px), linear-gradient(to bottom, ${AMBER}22 1px, transparent 1px)`,
-                      backgroundSize: "20px 20px",
-                    }}
-                  />
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                     <div className="font-pixel text-[10px] mb-3 blink" style={{ color: AMBER }}>{t.quiz.ready}</div>
                     <div className="font-display font-black text-3xl text-white mb-3">Q. 07/10</div>

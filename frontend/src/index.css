@@ -1,4 +1,36 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* ═══════════════════════════════════════════════════════════════
+   Typographie — révisée le 30/08/2026 après recherche
+   ═══════════════════════════════════════════════════════════════
+   Premier correctif (même jour) : le site déclarait 'Plus Jakarta
+   Sans' partout mais ne chargeait qu'Inter — la pile retombait donc
+   systématiquement sur la police explicitement bannie (§MEMORY
+   anti-ai-design). Un premier remplacement (Bricolage Grotesque +
+   Instrument Sans) a été posé, puis remis en question : recherche
+   faite sur les choix typographiques des apps fintech / paris
+   sportifs 2026, où la confiance perçue dépend directement de la
+   qualité typographique (source : fontalternatives.com, precode.co).
+
+   Décision retenue :
+   • Display : Space Grotesk — grotesque géométrique à forte
+     personnalité, largement adoptée par les produits tech/compétitifs
+     sans tomber dans le cliché "police de jeu vidéo" (Orbitron,
+     Audiowide) hors de propos sur une plateforme d'argent réel.
+   • Texte   : IBM Plex Sans — famille pensée pour les produits
+     financiers, chiffres très lisibles, sérieux sans être froide.
+     Recommandée aux côtés d'Inter par plusieurs comparatifs fintech
+     2026, mais sans le défaut "moyenne IA" d'Inter puisqu'elle a un
+     usage beaucoup plus marqué (IBM, Red Hat) qu'omniprésent.
+   • Chiffres : tabulaires partout où il y a de l'argent, sinon les
+     montants sautillent quand le solde change.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    /* Style Google (31/08, retour Paul) : Roboto partout — l'identité
+       typographique réelle de Material Design (Android, Gmail, Search),
+       différenciée par la graisse plutôt que par deux familles. */
+    --font-display: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+}
 
 @tailwind base;
 @tailwind components;
@@ -15,7 +47,8 @@ html {
 
 body {
     margin: 0;
-    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-body);
+    font-variant-numeric: tabular-nums;
     font-weight: 500;
     font-feature-settings: "cv11", "ss01", "ss03";
     letter-spacing: 0;
@@ -28,21 +61,23 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-display);
+    /* Material n'utilise jamais de tracking serré/négatif sur ses titres
+       (contrairement à l'ancien Space Grotesk) — Roboto reste ouvert. */
     letter-spacing: 0;
-    font-weight: 800;
+    font-weight: 500;
 }
 
 /* Keep old markup compatible, but remove decorative serif accents. */
 .serif-italic {
-    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-body);
     font-style: normal;
     font-weight: 700;
     letter-spacing: 0;
 }
 
 code {
-    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -108,8 +143,8 @@ code {
     --qa-gold-dark:    var(--accent-active);
     --qa-emerald:      var(--success);
     --qa-ruby:         var(--danger);
-    --qa-shine:        linear-gradient(135deg, var(--accent-hover) 0%, var(--accent) 50%, var(--accent-active) 100%);
-    --qa-shine-hover:  linear-gradient(135deg, #A5B4FC 0%, var(--accent-hover) 50%, var(--accent) 100%);
+    --qa-shine:        var(--accent);
+    --qa-shine-hover:  var(--accent-hover);
 }
 
 html.light {
@@ -219,70 +254,76 @@ html.light {
 
     /* ── Fonts ── */
     .font-display {
-        font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-family: var(--font-display);
         letter-spacing: 0;
-        font-weight: 800;
+        font-weight: 500;
     }
     .font-serif-i {
-        font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+        font-family: var(--font-display);
         font-style: normal;
         letter-spacing: 0;
-        font-weight: 800;
+        font-weight: 500;
     }
 
-    /* ── Primary button (indigo) ── */
+    /* ── Boutons style Material 3 (31/08, retour Paul : "tout le reste
+       comme Google") — pilule pleine (le vrai rayon des "filled buttons"
+       Material 3, pas un choix arbitraire), légère élévation qui se
+       creuse à l'appui plutôt qu'un simple assombrissement. ── */
     .btn-primary {
         background: var(--accent);
         color: var(--accent-fg);
-        font-weight: 700;
-        letter-spacing: 0;
-        border: 1px solid var(--accent);
-        box-shadow: none;
-        transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+        font-weight: 500;
+        letter-spacing: .01em;
+        border: none;
+        border-radius: 999px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 1px 2px rgba(0,0,0,.12);
+        transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
     }
     .btn-primary:hover:not(:disabled) {
         background: var(--accent-hover);
-        border-color: var(--accent-hover);
-        box-shadow: none;
+        box-shadow: 0 2px 6px rgba(0,0,0,.22), 0 1px 3px rgba(0,0,0,.16);
     }
-    .btn-primary:active:not(:disabled) { opacity: 0.92; }
+    .btn-primary:active:not(:disabled) { box-shadow: 0 1px 2px rgba(0,0,0,.14); transform: scale(.98); }
 
-    /* ── Secondary (outlined) ── */
+    /* ── Secondary = "outlined button" Material 3 ── */
     .btn-secondary {
-        background: var(--surface);
+        background: transparent;
         color: var(--text);
-        border: 1px solid var(--border-md);
-        font-weight: 700;
+        border: 1px solid var(--border-strong);
+        border-radius: 999px;
+        font-weight: 500;
         transition: background 0.15s ease, border-color 0.15s ease;
     }
     .btn-secondary:hover:not(:disabled) {
-        background: var(--surface-2);
-        border-color: var(--border-strong);
+        background: var(--hover);
+        border-color: var(--text-faint);
     }
 
-    /* ── Ghost (text-only) ── */
+    /* ── Ghost = "text button" Material 3 ── */
     .btn-ghost {
         background: transparent;
-        color: var(--text-sub);
-        font-weight: 600;
+        color: var(--accent);
+        font-weight: 500;
+        border-radius: 999px;
         transition: background 0.15s ease, color 0.15s ease;
     }
     .btn-ghost:hover:not(:disabled) {
-        background: var(--hover);
-        color: var(--text);
+        background: var(--active);
     }
 
-    /* ── Cards ── */
+    /* ── Cards = "elevated card" Material 3 : ombre plutôt que bordure
+       seule, rayon plus généreux (12-16px, l'échelle Material) ── */
     .card {
         background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 1rem;
+        border: 1px solid transparent;
+        border-radius: 1.1rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
     }
     .card-hover {
-        transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+        transition: box-shadow 0.2s ease, transform 0.15s ease, background 0.2s ease;
     }
     .card-hover:hover {
-        border-color: var(--border-md);
+        box-shadow: 0 4px 10px rgba(0,0,0,.2), 0 1px 4px rgba(0,0,0,.12);
         background: var(--surface);
     }
     .card-elevated {
@@ -341,33 +382,10 @@ html.light {
     .chip-neutral { background: var(--active); color: var(--text-sub); }
 
     /* ── Gradient mesh backgrounds ── */
-    .mesh-hero {
-        background:
-            radial-gradient(ellipse 60% 40% at 20% 20%, rgba(99,102,241,0.25), transparent 60%),
-            radial-gradient(ellipse 50% 40% at 80% 30%, rgba(168,85,247,0.18), transparent 60%),
-            radial-gradient(ellipse 70% 50% at 50% 100%, rgba(79,70,229,0.22), transparent 60%);
-    }
-    html.light .mesh-hero {
-        background:
-            radial-gradient(ellipse 60% 40% at 20% 20%, rgba(99,102,241,0.14), transparent 60%),
-            radial-gradient(ellipse 50% 40% at 80% 30%, rgba(168,85,247,0.10), transparent 60%),
-            radial-gradient(ellipse 70% 50% at 50% 100%, rgba(79,70,229,0.10), transparent 60%);
-    }
-
-    .mesh-subtle {
-        background:
-            radial-gradient(ellipse 40% 30% at 15% 20%, rgba(99,102,241,0.10), transparent 60%),
-            radial-gradient(ellipse 40% 30% at 85% 80%, rgba(168,85,247,0.08), transparent 60%);
-    }
-
-    /* Grid dots pattern */
-    .grid-dots {
-        background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
-        background-size: 24px 24px;
-    }
-    html.light .grid-dots {
-        background-image: radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px);
-    }
+    .mesh-hero { background: var(--surface); }
+    html.light .mesh-hero { background: var(--surface); }
+    .mesh-subtle { background: var(--surface); }
+    .grid-dots { background-image: none; }
 
     /* ── No scrollbar ── */
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -385,23 +403,133 @@ html.light {
     .border-gold { border-color: var(--accent); }
 
     /* Legacy font aliases */
-    .font-arcade { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 700; letter-spacing: 0; }
-    .font-pixel { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 700; }
-    .font-body { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
+    .font-arcade { font-family: var(--font-display); font-weight: 800; letter-spacing: -.01em; }
+    .font-pixel { font-family: var(--font-display); font-weight: 700; }
+    .font-body { font-family: var(--font-body); }
 }
 
 /* Keep the product typography visually consistent with the VIP page. */
 .App .font-medium,
 .App .font-semibold {
-    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-body);
     font-weight: 700;
 }
 
 .App .font-bold,
 .App .font-extrabold,
 .App .font-black {
-    font-family: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-body);
 }
+
+/* ── Authentication panel v2 (31/08) — mesh gradient + bento, remplace
+   la photo Unsplash "hero générique" : voir AuthLeft.jsx pour le détail
+   du raisonnement (mémoire feedback_quizarena_anti_ai_design). ── */
+.auth-showcase-v2 {
+    position: relative;
+    display: none;
+    min-height: 100vh;
+    overflow: hidden;
+    padding: 2.5rem;
+    color: #fff;
+    background: #08070C;
+}
+.auth-mesh {
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(44rem 38rem at 8% 4%, rgba(229,168,0,.16), transparent 58%),
+        radial-gradient(36rem 32rem at 96% 88%, rgba(229,168,0,.10), transparent 55%),
+        radial-gradient(28rem 24rem at 70% 15%, rgba(255,255,255,.04), transparent 60%);
+}
+.auth-mesh-orbit { position: absolute; width: 22rem; height: 22rem; border-radius: 999px; filter: blur(2px); opacity: .5; pointer-events: none; }
+.auth-mesh-orbit-one { top: -6rem; right: -8rem; background: radial-gradient(circle, rgba(229,168,0,.14), transparent 70%); }
+.auth-mesh-orbit-two { bottom: -8rem; left: -6rem; width: 26rem; height: 26rem; background: radial-gradient(circle, rgba(229,168,0,.08), transparent 70%); }
+.auth-showcase-top, .auth-copy, .auth-bento { position: relative; z-index: 1; }
+.auth-showcase-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.auth-secure, .auth-kicker { display: inline-flex; align-items: center; gap: .4rem; font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.auth-secure { border: 1px solid rgba(229,168,0,.35); border-radius: 999px; padding: .45rem .7rem; background: #15110D; }
+.auth-copy { margin-top: clamp(3.5rem, 9vh, 6rem); max-width: 30rem; }
+.auth-copy h2 { margin: .8rem 0 1rem; font-size: clamp(2.8rem, 4.6vw, 4.6rem); line-height: .95; letter-spacing: -.05em; color: #fff; }
+.auth-copy h2 span { color: var(--accent); }
+.auth-copy > p:last-child { max-width: 23rem; color: rgba(255,255,255,.72); font-size: 1rem; line-height: 1.6; }
+
+/* Bento : une cellule large (duel face-à-face) + deux stats + un fait qui
+   tourne (mêmes tips que l'écran de chargement, §lib/interstitials.js). */
+.auth-bento { margin-top: 2.4rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; max-width: 30rem; }
+.auth-bento-cell { border: 1px solid rgba(255,255,255,.11); border-radius: 1.1rem; background: rgba(255,255,255,.035); backdrop-filter: blur(6px); padding: 1rem 1.1rem; }
+.auth-bento-versus { grid-column: span 2; padding: 1.1rem 1.3rem; }
+.auth-bento-stat { display: flex; flex-direction: column; gap: .3rem; }
+.auth-bento-stat strong { font-size: 1.5rem; font-weight: 800; color: #fff; line-height: 1; }
+.auth-bento-stat span { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.5); }
+.auth-bento-fact { grid-column: span 2; min-height: 5.2rem; }
+.auth-fact-title { font-size: .8rem; font-weight: 800; color: var(--accent); line-height: 1.3; }
+.auth-fact-body { margin-top: .3rem; font-size: .74rem; line-height: 1.45; color: rgba(255,255,255,.62); }
+
+.auth-versus { display: flex; flex-direction: column; align-items: center; gap: .65rem; }
+.auth-versus-row { display: flex; align-items: center; justify-content: center; gap: 1.4rem; height: 2.75rem; }
+.auth-versus-avatar { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .9rem; border: 1px solid rgba(229,168,0,.4); background: rgba(229,168,0,.12); color: var(--accent); }
+.auth-versus-avatar-dim { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.05); color: rgba(255,255,255,.5); }
+.auth-versus-spark { display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 999px; background: var(--accent); color: #09090F; }
+.auth-versus-label { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.45); }
+
+.auth-mobile-brand { margin-bottom: 2.25rem; }
+@media (min-width: 1024px) { .auth-showcase-v2 { display: block; } .auth-mobile-brand { display: none; } }
+@media (prefers-reduced-motion: reduce) { .auth-showcase-v2 * { animation: none !important; transition: none !important; } }
+
+/* Mesh gradient discret derrière le formulaire (Login/Register/Forgot/
+   Reset/VerifyEmail) — tendance 2026 (dégradés multi-points organiques,
+   pas un simple aplat), reste subtil pour ne jamais nuire à la lisibilité
+   du formulaire ni entrer en concurrence avec le panneau AuthLeft. */
+.auth-form-panel { position: relative; isolation: isolate; }
+.auth-form-panel::before {
+  content: "";
+  position: absolute;
+  inset: -15%;
+  z-index: -1;
+  background:
+    radial-gradient(38rem 30rem at 15% 8%, rgba(229,168,0,.10), transparent 60%),
+    radial-gradient(30rem 26rem at 88% 82%, rgba(229,168,0,.06), transparent 55%);
+  pointer-events: none;
+}
+
+/* Champs de formulaire d'auth (31/08, retour Paul : "fait du style de
+   google") — le contour fin + label flottant qui "coupe" la bordure du
+   champ de connexion Google, repris directement. Flottement en CSS pur
+   (`:placeholder-shown` + `~`, cf. l'input a `placeholder=" "`) : pas de
+   state JS pour savoir si le champ est rempli. */
+.qa-gfield { position: relative; }
+.qa-ginput {
+  width: 100%;
+  height: 3.1rem;
+  border-radius: .5rem;
+  padding: 0 .9rem;
+  font-size: .9rem;
+  background: transparent;
+  border: 1px solid var(--qa-border-md);
+  color: var(--qa-text);
+  outline: none;
+  transition: border-color .1s ease, border-width .1s ease, padding .1s ease;
+}
+.qa-ginput:focus { border: 2px solid var(--accent); padding: 0 calc(.9rem - 1px); }
+.qa-glabel {
+  position: absolute;
+  left: .8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: .9rem;
+  color: var(--qa-text-faint);
+  background: var(--qa-page);
+  padding: 0 .35rem;
+  pointer-events: none;
+  transition: top .1s ease, transform .1s ease, font-size .1s ease, color .1s ease;
+}
+.qa-ginput:focus ~ .qa-glabel,
+.qa-ginput:not(:placeholder-shown) ~ .qa-glabel {
+  top: 0;
+  font-size: .72rem;
+  transform: translateY(-50%);
+}
+.qa-ginput:focus ~ .qa-glabel { color: var(--accent); }
+.qa-field-trailing { position: absolute; right: .85rem; top: 50%; transform: translateY(-50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    Legacy overrides (keep light-mode fixes working)
@@ -513,3 +641,298 @@ html.light .player-page [class*="font-medium"][class*="text-white"] { color: var
     80% { transform: translateX(6px); }
 }
 .shake { animation: shake 0.45s ease-in-out; }
+
+.wallet-input {
+    width: 100%;
+    min-height: 52px;
+    border-width: 1px;
+    border-radius: 0.85rem;
+    background: var(--surface-2);
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-weight: 700;
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.wallet-input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.wallet-suffix {
+    pointer-events: none;
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-sub);
+    font-size: .75rem;
+    font-weight: 800;
+}
+/* Rails tactiles : défilement fluide sans la barre système apparente. */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Lobby 2026 — composition gaming éditoriale, charte QuizArena
+   ═══════════════════════════════════════════════════════════════ */
+.lobby-shell {
+    width: min(100%, 78rem);
+    min-height: 100%;
+    margin-inline: auto;
+    padding: 1.75rem 1.5rem 4rem;
+}
+
+.lobby-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(22rem, .8fr);
+    min-height: 31rem;
+    overflow: hidden;
+    border: 1px solid var(--border-md);
+    border-radius: 1.5rem;
+    background: #15120e;
+}
+
+.lobby-hero-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 4.5rem);
+}
+
+.lobby-live-pill {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: 2rem;
+    padding: .48rem .72rem;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    background: #1b1712;
+    color: rgba(255,255,255,.76);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.lobby-live-dot {
+    width: .42rem;
+    height: .42rem;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 .3rem rgba(16,185,129,.1);
+    animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.lobby-kicker {
+    margin: 0 0 .75rem;
+    color: var(--accent);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+}
+
+.lobby-hero h1 {
+    max-width: 42rem;
+    margin: 0;
+    color: #fff;
+    font-size: clamp(3rem, 5.7vw, 5.8rem);
+    font-weight: 800;
+    letter-spacing: -.075em;
+    line-height: .92;
+}
+
+.lobby-hero h1 span { color: var(--accent); }
+.lobby-tagline { margin: 1.35rem 0 0; color: rgba(255,255,255,.62); font-size: .92rem; line-height: 1.6; }
+
+.lobby-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-top: 1.8rem;
+    flex-wrap: wrap;
+}
+
+.lobby-primary-action,
+.lobby-secondary-action {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    padding: .75rem 1rem;
+    border-radius: .8rem;
+    font-size: .78rem;
+}
+.lobby-primary-action svg,.lobby-secondary-action svg { width: 1rem; height: 1rem; }
+.lobby-primary-action svg:last-child { margin-left: .25rem; }
+.lobby-secondary-action { background: #1c1813; border-color: rgba(255,255,255,.16); color: #fff; }
+.lobby-secondary-action:hover:not(:disabled) { background: #242019; }
+
+.lobby-signal-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-top: 2.1rem;
+}
+.lobby-signal-row > span { display: grid; gap: .12rem; padding: 0 1.15rem; border-left: 1px solid rgba(255,255,255,.12); }
+.lobby-signal-row > span:first-child { padding-left: 0; border-left: 0; }
+.lobby-signal-row strong { color: #fff; font-size: 1.02rem; }
+.lobby-signal-row small { color: rgba(255,255,255,.43); font-size: .62rem; font-weight: 700; }
+
+.arena-console {
+    position: relative;
+    min-height: 100%;
+    overflow: hidden;
+    border-left: 1px solid rgba(255,255,255,.1);
+    background: #0d0d12;
+    isolation: isolate;
+}
+.arena-console-scene { position: absolute; inset: 0; z-index: -2; opacity: .55; }
+.arena-console-scene::after { content: ""; position: absolute; inset: 0; background: rgba(8,8,12,.48); }
+.arena-console-head { position: absolute; inset: 1.25rem 1.25rem auto; display: flex; align-items: center; justify-content: space-between; }
+.arena-console-head span { display: inline-flex; align-items: center; gap: .5rem; color: #fff; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.arena-console-head span i { width: .42rem; height: .42rem; border-radius: 50%; background: var(--success); }
+.arena-console-head small { color: rgba(255,255,255,.36); font-size: .58rem; font-weight: 800; letter-spacing: .14em; }
+.arena-console-center { position: absolute; inset: 50% 1.5rem auto; display: grid; justify-items: center; gap: .8rem; transform: translateY(-54%); text-align: center; }
+.arena-cross { display: grid; width: 4.2rem; height: 4.2rem; place-items: center; border: 1px solid rgba(229,168,0,.48); border-radius: 1.2rem; background: #17130d; color: var(--accent); transform: rotate(3deg); }
+.arena-cross svg { width: 2rem; height: 2rem; }
+.arena-console-center div { display: grid; gap: .3rem; }
+.arena-console-center strong { color: #fff; font-size: 1.35rem; }
+.arena-console-center small { color: rgba(255,255,255,.52); font-size: .72rem; }
+.arena-console-foot { position: absolute; inset: auto 1.25rem 1.25rem; display: flex; align-items: center; gap: .7rem; padding: .7rem; border: 1px solid rgba(255,255,255,.12); border-radius: .9rem; background: #111116; }
+.arena-avatar-stack { display: flex; padding-left: .35rem; }
+.arena-avatar-stack > * { margin-left: -.35rem; border: 2px solid #111116; }
+.arena-console-foot > span { flex: 1; color: rgba(255,255,255,.65); font-size: .64rem; font-weight: 700; }
+.arena-console-foot button { display: inline-flex; align-items: center; gap: .35rem; border: 0; background: transparent; color: var(--accent); font: 800 .62rem var(--font-display); cursor: pointer; }
+.arena-console-foot button svg { width: .85rem; height: .85rem; }
+
+.lobby-mode-deck { display: grid; grid-template-columns: repeat(3, 1fr); gap: .85rem; margin-top: .9rem; }
+.lobby-mode-card { position: relative; min-height: 14rem; overflow: hidden; border: 1px solid var(--border); border-radius: 1.2rem; background: var(--surface); color: var(--text); text-align: left; cursor: pointer; transition: transform .18s ease, border-color .18s ease; }
+.lobby-mode-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.lobby-mode-card.is-featured { border-color: var(--accent); background: var(--accent); color: #09090b; }
+.lobby-mode-art { position: absolute; inset: 0 0 auto; height: 8.1rem; opacity: .64; }
+.lobby-mode-card.is-featured .lobby-mode-art { opacity: .52; filter: saturate(.6) contrast(1.1); }
+.lobby-mode-copy { position: absolute; inset: auto 0 0; display: grid; min-height: 7.1rem; align-content: end; padding: 1rem 1.1rem; background: var(--surface); border-top: 1px solid var(--divider); }
+.lobby-mode-card.is-featured .lobby-mode-copy { background: var(--accent); border-top-color: rgba(0,0,0,.12); }
+.lobby-mode-icon { position: absolute; top: -1.15rem; left: 1rem; display: grid; width: 2.35rem; height: 2.35rem; place-items: center; border: 1px solid var(--border-md); border-radius: .72rem; background: var(--surface); color: var(--accent); }
+.lobby-mode-card.is-featured .lobby-mode-icon { border-color: rgba(255,255,255,.38); background: #121218; color: #fff; }
+.lobby-mode-icon svg { width: 1.05rem; height: 1.05rem; }
+.lobby-mode-copy > small { margin-top: .6rem; color: var(--text-faint); font-size: .6rem; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+.lobby-mode-card.is-featured .lobby-mode-copy > small { color: rgba(0,0,0,.55); }
+.lobby-mode-copy > strong { margin-top: .12rem; font-size: 1.45rem; letter-spacing: -.04em; }
+.lobby-mode-action { display: flex; align-items: center; gap: .3rem; margin-top: .55rem; color: var(--text-sub); font-size: .68rem; font-weight: 800; }
+.lobby-mode-card.is-featured .lobby-mode-action { color: rgba(0,0,0,.72); }
+.lobby-mode-action svg { width: .85rem; height: .85rem; transition: transform .18s ease; }
+.lobby-mode-card:hover .lobby-mode-action svg { transform: translateX(3px); }
+
+.lobby-error { margin: .9rem 0 0; padding: .85rem 1rem; border: 1px solid rgba(244,63,94,.2); border-radius: .9rem; background: var(--danger-soft); color: var(--danger); font-size: .72rem; }
+.lobby-content-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(19rem, .75fr); gap: .9rem; align-items: start; margin-top: .9rem; }
+.lobby-main-column { display: grid; gap: .9rem; }
+.lobby-panel { overflow: hidden; border: 1px solid var(--border); border-radius: 1.2rem; background: var(--surface); }
+.lobby-panel-head { display: flex; min-height: 4.75rem; align-items: center; justify-content: space-between; gap: 1rem; padding: .95rem 1.1rem; border-bottom: 1px solid var(--divider); }
+.lobby-panel-head > div:first-child { display: grid; gap: .12rem; }
+.lobby-panel-eyebrow { display: inline-flex; align-items: center; gap: .4rem; color: var(--accent); font-size: .58rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.lobby-panel-eyebrow svg { width: .78rem; height: .78rem; }
+.lobby-panel-head h2 { margin: 0; font-size: 1.08rem; letter-spacing: -.035em; }
+.lobby-panel-actions { display: flex; align-items: center; gap: .55rem; }
+.lobby-panel-actions > span { display: grid; min-width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: .62rem; font-weight: 800; }
+.lobby-panel-actions button { display: inline-flex; align-items: center; gap: .25rem; border: 0; background: transparent; color: var(--text-sub); font: 700 .64rem var(--font-display); cursor: pointer; }
+.lobby-panel-actions button svg { width: .8rem; height: .8rem; }
+.lobby-panel-body { padding: 1rem; }
+
+.duel-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .65rem; }
+.lobby-duel-card { min-width: 0; padding: .9rem; border: 1px solid var(--border); border-radius: .95rem; background: var(--surface-2); }
+.lobby-duel-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.lobby-player-name { display: flex; min-width: 0; align-items: center; gap: .5rem; }
+.lobby-player-name strong { overflow: hidden; color: var(--text); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.lobby-stake { flex-shrink: 0; color: var(--accent); font-size: .68rem; font-weight: 800; }
+.lobby-duel-meta { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .8rem; color: var(--text-faint); font-size: .59rem; }
+.lobby-join-button { width: 100%; min-height: 2.35rem; margin-top: .8rem; border-radius: .68rem; font-size: .66rem; }
+.lobby-join-button:disabled { cursor: not-allowed; opacity: .42; }
+
+.live-match-list,.podium-list { display: grid; gap: .45rem; }
+.live-match-row { display: flex; width: 100%; min-height: 3.65rem; align-items: center; gap: .75rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: .8rem; background: var(--surface-2); color: var(--text); font-family: inherit; cursor: pointer; transition: border-color .16s ease; }
+.live-match-row:hover { border-color: var(--border-strong); }
+.live-match-status { display: inline-flex; align-items: center; gap: .35rem; color: var(--danger); font-size: .55rem; font-weight: 800; text-transform: uppercase; }
+.live-match-status i { width: .35rem; height: .35rem; border-radius: 50%; background: var(--danger); animation: pulse-soft 1.6s infinite; }
+.live-match-players { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: center; gap: .55rem; }
+.live-match-players > strong { color: var(--accent); font-size: .8rem; }
+.live-viewers { display: inline-flex; align-items: center; gap: .25rem; color: var(--text-faint); font-size: .6rem; }
+.live-viewers svg { width: .8rem; height: .8rem; }
+
+.podium-row { display: flex; width: 100%; align-items: center; gap: .55rem; padding: .62rem; border: 1px solid transparent; border-radius: .8rem; background: transparent; color: var(--text); font-family: inherit; text-align: left; cursor: pointer; transition: background .16s ease,border-color .16s ease; }
+.podium-row:hover { border-color: var(--border); background: var(--surface-2); }
+.podium-rank { color: var(--text-faint); font: 700 .58rem ui-monospace,monospace; }
+.podium-player { display: grid; min-width: 0; flex: 1; gap: .1rem; }
+.podium-player strong { overflow: hidden; font-size: .69rem; text-overflow: ellipsis; white-space: nowrap; }
+.podium-player small { color: var(--text-faint); font-size: .53rem; }
+.podium-row > b { flex-shrink: 0; color: var(--accent); font-size: .62rem; }
+
+.lobby-empty { display: grid; min-height: 8rem; place-items: center; align-content: center; gap: .55rem; color: var(--text-faint); text-align: center; }
+.lobby-empty > span { display: grid; width: 2.6rem; height: 2.6rem; place-items: center; border: 1px solid var(--border); border-radius: .8rem; background: var(--surface-2); color: var(--accent); }
+.lobby-empty svg { width: 1rem; height: 1rem; }
+.lobby-empty strong { color: var(--text-sub); font-size: .68rem; }
+.lobby-empty button { display: inline-flex; align-items: center; gap: .3rem; border: 0; background: transparent; color: var(--accent); font: 800 .62rem var(--font-display); cursor: pointer; }
+
+.lobby-rail-wrap { position: relative; padding-bottom: 2.6rem; }
+.lobby-rail { display: flex; gap: .65rem; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.lobby-rail::-webkit-scrollbar { display: none; }
+.online-player-card { display: flex; min-width: 15rem; align-items: center; gap: .7rem; padding: .75rem; border: 1px solid var(--border); border-radius: .9rem; background: var(--surface-2); color: var(--text); font-family: inherit; text-align: left; cursor: pointer; scroll-snap-align: start; transition: border-color .16s ease,transform .16s ease; }
+.online-player-card:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.online-player-card > span { display: grid; min-width: 0; flex: 1; gap: .2rem; }
+.online-player-card strong { overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.online-player-card small { display: flex; align-items: center; gap: .3rem; color: var(--success); font-size: .55rem; }
+.online-player-card small i { width: .32rem; height: .32rem; border-radius: 50%; background: var(--success); }
+.online-player-card > svg { width: .9rem; height: .9rem; color: var(--text-faint); }
+.lobby-rail-controls { position: absolute; right: 0; bottom: 0; display: flex; gap: .35rem; }
+.lobby-rail-controls button { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid var(--border); border-radius: .62rem; background: var(--surface-2); color: var(--text-sub); cursor: pointer; }
+.lobby-rail-controls button:hover { border-color: var(--border-strong); color: var(--text); }
+.lobby-rail-controls svg { width: .85rem; height: .85rem; }
+
+@media (max-width: 1060px) {
+    .lobby-hero { grid-template-columns: 1fr minmax(19rem,.72fr); }
+    .lobby-hero-copy { padding: 2.5rem; }
+    .lobby-content-grid { grid-template-columns: 1fr; }
+    .podium-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 780px) {
+    .lobby-shell { padding: 1rem 1rem 3rem; }
+    .lobby-hero { display: block; min-height: auto; }
+    .lobby-hero-copy { padding: 2.25rem 1.35rem 2rem; }
+    .lobby-hero h1 { font-size: clamp(2.65rem,12vw,4.4rem); }
+    .arena-console { min-height: 18rem; border-top: 1px solid rgba(255,255,255,.1); border-left: 0; }
+    .lobby-mode-deck { display: flex; margin-inline: -1rem; padding: 0 1rem .3rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+    .lobby-mode-deck::-webkit-scrollbar { display: none; }
+    .lobby-mode-card { min-width: min(78vw,19rem); scroll-snap-align: center; }
+    .duel-card-grid { grid-template-columns: 1fr; }
+    .podium-list { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+    .lobby-shell { padding-inline: .75rem; }
+    .lobby-hero-copy { padding: 1.65rem 1rem 1.45rem; }
+    .lobby-live-pill { margin-bottom: 1.35rem; }
+    .lobby-kicker { font-size: .62rem; }
+    .lobby-tagline { max-width: 17rem; font-size: .77rem; }
+    .lobby-hero-actions { align-items: stretch; flex-direction: column; }
+    .lobby-primary-action,.lobby-secondary-action { width: 100%; }
+    .lobby-signal-row > span { padding-inline: .75rem; }
+    .lobby-signal-row strong { font-size: .88rem; }
+    .lobby-signal-row small { font-size: .5rem; }
+    .arena-console { min-height: 16rem; }
+    .arena-console-foot button { display: none; }
+    .lobby-panel-head { align-items: flex-end; }
+    .lobby-panel-actions > span { display: none; }
+    .live-match-row { align-items: flex-start; flex-wrap: wrap; }
+    .live-match-players { order: 3; width: 100%; justify-content: space-between; }
+    .live-match-players .lobby-player-name strong { max-width: 6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lobby-live-dot,.live-match-status i { animation: none; }
+    .lobby-mode-card,.online-player-card { transition: none; }
+}

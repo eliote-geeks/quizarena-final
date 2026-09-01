@@ -1,10 +1,15 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import AnimeAvatar from "./AnimeAvatar";
 import { useApp } from "../context/AppContext";
 import { formatMoney } from "../lib/currency";
 import CurrencyBadge from "./CurrencyBadge";
+import { runWithDuelExitGuard } from "../lib/duelNavigation";
+import { useEffect, useState } from "react";
+import * as music from "../lib/musicEngine";
+import PushToggleButton from "./PushToggleButton";
 import {
   Home, Trophy, BarChart2, Wallet, User, Crown, BrainCircuit,
-  LogOut, Sun, Moon, ChevronRight,
+  LogOut, Sun, Moon, ChevronRight, Users, Music, Music2,
 } from "lucide-react";
 
 const NAV = [
@@ -25,6 +30,10 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { coins, user, logout, currency, theme, toggleTheme } = useApp();
+  // La musique se pilote depuis le moteur, pas depuis un état local : elle
+  // continue de jouer d'un écran à l'autre, l'icône ne fait que refléter.
+  const [musicMuted, setMusicMuted] = useState(music.isMuted());
+  useEffect(() => music.subscribe((s) => setMusicMuted(s.muted)), []);
 
   return (
     <aside
@@ -38,7 +47,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 pt-6 pb-6">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => runWithDuelExitGuard(() => navigate("/"), "l’accueil")}
           className="flex items-center gap-3 w-full text-left transition hover:opacity-90"
         >
           <div
@@ -65,10 +74,10 @@ export default function Sidebar() {
       {/* Balance */}
       <div className="mx-3 mb-5">
         <button
-          onClick={() => navigate("/wallet")}
+          onClick={() => runWithDuelExitGuard(() => navigate("/wallet"), "le portefeuille")}
           className="w-full rounded-2xl p-4 text-left transition hover:opacity-95"
           style={{
-            background: "linear-gradient(180deg, var(--surface), var(--surface-2))",
+            background: "var(--surface)",
             border: "1px solid var(--border)",
           }}
         >
@@ -102,7 +111,7 @@ export default function Sidebar() {
           return (
             <button
               key={item.to}
-              onClick={() => navigate(item.to)}
+              onClick={() => runWithDuelExitGuard(() => navigate(item.to), item.label)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
               style={{
                 background: active ? "var(--active)" : "transparent",
@@ -127,16 +136,7 @@ export default function Sidebar() {
       {/* User */}
       <div className="p-3" style={{ borderTop: "1px solid var(--divider)" }}>
         <div className="flex items-center gap-3 px-2 py-2">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
-            style={{
-              background: "var(--surface-2)",
-              color: "var(--text)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            {user?.avatar || "??"}
-          </div>
+          <AnimeAvatar seed={user?.username || user?.name} src={user?.avatarUrl} alt="" size={36} className="border" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
               {user?.name || "Invité"}
@@ -145,6 +145,18 @@ export default function Sidebar() {
               {user?.email || "Compte local"}
             </div>
           </div>
+
+          <PushToggleButton className="h-8 w-8" />
+
+          <button
+            onClick={() => setMusicMuted(music.toggleMute())}
+            className="p-2 rounded-lg transition"
+            style={{ color: musicMuted ? "var(--text-faint)" : "var(--accent)" }}
+            title={musicMuted ? "Activer la musique" : "Couper la musique"}
+            aria-label={musicMuted ? "Activer la musique" : "Couper la musique"}
+          >
+            {musicMuted ? <Music2 className="w-4 h-4" /> : <Music className="w-4 h-4" />}
+          </button>
 
           <button
             onClick={toggleTheme}
@@ -156,7 +168,7 @@ export default function Sidebar() {
           </button>
 
           <button
-            onClick={() => { logout(); navigate("/login"); }}
+            onClick={() => runWithDuelExitGuard(() => { logout(); navigate("/login"); }, "la déconnexion")}
             className="p-2 rounded-lg transition"
             style={{ color: "var(--text-faint)" }}
             title="Se déconnecter"
@@ -170,6 +182,9 @@ export default function Sidebar() {
             <Link
               key={to}
               to={to}
+              onClick={(event) => {
+                if (!duelSafeLink(event, () => navigate(to), label)) return;
+              }}
               className="text-xs transition hover:opacity-80"
               style={{ color: "var(--text-faint)" }}
             >
@@ -180,4 +195,10 @@ export default function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function duelSafeLink(event, action, destination) {
+  event.preventDefault();
+  runWithDuelExitGuard(action, destination);
+  return false;
 }

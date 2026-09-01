@@ -1,0 +1,12 @@
+{
+  "short_name": "QuizArena",
+  "name": "QuizArena — Knowledge is Power",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#E5A800",
+  "background_color": "#08080C"
+}

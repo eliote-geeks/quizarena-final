@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Bot, BookOpen, ChevronRight, Clock, Crown, LogOut, Swords, Trophy } from "lucide-react";
+import { Bot, BookOpen, ChevronRight, Clock, Crown, LogOut, Swords, Trophy, Music } from "lucide-react";
 
 const AMBER = "#E5A800";
 
@@ -50,7 +50,7 @@ export default function Rules() {
             Chaque partie contient 10 questions tirées au hasard dans toute la banque. Les formats varient entre texte, audio et image.
           </p>
           <ul className="space-y-2">
-            <Rule icon={Clock} text="Duel: 8 secondes par question." />
+            <Rule icon={Clock} text="Duel : 13 secondes par question (8 secondes en Solo)." />
             <Rule text="Les réponses apparaissent après la question pour laisser le joueur lire, écouter ou regarder le média." />
             <Rule text="Les options sont mélangées à chaque partie." />
           </ul>
@@ -82,7 +82,7 @@ export default function Rules() {
           <ul className="space-y-2">
             <Rule text="Les duels disponibles affichent le joueur, le temps restant et surtout le montant de la mise." />
             <Rule text="Le rang d'un joueur n'est pas affiché avant l'acceptation pour éviter de décourager les adversaires." />
-            <Rule text="Les deux joueurs répondent aux mêmes 10 questions avec un chrono de 8 secondes." />
+            <Rule text="Les deux joueurs répondent aux mêmes 10 questions avec un chrono de 13 secondes." />
           </ul>
         </Section>
 
@@ -98,8 +98,22 @@ export default function Rules() {
           <p>Pour devenir VIP, vous devez accumuler 30 victoires de Duel sur le dernier mois.</p>
           <ul className="space-y-2">
             <Rule text="Avantage VIP: possibilité de créer des tournois et de remporter 10% de chaque tournoi." />
-            <Rule text="Avantage VIP: possibilité d'avoir un lien de parrainage personnel." />
+            <Rule text="Le statut VIP débloque la création de tournois et une identité VIP visible sur le profil." />
             <Rule text="La page VIP reste accessible, mais les fonctionnalités sont gelées tant que le statut n'est pas débloqué." />
+          </ul>
+        </Section>
+
+        {/* Attribution des contenus tiers.
+            Ce n'est pas une politesse : les licences Creative Commons
+            Attribution imposent de créditer l'auteur là où l'œuvre est
+            utilisée. La musique de fond et les illustrations des questions
+            en relèvent toutes les deux. */}
+        <Section icon={Music} title="Crédits des contenus">
+          <p>Certains contenus proviennent de sources libres et sont utilisés sous licence.</p>
+          <ul className="space-y-2">
+            <Rule text="Musique de fond : Kevin MacLeod (incompetech.com), licence Creative Commons Attribution 3.0." />
+            <Rule text="Illustrations des questions : Wikimedia Commons, sous licences libres (domaine public, CC0, CC BY et CC BY-SA selon les fichiers). L'auteur et la licence de chaque image sont conservés côté serveur." />
+            <Rule text="Les questions renvoient à une source vérifiable, consultable en cas de contestation." />
           </ul>
         </Section>
       </div>

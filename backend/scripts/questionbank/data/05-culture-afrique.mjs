@@ -1,0 +1,84 @@
+// Afrique, célébrités, gastronomie, musique, littérature, culture générale.
+//
+// La catégorie « afrique » et les sujets camerounais sont écrits avec une
+// prudence particulière : c'est le public principal de la plateforme, ce sont
+// donc les questions où une erreur se verrait le plus vite. Rien n'est écrit
+// de mémoire approximative ici — chaque entrée renvoie à une source.
+
+const W = (page) => `https://fr.wikipedia.org/wiki/${page}`;
+
+export default [
+  // ── Afrique ────────────────────────────────────────────────────────
+  { categoryId: "afrique", subcategory: "institutions", textFr: "Quel sigle désigne la Zone de libre-échange continentale africaine ?", options: ["AfCFTA", "MERCOSUR", "ASEAN", "AELE"], answerIndex: 0, sourceUrl: W("Zone_de_libre-%C3%A9change_continentale_africaine") },
+  { categoryId: "afrique", subcategory: "institutions", textFr: "Dans quelle ville se trouve le siège de l'Union africaine ?", options: ["Addis-Abeba", "Nairobi", "Abuja", "Le Caire"], answerIndex: 0, sourceUrl: W("Union_africaine") },
+  { categoryId: "afrique", subcategory: "institutions", textFr: "Quelle monnaie est utilisée par les pays de la CEMAC en Afrique centrale ?", options: ["Le franc CFA", "Le naira", "Le cedi", "Le dirham"], answerIndex: 0, sourceUrl: W("Franc_CFA") },
+  { categoryId: "afrique", subcategory: "institutions", textFr: "Quelle organisation régionale regroupe les États d'Afrique de l'Ouest ?", options: ["La CEDEAO", "La SADC", "L'EAC", "L'IGAD"], answerIndex: 0, sourceUrl: W("Communaut%C3%A9_%C3%A9conomique_des_%C3%89tats_de_l%27Afrique_de_l%27Ouest") },
+  { categoryId: "afrique", subcategory: "pays", textFr: "Quel pays africain compte la population la plus nombreuse ?", options: ["Le Nigeria", "L'Éthiopie", "L'Égypte", "L'Afrique du Sud"], answerIndex: 0, sourceUrl: W("Nigeria") },
+  { categoryId: "afrique", subcategory: "pays", textFr: "Quelles sont les deux langues officielles du Cameroun ?", options: ["Le français et l'anglais", "Le français et l'espagnol", "L'anglais et le portugais", "Le français et l'arabe"], answerIndex: 0, sourceUrl: W("Cameroun") },
+  { categoryId: "afrique", subcategory: "pays", textFr: "Quel pays est surnommé « l'Afrique en miniature » pour sa diversité de paysages ?", options: ["Le Cameroun", "Le Kenya", "Le Ghana", "La Tanzanie"], answerIndex: 0, sourceUrl: W("Cameroun") },
+  { categoryId: "afrique", subcategory: "pays", textFr: "Quelle ville est la capitale du Sénégal ?", options: ["Dakar", "Saint-Louis", "Thiès", "Ziguinchor"], answerIndex: 0, sourceUrl: W("Dakar") },
+  { categoryId: "afrique", subcategory: "pays", textFr: "Quel pays d'Afrique de l'Est est traversé par la vallée du Grand Rift ?", options: ["Le Kenya", "Le Sénégal", "Le Maroc", "La Mauritanie"], answerIndex: 0, sourceUrl: W("Vall%C3%A9e_du_Grand_Rift") },
+  { categoryId: "afrique", subcategory: "sport", textFr: "Quel surnom porte l'équipe nationale de football du Cameroun ?", options: ["Les Lions indomptables", "Les Éléphants", "Les Aigles de Carthage", "Les Étalons"], answerIndex: 0, sourceUrl: W("%C3%89quipe_du_Cameroun_de_football") },
+  { categoryId: "afrique", subcategory: "sport", textFr: "Quel footballeur camerounais a été élu Ballon d'or africain à quatre reprises ?", options: ["Samuel Eto'o", "Roger Milla", "Rigobert Song", "Alex Song"], answerIndex: 0, sourceUrl: W("Samuel_Eto%27o") },
+  { categoryId: "afrique", subcategory: "sport", textFr: "Quel joueur camerounais est devenu célèbre pour ses danses de but à la Coupe du monde 1990 ?", options: ["Roger Milla", "Samuel Eto'o", "Patrick Mboma", "Thomas N'Kono"], answerIndex: 0, sourceUrl: W("Roger_Milla") },
+  { categoryId: "afrique", subcategory: "sport", textFr: "En 2000 et 2002, quel trophée continental le Cameroun a-t-il conservé ?", options: ["La Coupe d'Afrique des Nations", "La Ligue des champions africaine", "La Coupe du monde", "La Coupe des confédérations"], answerIndex: 0, sourceUrl: W("%C3%89quipe_du_Cameroun_de_football") },
+  { categoryId: "afrique", subcategory: "culture", textFr: "Quel tissu imprimé coloré est emblématique de la mode ouest-africaine ?", options: ["Le pagne wax", "Le tweed", "Le lin brut", "La soie sauvage"], answerIndex: 0, sourceUrl: W("Wax_(tissu)") },
+  { categoryId: "afrique", subcategory: "culture", textFr: "Quel instrument à cordes est joué par les griots d'Afrique de l'Ouest ?", options: ["La kora", "Le sitar", "Le banjo", "La cithare"], answerIndex: 0, sourceUrl: W("Kora_(instrument)") },
+  { categoryId: "afrique", subcategory: "histoire", textFr: "Quelle île sénégalaise est un lieu de mémoire de la traite atlantique ?", options: ["L'île de Gorée", "Zanzibar", "L'île de Mozambique", "Les Bijagos"], answerIndex: 0, sourceUrl: W("%C3%8Ele_de_Gor%C3%A9e") },
+
+  // ── Célébrités ─────────────────────────────────────────────────────
+  { categoryId: "celebrites", subcategory: "sport", textFr: "Quel basketteur américain est surnommé « His Airness » ?", options: ["Michael Jordan", "LeBron James", "Kobe Bryant", "Magic Johnson"], answerIndex: 0, sourceUrl: W("Michael_Jordan") },
+  { categoryId: "celebrites", subcategory: "sport", textFr: "Quel boxeur se faisait appeler « The Greatest » ?", options: ["Mohamed Ali", "Mike Tyson", "Joe Frazier", "George Foreman"], answerIndex: 0, sourceUrl: W("Mohamed_Ali") },
+  { categoryId: "celebrites", subcategory: "sport", textFr: "Quel sprinteur jamaïcain détient le record du monde du 100 mètres ?", options: ["Usain Bolt", "Yohan Blake", "Tyson Gay", "Asafa Powell"], answerIndex: 0, sourceUrl: W("Usain_Bolt") },
+  { categoryId: "celebrites", subcategory: "sport", textFr: "Quelle joueuse de tennis américaine a remporté vingt-trois titres du Grand Chelem en simple ?", options: ["Serena Williams", "Venus Williams", "Steffi Graf", "Martina Navrátilová"], answerIndex: 0, sourceUrl: W("Serena_Williams") },
+  { categoryId: "celebrites", subcategory: "cinéma", textFr: "Quel acteur incarne Jack Dawson dans le film « Titanic » ?", options: ["Leonardo DiCaprio", "Brad Pitt", "Matt Damon", "Johnny Depp"], answerIndex: 0, sourceUrl: W("Titanic_(film,_1997)") },
+  { categoryId: "celebrites", subcategory: "cinéma", textFr: "Quelle actrice kényane a reçu un Oscar pour « Twelve Years a Slave » ?", options: ["Lupita Nyong'o", "Viola Davis", "Halle Berry", "Octavia Spencer"], answerIndex: 0, sourceUrl: W("Lupita_Nyong%27o") },
+  { categoryId: "celebrites", subcategory: "musique", textFr: "Quel chanteur américain est surnommé « le roi de la pop » ?", options: ["Michael Jackson", "Elvis Presley", "Prince", "Stevie Wonder"], answerIndex: 0, sourceUrl: W("Michael_Jackson") },
+  { categoryId: "celebrites", subcategory: "musique", textFr: "Quelle chanteuse sud-africaine était surnommée « Mama Africa » ?", options: ["Miriam Makeba", "Angélique Kidjo", "Cesária Évora", "Yvonne Chaka Chaka"], answerIndex: 0, sourceUrl: W("Miriam_Makeba") },
+  { categoryId: "celebrites", subcategory: "entreprises", textFr: "Qui a fondé l'entreprise Tesla Motors et dirige SpaceX ?", options: ["Elon Musk", "Jeff Bezos", "Bill Gates", "Larry Ellison"], answerIndex: 0, sourceUrl: W("Elon_Musk") },
+  { categoryId: "celebrites", subcategory: "musique", textFr: "Quel artiste portoricain a remporté le Grammy de l'album de l'année en 2026 ?", options: ["Bad Bunny", "Kendrick Lamar", "Lady Gaga", "Olivia Dean"], answerIndex: 0, isActualite: true, sourceUrl: "https://www.grammy.com/awards/categories/album-of-the-year/2026/" },
+
+  // ── Musique ────────────────────────────────────────────────────────
+  { categoryId: "musique", subcategory: "instruments", textFr: "Combien de touches compte un piano de concert standard ?", options: ["Quatre-vingt-huit", "Soixante-douze", "Soixante-et-un", "Cent-deux"], answerIndex: 0, sourceUrl: W("Piano") },
+  { categoryId: "musique", subcategory: "instruments", textFr: "Quel instrument à vent en cuivre est emblématique du jazz de La Nouvelle-Orléans ?", options: ["La trompette", "Le violon", "La harpe", "L'accordéon"], answerIndex: 0, sourceUrl: W("Trompette") },
+  { categoryId: "musique", subcategory: "instruments", textFr: "Combien de cordes compte une guitare classique standard ?", options: ["Six", "Quatre", "Huit", "Douze"], answerIndex: 0, sourceUrl: W("Guitare_classique") },
+  { categoryId: "musique", subcategory: "genres", textFr: "Quel genre musical est né au Cameroun et popularisé par Manu Dibango ?", options: ["Le makossa", "Le coupé-décalé", "Le mbalax", "Le highlife"], answerIndex: 0, sourceUrl: W("Makossa") },
+  { categoryId: "musique", subcategory: "genres", textFr: "Quel rythme camerounais est associé au peuple bamiléké de l'Ouest ?", options: ["Le bikutsi", "Le makossa", "Le soukous", "L'afrobeat"], answerIndex: 0, sourceUrl: W("Bikutsi") },
+  { categoryId: "musique", subcategory: "genres", textFr: "Quel musicien nigérian est le père fondateur de l'afrobeat ?", options: ["Fela Kuti", "King Sunny Adé", "Youssou N'Dour", "Salif Keïta"], answerIndex: 0, sourceUrl: W("Fela_Kuti") },
+  { categoryId: "musique", subcategory: "genres", textFr: "Quel genre jamaïcain a été popularisé mondialement par Bob Marley ?", options: ["Le reggae", "Le calypso", "La salsa", "Le zouk"], answerIndex: 0, sourceUrl: W("Reggae") },
+  { categoryId: "musique", subcategory: "classique", textFr: "Quel compositeur allemand a écrit la Neuvième Symphonie malgré sa surdité ?", options: ["Ludwig van Beethoven", "Johann Sebastian Bach", "Wolfgang Amadeus Mozart", "Franz Schubert"], answerIndex: 0, sourceUrl: W("Ludwig_van_Beethoven") },
+  { categoryId: "musique", subcategory: "classique", textFr: "Quel compositeur autrichien a écrit l'opéra « La Flûte enchantée » ?", options: ["Mozart", "Verdi", "Wagner", "Puccini"], answerIndex: 0, sourceUrl: W("La_Fl%C3%BBte_enchant%C3%A9e") },
+  { categoryId: "musique", subcategory: "saxophone", textFr: "Quel saxophoniste camerounais a créé le morceau « Soul Makossa » ?", options: ["Manu Dibango", "Richard Bona", "Fela Kuti", "Salif Keïta"], answerIndex: 0, sourceUrl: W("Manu_Dibango") },
+
+  // ── Gastronomie ────────────────────────────────────────────────────
+  { categoryId: "gastronomie", subcategory: "afrique", textFr: "Quel plat camerounais est préparé à base de feuilles de manioc pilées ?", options: ["Le kpwem", "Le ndolé", "Le eru", "Le okok"], answerIndex: 0, sourceUrl: W("Cuisine_camerounaise") },
+  { categoryId: "gastronomie", subcategory: "afrique", textFr: "Quel plat national camerounais associe feuilles amères, arachides et viande ou poisson ?", options: ["Le ndolé", "Le poulet DG", "Le koki", "Le sanga"], answerIndex: 0, sourceUrl: W("Ndol%C3%A9") },
+  { categoryId: "gastronomie", subcategory: "afrique", textFr: "Quel bâton de manioc fermenté accompagne de nombreux plats camerounais ?", options: ["Le bobolo", "Le fufu", "Le garri", "L'attiéké"], answerIndex: 0, sourceUrl: W("Cuisine_camerounaise") },
+  { categoryId: "gastronomie", subcategory: "afrique", textFr: "Quelle semoule de manioc est une spécialité de la Côte d'Ivoire ?", options: ["L'attiéké", "Le couscous", "Le boulgour", "La polenta"], answerIndex: 0, sourceUrl: W("Atti%C3%A9k%C3%A9") },
+  { categoryId: "gastronomie", subcategory: "afrique", textFr: "Quel plat de riz épicé est emblématique de l'Afrique de l'Ouest ?", options: ["Le jollof", "Le risotto", "La paella", "Le biryani"], answerIndex: 0, sourceUrl: W("Riz_jollof") },
+  { categoryId: "gastronomie", subcategory: "monde", textFr: "De quel pays la pizza margherita est-elle originaire ?", options: ["L'Italie", "La Grèce", "L'Espagne", "La France"], answerIndex: 0, sourceUrl: W("Pizza_margherita") },
+  { categoryId: "gastronomie", subcategory: "monde", textFr: "Quel plat japonais associe du riz vinaigré et du poisson cru ?", options: ["Le sushi", "Le ramen", "Le tempura", "Le yakitori"], answerIndex: 0, sourceUrl: W("Sushi") },
+  { categoryId: "gastronomie", subcategory: "monde", textFr: "Quelle épice est la plus chère du monde au poids ?", options: ["Le safran", "La vanille", "La cardamome", "Le poivre noir"], answerIndex: 0, sourceUrl: W("Safran_(%C3%A9pice)") },
+  { categoryId: "gastronomie", subcategory: "monde", textFr: "De quelle plante provient le chocolat ?", options: ["Le cacaoyer", "Le caféier", "Le palmier", "Le cocotier"], answerIndex: 0, sourceUrl: W("Cacaoyer") },
+  { categoryId: "gastronomie", subcategory: "monde", textFr: "Quel pays est le premier producteur mondial de cacao ?", options: ["La Côte d'Ivoire", "Le Ghana", "Le Cameroun", "Le Nigeria"], answerIndex: 0, sourceUrl: W("Cacao") },
+
+  // ── Littérature ────────────────────────────────────────────────────
+  { categoryId: "litterature", subcategory: "afrique", textFr: "Quel écrivain nigérian a publié le roman « Le monde s'effondre » en 1958 ?", options: ["Chinua Achebe", "Wole Soyinka", "Ben Okri", "Ngũgĩ wa Thiong'o"], answerIndex: 0, sourceUrl: W("Chinua_Achebe") },
+  { categoryId: "litterature", subcategory: "afrique", textFr: "Quel auteur nigérian fut le premier Africain à recevoir le Nobel de littérature ?", options: ["Wole Soyinka", "Naguib Mahfouz", "Nadine Gordimer", "J. M. Coetzee"], answerIndex: 0, sourceUrl: W("Wole_Soyinka") },
+  { categoryId: "litterature", subcategory: "afrique", textFr: "Quel écrivain camerounais a écrit « Ville cruelle » sous le nom d'Eza Boto ?", options: ["Mongo Beti", "Ferdinand Oyono", "Calixthe Beyala", "Francis Bebey"], answerIndex: 0, sourceUrl: W("Mongo_Beti") },
+  { categoryId: "litterature", subcategory: "afrique", textFr: "Quel poète sénégalais fut aussi le premier président du Sénégal ?", options: ["Léopold Sédar Senghor", "Aimé Césaire", "Birago Diop", "Cheikh Anta Diop"], answerIndex: 0, sourceUrl: W("L%C3%A9opold_S%C3%A9dar_Senghor") },
+  { categoryId: "litterature", subcategory: "classiques", textFr: "Qui a écrit la tragédie « Roméo et Juliette » ?", options: ["William Shakespeare", "Molière", "Victor Hugo", "Racine"], answerIndex: 0, sourceUrl: W("Rom%C3%A9o_et_Juliette") },
+  { categoryId: "litterature", subcategory: "classiques", textFr: "Quel écrivain français a publié « Les Misérables » en 1862 ?", options: ["Victor Hugo", "Émile Zola", "Gustave Flaubert", "Honoré de Balzac"], answerIndex: 0, sourceUrl: W("Les_Mis%C3%A9rables") },
+  { categoryId: "litterature", subcategory: "classiques", textFr: "Quel roman de Cervantes met en scène un hidalgo combattant des moulins ?", options: ["Don Quichotte", "Le Cid", "Candide", "Gargantua"], answerIndex: 0, sourceUrl: W("Don_Quichotte") },
+  { categoryId: "litterature", subcategory: "classiques", textFr: "Quel aviateur français a écrit « Le Petit Prince » ?", options: ["Antoine de Saint-Exupéry", "Jules Verne", "Albert Camus", "André Malraux"], answerIndex: 0, sourceUrl: W("Le_Petit_Prince") },
+
+  // ── Culture générale / société ─────────────────────────────────────
+  { categoryId: "culture", subcategory: "société", textFr: "Combien de couleurs compte le drapeau du Cameroun ?", options: ["Trois", "Deux", "Quatre", "Cinq"], answerIndex: 0, sourceUrl: W("Drapeau_du_Cameroun") },
+  { categoryId: "culture", subcategory: "société", textFr: "Quel document a été adopté par l'ONU en 1948 pour énoncer les droits fondamentaux ?", options: ["La Déclaration universelle des droits de l'homme", "La Convention de Genève", "Le traité de Rome", "La Charte de l'Atlantique"], answerIndex: 0, sourceUrl: W("D%C3%A9claration_universelle_des_droits_de_l%27homme") },
+  { categoryId: "culture", subcategory: "société", textFr: "Quelle organisation attribue le statut de patrimoine mondial ?", options: ["L'UNESCO", "L'OMS", "Le FMI", "L'OIT"], answerIndex: 0, sourceUrl: W("UNESCO") },
+  { categoryId: "culture", subcategory: "société", textFr: "Combien d'anneaux compte le symbole olympique ?", options: ["Cinq", "Quatre", "Six", "Trois"], answerIndex: 0, sourceUrl: W("Symbole_olympique") },
+  { categoryId: "culture", subcategory: "art", textFr: "Quel peintre italien a réalisé « La Joconde » ?", options: ["Léonard de Vinci", "Michel-Ange", "Raphaël", "Le Caravage"], answerIndex: 0, sourceUrl: W("La_Joconde") },
+  { categoryId: "culture", subcategory: "art", textFr: "Dans quel musée parisien « La Joconde » est-elle exposée ?", options: ["Le Louvre", "Le musée d'Orsay", "Le Centre Pompidou", "Le Grand Palais"], answerIndex: 0, sourceUrl: W("Mus%C3%A9e_du_Louvre") },
+  { categoryId: "culture", subcategory: "art", textFr: "Quel peintre néerlandais a peint « La Nuit étoilée » ?", options: ["Vincent van Gogh", "Rembrandt", "Johannes Vermeer", "Piet Mondrian"], answerIndex: 0, sourceUrl: W("La_Nuit_%C3%A9toil%C3%A9e") },
+  { categoryId: "culture", subcategory: "langues", textFr: "Quelle langue compte le plus grand nombre de locuteurs natifs au monde ?", options: ["Le mandarin", "L'anglais", "L'espagnol", "L'hindi"], answerIndex: 0, sourceUrl: W("Liste_de_langues_par_nombre_total_de_locuteurs") },
+];

@@ -1,0 +1,51 @@
+// Sport, cinéma, anime — les trois catégories les plus riches en actualité,
+// donc celles où la datation dans l'énoncé travaille le plus.
+
+const W = (page) => `https://fr.wikipedia.org/wiki/${page}`;
+
+export default [
+  // ── Sport — intemporel ─────────────────────────────────────────────
+  { categoryId: "sport", subcategory: "football", textFr: "Tous les combien d'années la Coupe du monde de football est-elle organisée ?", options: ["Tous les quatre ans", "Tous les deux ans", "Tous les trois ans", "Tous les cinq ans"], answerIndex: 0, sourceUrl: W("Coupe_du_monde_de_football") },
+  { categoryId: "sport", subcategory: "football", textFr: "Combien de joueurs composent une équipe de football sur le terrain ?", options: ["Onze", "Dix", "Douze", "Neuf"], answerIndex: 0, sourceUrl: W("Football") },
+  { categoryId: "sport", subcategory: "football", textFr: "Quel pays a remporté le plus grand nombre de Coupes du monde de football ?", options: ["Le Brésil", "L'Allemagne", "L'Italie", "L'Argentine"], answerIndex: 0, sourceUrl: W("Coupe_du_monde_de_football") },
+  { categoryId: "sport", subcategory: "football", textFr: "Quelle durée réglementaire dure un match de football, prolongations exclues ?", options: ["Quatre-vingt-dix minutes", "Soixante minutes", "Cent-vingt minutes", "Quatre-vingts minutes"], answerIndex: 0, sourceUrl: W("Football") },
+  { categoryId: "sport", subcategory: "football", textFr: "Quel joueur argentin a soulevé la Coupe du monde 2022 au Qatar ?", options: ["Lionel Messi", "Ángel Di María", "Sergio Agüero", "Paulo Dybala"], answerIndex: 0, sourceUrl: W("Coupe_du_monde_de_football_2022") },
+  { categoryId: "sport", subcategory: "basket", textFr: "Combien de points vaut un panier réussi au-delà de la ligne à trois points ?", options: ["Trois", "Deux", "Quatre", "Un seul"], answerIndex: 0, sourceUrl: W("Basket-ball") },
+  { categoryId: "sport", subcategory: "basket", textFr: "Combien de joueurs par équipe évoluent simultanément au basket-ball ?", options: ["Cinq", "Six", "Sept", "Quatre"], answerIndex: 0, sourceUrl: W("Basket-ball") },
+  { categoryId: "sport", subcategory: "athlétisme", textFr: "Quelle distance parcourt-on lors d'un marathon officiel ?", options: ["42,195 kilomètres", "21,097 kilomètres", "50 kilomètres", "40 kilomètres"], answerIndex: 0, sourceUrl: W("Marathon_(sport)") },
+  { categoryId: "sport", subcategory: "olympisme", textFr: "Tous les combien d'années se tiennent les Jeux olympiques d'été ?", options: ["Tous les quatre ans", "Tous les deux ans", "Tous les trois ans", "Tous les cinq ans"], answerIndex: 0, sourceUrl: W("Jeux_olympiques") },
+  { categoryId: "sport", subcategory: "olympisme", textFr: "Dans quel pays les Jeux olympiques de l'Antiquité se déroulaient-ils ?", options: ["En Grèce", "En Italie", "En Égypte", "En Turquie"], answerIndex: 0, sourceUrl: W("Jeux_olympiques_antiques") },
+  { categoryId: "sport", subcategory: "tennis", textFr: "Quel tournoi du Grand Chelem se joue sur gazon ?", options: ["Wimbledon", "Roland-Garros", "L'US Open", "L'Open d'Australie"], answerIndex: 0, sourceUrl: W("Tournoi_de_Wimbledon") },
+  { categoryId: "sport", subcategory: "tennis", textFr: "Sur quelle surface se dispute le tournoi de Roland-Garros ?", options: ["La terre battue", "Le gazon naturel", "Le ciment", "Le synthétique"], answerIndex: 0, sourceUrl: W("Tournoi_de_Roland-Garros") },
+  { categoryId: "sport", subcategory: "cyclisme", textFr: "Quel maillot porte le leader du classement général du Tour de France ?", options: ["Le maillot jaune", "Le maillot vert", "Le maillot à pois", "Le maillot blanc"], answerIndex: 0, sourceUrl: W("Maillot_jaune") },
+  { categoryId: "sport", subcategory: "rugby", textFr: "Combien de points vaut un essai au rugby à quinze ?", options: ["Cinq", "Trois", "Sept", "Deux"], answerIndex: 0, sourceUrl: W("Rugby_%C3%A0_XV") },
+  { categoryId: "sport", subcategory: "afrique", textFr: "Quelle compétition continentale africaine de clubs est l'équivalent de la Ligue des champions ?", options: ["La Ligue des champions de la CAF", "La Coupe COSAFA", "Le championnat WAFU", "La Coupe UNIFFAC"], answerIndex: 0, sourceUrl: W("Ligue_des_champions_de_la_CAF") },
+
+  // ── Cinéma — intemporel ────────────────────────────────────────────
+  { categoryId: "cinema", subcategory: "classiques", textFr: "Quel réalisateur américain a signé la trilogie « Le Parrain » ?", options: ["Francis Ford Coppola", "Martin Scorsese", "Steven Spielberg", "Brian De Palma"], answerIndex: 0, sourceUrl: W("Le_Parrain") },
+  { categoryId: "cinema", subcategory: "classiques", textFr: "Quel film de 1993 met en scène un parc à dinosaures ressuscités ?", options: ["Jurassic Park", "King Kong", "Godzilla", "La Planète des singes"], answerIndex: 0, sourceUrl: W("Jurassic_Park_(film)") },
+  { categoryId: "cinema", subcategory: "classiques", textFr: "Quel réalisateur britannique est surnommé « le maître du suspense » ?", options: ["Alfred Hitchcock", "Stanley Kubrick", "David Lean", "Ridley Scott"], answerIndex: 0, sourceUrl: W("Alfred_Hitchcock") },
+  { categoryId: "cinema", subcategory: "classiques", textFr: "Quelle saga spatiale a été créée par George Lucas en 1977 ?", options: ["Star Wars", "Star Trek", "Stargate", "Battlestar Galactica"], answerIndex: 0, sourceUrl: W("Star_Wars") },
+  { categoryId: "cinema", subcategory: "festivals", textFr: "Quelle récompense suprême est décernée au festival de Cannes ?", options: ["La Palme d'or", "L'Ours d'or", "Le Lion d'or", "Le Grand Prix"], answerIndex: 0, sourceUrl: W("Palme_d%27or") },
+  { categoryId: "cinema", subcategory: "festivals", textFr: "Quelle statuette est remise lors des Academy Awards ?", options: ["L'Oscar", "Le César", "Le Golden Globe", "Le BAFTA"], answerIndex: 0, sourceUrl: W("Oscars_du_cin%C3%A9ma") },
+  { categoryId: "cinema", subcategory: "festivals", textFr: "Quelle récompense principale est décernée à la Mostra de Venise ?", options: ["Le Lion d'or", "L'Ours d'or", "La Palme d'or", "Le Léopard d'or"], answerIndex: 0, sourceUrl: W("Lion_d%27or") },
+  { categoryId: "cinema", subcategory: "animation", textFr: "Quel studio japonais a produit « Le Voyage de Chihiro » ?", options: ["Le studio Ghibli", "Toei Animation", "Madhouse", "Kyoto Animation"], answerIndex: 0, sourceUrl: W("Studio_Ghibli") },
+  { categoryId: "cinema", subcategory: "animation", textFr: "Quel studio a réalisé le premier long métrage entièrement en images de synthèse ?", options: ["Pixar", "DreamWorks", "Illumination", "Blue Sky"], answerIndex: 0, sourceUrl: W("Toy_Story") },
+  { categoryId: "cinema", subcategory: "afrique", textFr: "Quel festival panafricain du cinéma se tient à Ouagadougou ?", options: ["Le FESPACO", "Le FIFAK", "Les JCC", "Le Écrans Noirs"], answerIndex: 0, sourceUrl: W("FESPACO") },
+  { categoryId: "cinema", subcategory: "afrique", textFr: "Quel cinéaste sénégalais est considéré comme le père du cinéma africain ?", options: ["Ousmane Sembène", "Idrissa Ouédraogo", "Souleymane Cissé", "Djibril Diop Mambéty"], answerIndex: 0, sourceUrl: W("Ousmane_Semb%C3%A8ne") },
+  { categoryId: "cinema", subcategory: "afrique", textFr: "Quel surnom désigne l'industrie cinématographique nigériane ?", options: ["Nollywood", "Bollywood", "Ghollywood", "Kannywood"], answerIndex: 0, sourceUrl: W("Nollywood") },
+
+  // ── Anime — intemporel ─────────────────────────────────────────────
+  { categoryId: "anime", subcategory: "classiques", textFr: "Quel mangaka a créé la série « One Piece » ?", options: ["Eiichirō Oda", "Masashi Kishimoto", "Akira Toriyama", "Tite Kubo"], answerIndex: 0, sourceUrl: W("Eiichir%C5%8D_Oda") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Quel mangaka est l'auteur de « Dragon Ball » ?", options: ["Akira Toriyama", "Eiichirō Oda", "Naoki Urasawa", "Hirohiko Araki"], answerIndex: 0, sourceUrl: W("Akira_Toriyama") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Dans « Naruto », quel village abrite le héros au début de la série ?", options: ["Konoha", "Suna", "Kiri", "Iwa"], answerIndex: 0, sourceUrl: W("Naruto") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Quel réalisateur japonais a fondé le studio Ghibli avec Isao Takahata ?", options: ["Hayao Miyazaki", "Makoto Shinkai", "Mamoru Hosoda", "Satoshi Kon"], answerIndex: 0, sourceUrl: W("Hayao_Miyazaki") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Dans « L'Attaque des Titans », comment se nomme le héros principal ?", options: ["Eren Jäger", "Levi Ackerman", "Armin Arlert", "Jean Kirstein"], answerIndex: 0, sourceUrl: W("L%27Attaque_des_Titans") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Quelle créature électrique est la mascotte de la franchise Pokémon ?", options: ["Pikachu", "Salamèche", "Bulbizarre", "Carapuce"], answerIndex: 0, sourceUrl: W("Pikachu") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Dans « Death Note », quel objet permet de tuer en y inscrivant un nom ?", options: ["Un cahier", "Un miroir", "Une montre", "Une clé"], answerIndex: 0, sourceUrl: W("Death_Note") },
+  { categoryId: "anime", subcategory: "classiques", textFr: "Quel manga de Kentarō Miura suit le mercenaire Guts ?", options: ["Berserk", "Vagabond", "Vinland Saga", "Claymore"], answerIndex: 0, sourceUrl: W("Berserk_(manga)") },
+  { categoryId: "anime", subcategory: "vocabulaire", textFr: "Comment appelle-t-on l'auteur d'un manga au Japon ?", options: ["Un mangaka", "Un seiyū", "Un otaku", "Un sensei"], answerIndex: 0, sourceUrl: W("Mangaka") },
+  { categoryId: "anime", subcategory: "vocabulaire", textFr: "Quel terme désigne le comédien qui prête sa voix à un personnage d'anime ?", options: ["Le seiyū", "Le mangaka", "Le shōnen", "Le mecha"], answerIndex: 0, sourceUrl: W("Seiy%C5%AB") },
+  { categoryId: "anime", subcategory: "vocabulaire", textFr: "Quel genre de manga vise principalement un lectorat de jeunes garçons ?", options: ["Le shōnen", "Le shōjo", "Le josei", "Le seinen"], answerIndex: 0, sourceUrl: W("Sh%C5%8Dnen_manga") },
+  { categoryId: "anime", subcategory: "vocabulaire", textFr: "Quel sous-genre d'anime met en scène des robots géants pilotés ?", options: ["Le mecha", "Le isekai", "Le slice of life", "Le harem"], answerIndex: 0, sourceUrl: W("Mecha") },
+];

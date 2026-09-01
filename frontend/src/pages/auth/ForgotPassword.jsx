@@ -1,27 +1,36 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthLeft from "../../components/AuthLeft";
-import { Mail, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import * as api from "../../lib/api";
+import { Mail, Loader2, CheckCircle, ArrowLeft, BrainCircuit } from "lucide-react";
+import AuthInput from "../../components/AuthInput";
 
 const AMBER = "#E5A800";
 
 export default function ForgotPassword() {
+  const navigate = useNavigate();
   const [email, setEmail]     = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent]       = useState(false);
   const [error, setError]     = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email.trim()) { setError("L'adresse email est requise."); return; }
     if (!/\S+@\S+\.\S+/.test(email)) { setError("Adresse email invalide."); return; }
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await api.forgotPassword(email.trim());
       setSent(true);
-    }, 1400);
+    } catch (requestError) {
+      // Le backend répond toujours "ok" côté identifiant (anti-énumération
+      // de comptes) — une erreur ici ne peut venir que d'un souci réseau.
+      setError(requestError.message || "Impossible d'envoyer le code pour l'instant.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,7 +40,7 @@ export default function ForgotPassword() {
     >
       <AuthLeft />
 
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+      <div className="auth-form-panel flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -39,7 +48,7 @@ export default function ForgotPassword() {
           className="w-full max-w-sm mx-auto"
         >
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: AMBER, color: "#07070F" }}>QA</div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: AMBER, color: "#07070F" }}><BrainCircuit className="w-4 h-4" /></div>
             <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
               Quiz<span style={{ color: AMBER }}>Arena</span>
             </span>
@@ -61,35 +70,21 @@ export default function ForgotPassword() {
                     Mot de passe oublié ?
                   </h1>
                   <p className="text-sm" style={{ color: "var(--qa-text-sub)" }}>
-                    Saisis ton email et on t'envoie un lien de réinitialisation.
+                    Saisis ton email et on t'envoie un code de vérification.
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                      Adresse email
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                        placeholder="ton@email.com"
-                        autoComplete="email"
-                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                        style={{
-                          background: "var(--qa-active)",
-                          border: `1px solid ${error ? "#FF6B6B" : "var(--qa-border)"}`,
-                          color: "var(--qa-text)",
-                        }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#FF6B6B" : "var(--qa-border)")}
-                      />
-                    </div>
-                    {error && <p className="text-xs font-semibold mt-1.5" style={{ color: "#FF6B6B" }}>{error}</p>}
-                  </div>
+                  <AuthInput
+                    icon={Mail}
+                    type="email"
+                    label="Adresse email"
+                    value={email}
+                    onChange={(v) => { setEmail(v); setError(""); }}
+                    placeholder="ton@email.com"
+                    autoComplete="email"
+                    error={error}
+                  />
 
                   <button
                     type="submit"
@@ -101,7 +96,7 @@ export default function ForgotPassword() {
                       boxShadow: !loading ? `0 12px 28px -12px ${AMBER}66` : "none",
                     }}
                   >
-                    {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Envoi…</> : "Envoyer le lien"}
+                    {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Envoi…</> : "Envoyer le code"}
                   </button>
                 </form>
               </motion.div>
@@ -119,13 +114,20 @@ export default function ForgotPassword() {
                 >
                   <CheckCircle className="w-10 h-10" style={{ color: "#5DD66E" }} />
                 </div>
-                <h2 className="font-display font-bold text-2xl mb-2" style={{ color: "var(--qa-text)" }}>Email envoyé !</h2>
+                <h2 className="font-display font-bold text-2xl mb-2" style={{ color: "var(--qa-text)" }}>Code envoyé !</h2>
                 <p className="text-sm mb-1" style={{ color: "var(--qa-text-sub)" }}>
                   Si <span className="font-bold" style={{ color: "var(--qa-text)" }}>{email}</span> est associé à un compte,
                 </p>
                 <p className="text-sm mb-8" style={{ color: "var(--qa-text-sub)" }}>
-                  tu recevras un lien dans quelques minutes.
+                  tu recevras un code à 6 chiffres dans quelques minutes.
                 </p>
+                <button
+                  onClick={() => navigate("/reset-password", { state: { identifier: email.trim() } })}
+                  className="w-full py-4 rounded-2xl text-base font-bold transition hover:opacity-90 mb-4"
+                  style={{ background: AMBER, color: "#07070F", boxShadow: `0 12px 28px -12px ${AMBER}66` }}
+                >
+                  J'ai reçu mon code
+                </button>
                 <div
                   className="p-4 rounded-2xl text-sm text-left mb-6"
                   style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)", color: "var(--qa-text-sub)" }}

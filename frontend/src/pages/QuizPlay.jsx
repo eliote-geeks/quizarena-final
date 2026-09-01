@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import * as music from "../lib/musicEngine";
 import { useApp } from "../context/AppContext";
-import { CATEGORIES, QUESTIONS, getCategory } from "../data/mockData";
+import { QUESTIONS, getCategory } from "../data/mockData";
 import { SFX } from "../lib/soundEngine";
 import { formatMoney } from "../lib/currency";
 import { X, Flame, Zap, AlertTriangle, Volume2, VolumeX, ShieldQuestion, Image as ImageIcon, Type, BookOpen } from "lucide-react";
@@ -10,6 +11,7 @@ import ResultScreen from "../components/ResultScreen";
 import QuestionIntro from "../components/QuestionIntro";
 import AmbientBackground from "../components/AmbientBackground";
 import Celebration from "../components/Celebration";
+import StakeConfirmModal from "../components/StakeConfirmModal";
 import CountUp from "../components/CountUp";
 import * as api from "../lib/api";
 
@@ -105,6 +107,8 @@ export default function QuizPlay() {
   const [questions, setQuestions] = useState([]);
   const [session, setSession] = useState(null);
   const [startLoading, setStartLoading] = useState(false);
+  const [confirmStake, setConfirmStake] = useState(false);
+  const [confirmQuit, setConfirmQuit] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   // Solo challenge state
@@ -120,6 +124,8 @@ export default function QuizPlay() {
   const [timeLeft,     setTimeLeft]     = useState(currentTimeLimit);
   const [chosen,       setChosen]       = useState(null);
   const [answersReady, setAnswersReady] = useState(false);
+  const [mediaReady, setMediaReady] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState(null);
   const [totalPoints,  setTotalPoints]  = useState(0);
   const [lastPts,      setLastPts]      = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -127,6 +133,16 @@ export default function QuizPlay() {
   const [eloResult,    setEloResult]    = useState(null);
   const [flash,        setFlash]        = useState(null);
   const [nextIn,       setNextIn]       = useState(null); // countdown before next question
+  // ── Musique de fond ────────────────────────────────────────────────
+  // Démarrée au lancement de la partie (donc après un vrai clic : c'est ce
+  // qu'exigent les navigateurs, et ça évite de télécharger 2 Mo à quelqu'un
+  // qui n'a rien demandé). Le volume baisse pendant qu'une question est
+  // affichée pour ne jamais couvrir les sons qui portent l'information.
+  useEffect(() => {
+    music.duck(phase === "playing");
+  }, [phase]);
+  useEffect(() => () => music.duck(false), []);
+
   const [muted,        setMuted]        = useState(() => localStorage.getItem("qa_sound_muted") === "1");
   const mutedRef = useRef(muted);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
@@ -142,6 +158,7 @@ export default function QuizPlay() {
   const phaseRef   = useRef("setup");
   const forfeitedRef = useRef(false);
   const answersRef = useRef([]);
+  const revealLockRef = useRef(false); // verrou synchrone anti double-révélation
   const questionShownAtRef = useRef(0);
   const sessionStartedAtRef = useRef(0);
   const tabSwitchesRef = useRef(0);
@@ -158,7 +175,6 @@ export default function QuizPlay() {
   const q      = questions[qIdx];
   const cat    = getCategory(q?.categoryId || categoryId);
   const isMixed = categoryId === "random";
-  const questionBankSize = CATEGORIES.reduce((sum, item) => sum + item.questions, 0);
   const mult   = getMult(streak);
   const urgent = timeLeft <= Math.min(5, currentTimeLimit - 1) && phase === "playing";
   const isGameScreen = phase !== "setup";
@@ -183,6 +199,18 @@ export default function QuizPlay() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("blur", onBlur);
     };
+  }, []);
+
+  // Bloquer F5 / fermeture onglet pendant une partie en cours
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (phaseRef.current !== "setup" && phaseRef.current !== "done" && phaseRef.current !== "ceremony") {
+        e.preventDefault();
+        e.returnValue = ""; // affiche la boîte de confirmation du navigateur
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
   useEffect(() => {
@@ -210,7 +238,9 @@ export default function QuizPlay() {
   // Per-question timer
   useEffect(() => {
     if (phase !== "playing") return;
+    if (!mediaReady) return;
     questionShownAtRef.current = performance.now();
+    revealLockRef.current = false; // nouvelle question : le verrou repart à zéro
     setTimeLeft(currentTimeLimit);
     setChosen(null);
     setFlash(null);
@@ -238,7 +268,11 @@ export default function QuizPlay() {
       clearTimeout(revealTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qIdx, phase, currentTimeLimit]);
+  }, [qIdx, phase, currentTimeLimit, mediaReady]);
+
+  useEffect(() => {
+    setMediaReady(!q?.mediaUrl);
+  }, [qIdx, q?.mediaUrl]);
 
   // Ceremony → countdown → next question / finalize
   useEffect(() => {
@@ -289,7 +323,12 @@ export default function QuizPlay() {
 
   const revealAnswer = useCallback(async (chosenIndex) => {
     const current = questions[qIdx];
-    if (!session || !current) return;
+    if (!session || !current) return -2;
+    // Posé de façon SYNCHRONE, avant tout await : c'est ce qui ferme la
+    // course avec onTimeout/handleChoice — un `setState` ne suffirait pas,
+    // sa mise à jour n'est visible qu'au rendu suivant.
+    if (revealLockRef.current) return -2;
+    revealLockRef.current = true;
     const responseMs = Math.max(0, Math.round(performance.now() - questionShownAtRef.current));
     answersRef.current.push({ questionId: current.id, chosenIndex, responseMs });
     try {
@@ -341,8 +380,9 @@ export default function QuizPlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, answersReady, chosen, timeLeft, currentTimeLimit, revealAnswer, playSfx]);
 
-  const startGame = useCallback(async () => {
+  const launchGame = useCallback(async () => {
     if (coins < selectedStake || startLoading) return;
+    music.startMusic();
     setStartLoading(true);
     setLoadError("");
     try {
@@ -351,7 +391,7 @@ export default function QuizPlay() {
       setQuestions(result.questions.map((question, index) => ({
         ...question,
         q: { fr: question.text, en: question.text },
-        categoryId,
+        categoryId: question.categoryId || categoryId,
         displayType: QUESTION_FORMATS[index % QUESTION_FORMATS.length],
         answer: null,
       })));
@@ -367,7 +407,8 @@ export default function QuizPlay() {
     } finally {
       setStartLoading(false);
     }
-  }, [categoryId, coins, refreshWallet, selectedStake, startLoading]);
+  }, [categoryId, coins, currency, refreshWallet, selectedStake, startLoading]);
+  const startGame = () => { if (coins >= selectedStake && !startLoading) setConfirmStake(true); };
 
   useEffect(() => {
     const map = { a: 0, b: 1, c: 2, d: 3 };
@@ -407,24 +448,16 @@ export default function QuizPlay() {
 
   const CatIcon = cat?.icon || ShieldQuestion;
   const modeName = isMixed ? "Quiz mélangé" : cat.name[lang];
+  const requestQuit = () => {
+    if (!isGameScreen) return navigate("/");
+    setConfirmQuit(true);
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ background: isGameScreen ? undefined : "var(--qa-page)" }}>
       {isGameScreen && <AmbientBackground intensity={urgent ? "urgent" : "calm"} />}
       {/* Ambient glow */}
-      {isGameScreen && (
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          animate={{
-            background:
-              flash === "correct" ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(93,214,110,0.13) 0%, transparent 70%)" :
-              flash === "wrong"   ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,85,85,0.11) 0%, transparent 70%)" :
-              urgent              ? "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(255,85,85,0.07) 0%, transparent 70%)" :
-                                    "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(229,168,0,0.06) 0%, transparent 70%)",
-          }}
-          transition={{ duration: 0.35 }}
-        />
-      )}
+      {isGameScreen && <motion.div className="absolute inset-0 pointer-events-none" animate={{ background: flash === "correct" ? "rgba(93,214,110,0.035)" : flash === "wrong" || urgent ? "rgba(255,85,85,0.03)" : "transparent" }} transition={{ duration: 0.35 }} />}
 
       <div
         className={`relative z-10 mx-auto px-4 sm:px-6 py-5 flex flex-col ${isGameScreen ? "max-w-3xl" : "max-w-2xl"}`}
@@ -435,7 +468,7 @@ export default function QuizPlay() {
         <div className="flex items-center justify-between mb-5 flex-shrink-0">
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => navigate("/")}
+              onClick={requestQuit}
               className="flex items-center gap-1.5 px-3 py-2 text-xs text-white/70 rounded-lg hover:text-white transition backdrop-blur-md"
               style={{
                 background: isGameScreen ? "rgba(7,18,14,0.48)" : "var(--qa-surface)",
@@ -517,12 +550,11 @@ export default function QuizPlay() {
                   </h1>
                 </div>
                 <div
-                  className="grid grid-cols-3 gap-2 rounded-2xl p-2"
+                  className="grid grid-cols-2 gap-2 rounded-2xl p-2"
                   style={{ background: "var(--qa-surface)", border: "1px solid var(--qa-border)" }}
                 >
-                  <SetupStat label="Banque" value={`${questionBankSize} Q`} />
                   <SetupStat label="Chrono" value={`${currentTimeLimit}s`} />
-                  <SetupStat label="Format" value="Mix A/V" />
+                  <SetupStat label="Questions surprise" value="Mix live" />
                 </div>
               </motion.header>
 
@@ -616,7 +648,7 @@ export default function QuizPlay() {
                 <CatIcon className="w-10 h-10" />
               </motion.div>
               <div>
-                <p className="text-xs text-white/30 mb-2 uppercase tracking-widest">{ROUND_SIZE} questions · {modeName}</p>
+                <p className="text-xs text-white/30 mb-2 uppercase tracking-widest">{questions.length || 10} manches · {modeName}</p>
                 <p className="text-xs font-semibold mb-1" style={{ color: AMBER }}>
                   {selectedLevel.label} · Côte ×{selectedLevel.odd.toFixed(2)} · Mise {formatMoney(selectedStake, currency)}
                 </p>
@@ -680,6 +712,8 @@ export default function QuizPlay() {
                 flash={flash}
                 onReplayAudio={speakQuestion}
                 streak={streak}
+                onMediaReady={() => setMediaReady(true)}
+                onZoomImage={(image) => setZoomedImage(image)}
               />
 
               {/* Options */}
@@ -764,22 +798,23 @@ export default function QuizPlay() {
                       </>
                     )}
                     </div>
-                    {/* Next-question countdown */}
-                    <div className="flex items-center justify-center gap-2 mt-2.5 pt-2 border-t border-white/[0.06]">
-                      <span className="text-[10px] text-white/25">Question suivante dans</span>
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          key={nextIn}
-                          initial={{ scale: 1.5, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.6, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="font-arcade text-sm leading-none"
-                          style={{ color: nextIn === 1 ? AMBER : "var(--qa-text-sub)" }}
-                        >
-                          {nextIn}s
-                        </motion.span>
-                      </AnimatePresence>
+                    <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-[10px] text-white/25">Question suivante dans</span>
+                        <AnimatePresence mode="wait">
+                          <motion.span
+                            key={nextIn}
+                            initial={{ scale: 1.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.6, opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="font-arcade text-sm leading-none"
+                            style={{ color: nextIn === 1 ? AMBER : "var(--qa-text-sub)" }}
+                          >
+                            {nextIn}s
+                          </motion.span>
+                        </AnimatePresence>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -817,11 +852,14 @@ export default function QuizPlay() {
           />
         )}
       </AnimatePresence>
+      <StakeConfirmModal open={confirmStake} amount={formatMoney(selectedStake, currency)} message="Le montant est engagé au lancement. Tes réponses déterminent ensuite ton gain." onCancel={() => setConfirmStake(false)} onConfirm={() => { setConfirmStake(false); launchGame(); }} />
+      <StakeConfirmModal open={confirmQuit} title="Abandonner le challenge ?" confirmLabel="Abandonner" message="La manche ne pourra pas être reprise. La mise engagée sera perdue et l’abandon apparaîtra dans ton historique." onCancel={() => setConfirmQuit(false)} onConfirm={async () => { setConfirmQuit(false); if (session?.sessionId) await api.abandonQuiz(session.sessionId).catch(() => {}); navigate("/"); }} />
+      <AnimatePresence>{zoomedImage && <motion.div className="fixed inset-0 z-[100] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoomedImage(null)}><motion.figure className="relative max-h-full max-w-5xl" initial={{ scale: .96 }} animate={{ scale: 1 }} exit={{ scale: .96 }} onClick={(event) => event.stopPropagation()}><img src={zoomedImage.url} alt={zoomedImage.alt} className="max-h-[82vh] w-auto max-w-full rounded-2xl object-contain" /><button className="btn-secondary absolute right-3 top-3 rounded-xl px-3 py-2 text-xs" onClick={() => setZoomedImage(null)}>Fermer</button><figcaption className="mt-3 text-center text-sm text-white/75">Appuie à l’extérieur pour fermer</figcaption></motion.figure></motion.div>}</AnimatePresence>
     </div>
   );
 }
 
-function SoloQuestionCard({ question, cat, lang, qIdx, total, flash, onReplayAudio, streak }) {
+function SoloQuestionCard({ question, cat, lang, qIdx, total, flash, onReplayAudio, streak, onMediaReady, onZoomImage }) {
   // Random praise word — memoized per correct feedback burst
   const [praise] = useState(() => PRAISE_WORDS[Math.floor(Math.random() * PRAISE_WORDS.length)]);
 
@@ -880,6 +918,12 @@ function SoloQuestionCard({ question, cat, lang, qIdx, total, flash, onReplayAud
             <Volume2 className="w-4 h-4" style={{ color: "var(--accent)" }} />
             Réécouter la question
           </button>
+        </div>
+      )}
+
+      {question.mediaUrl && (
+        <div className="px-5 sm:px-7 pt-5">
+          <button type="button" onClick={() => onZoomImage({ url: question.mediaUrl, alt: question.mediaAlt || "Illustration de la question" })} className="relative block w-full overflow-hidden rounded-2xl border text-left" style={{ borderColor: "var(--border)" }} aria-label="Agrandir l'image"><img src={question.mediaUrl} alt={question.mediaAlt || "Illustration de la question"} className="mx-auto max-h-56 w-full object-cover" loading="eager" onLoad={onMediaReady} onError={onMediaReady} /><span className="absolute bottom-2 right-2 rounded-lg px-2 py-1 text-[10px] font-bold" style={{ background: "rgba(0,0,0,.72)", color: "#fff" }}>Agrandir</span></button>
         </div>
       )}
 

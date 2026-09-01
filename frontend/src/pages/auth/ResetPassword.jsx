@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import AuthLeft from "../../components/AuthLeft";
-import { Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowLeft } from "lucide-react";
+import * as api from "../../lib/api";
+import { Lock, Eye, EyeOff, Loader2, CheckCircle, ArrowLeft, Check, BrainCircuit } from "lucide-react";
+import AuthInput from "../../components/AuthInput";
 
 const AMBER = "#E5A800";
+const RESEND_COOLDOWN_S = 60;
 
 function pwStrength(pw) {
   if (!pw) return 0;
@@ -21,17 +24,37 @@ const STRENGTH_LABEL = ["", "Faible", "Moyen", "Bon", "Fort"];
 
 export default function ResetPassword() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const identifier = location.state?.identifier || "";
+
+  const [digits, setDigits]       = useState(["", "", "", "", "", ""]);
   const [password, setPassword]   = useState("");
   const [confirm, setConfirm]     = useState("");
   const [showPw, setShowPw]       = useState(false);
   const [loading, setLoading]     = useState(false);
   const [done, setDone]           = useState(false);
   const [errors, setErrors]       = useState({});
+  const [resendCooldown, setResendCooldown] = useState(RESEND_COOLDOWN_S);
+  const inputsRef = useRef([]);
+
+  // Cette page n'a de sens qu'en venant de "Mot de passe oublié" (elle a
+  // besoin de savoir à qui appartient le code) — un accès direct renvoie
+  // sans casser, plutôt qu'un formulaire qui échouera de toute façon.
+  useEffect(() => {
+    if (!identifier) navigate("/forgot-password", { replace: true });
+  }, [identifier, navigate]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setTimeout(() => setResendCooldown((v) => v - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
 
   const strength = pwStrength(password);
 
   const validate = () => {
     const e = {};
+    if (digits.some((d) => !d)) e.code = "Saisis les 6 chiffres du code reçu par e-mail.";
     if (!password) e.password = "Le mot de passe est requis.";
     else if (password.length < 8) e.password = "Min. 8 caractères.";
     if (!confirm) e.confirm = "Confirme ton mot de passe.";
@@ -39,13 +62,53 @@ export default function ResetPassword() {
     return e;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setErrors({});
     setLoading(true);
-    setTimeout(() => { setLoading(false); setDone(true); }, 1300);
+    try {
+      await api.resetPassword({ identifier, code: digits.join(""), newPassword: password });
+      setDone(true);
+    } catch (requestError) {
+      setErrors({ code: requestError.message || "Code invalide ou expiré." });
+      setDigits(["", "", "", "", "", ""]);
+      inputsRef.current[0]?.focus();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDigitChange = (index, value) => {
+    const clean = value.replace(/\D/g, "").slice(-1);
+    const next = [...digits];
+    next[index] = clean;
+    setDigits(next);
+    setErrors((o) => ({ ...o, code: "" }));
+    if (clean && index < 5) inputsRef.current[index + 1]?.focus();
+  };
+
+  const handlePaste = (e) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    const next = pasted.split("");
+    while (next.length < 6) next.push("");
+    setDigits(next);
+    inputsRef.current[Math.min(pasted.length, 5)]?.focus();
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !digits[index] && index > 0) inputsRef.current[index - 1]?.focus();
+  };
+
+  const resend = async () => {
+    if (resendCooldown > 0) return;
+    try {
+      await api.forgotPassword(identifier);
+      setResendCooldown(RESEND_COOLDOWN_S);
+    } catch { /* réponse toujours générique côté serveur, rien à afficher de plus */ }
   };
 
   return (
@@ -55,7 +118,7 @@ export default function ResetPassword() {
     >
       <AuthLeft />
 
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+      <div className="auth-form-panel flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -63,7 +126,7 @@ export default function ResetPassword() {
           className="w-full max-w-sm mx-auto"
         >
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: AMBER, color: "#07070F" }}>QA</div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: AMBER, color: "#07070F" }}><BrainCircuit className="w-4 h-4" /></div>
             <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
               Quiz<span style={{ color: AMBER }}>Arena</span>
             </span>
@@ -73,7 +136,7 @@ export default function ResetPassword() {
             {!done ? (
               <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <Link
-                  to="/login"
+                  to="/forgot-password"
                   className="flex items-center gap-1.5 text-sm font-semibold mb-8 hover:opacity-70"
                   style={{ color: "var(--qa-text-sub)" }}
                 >
@@ -85,42 +148,67 @@ export default function ResetPassword() {
                     Nouveau mot de passe
                   </h1>
                   <p className="text-sm" style={{ color: "var(--qa-text-sub)" }}>
-                    Choisis un mot de passe solide.
+                    Code envoyé à <strong style={{ color: "var(--qa-text)" }}>{identifier}</strong>
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* New password */}
+                  {/* Code OTP */}
                   <div>
                     <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                      Nouveau mot de passe
+                      Code reçu par e-mail
                     </label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                      <input
-                        type={showPw ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => { setPassword(e.target.value); setErrors(o => ({ ...o, password: "" })); }}
-                        placeholder="Min. 8 caractères"
-                        autoComplete="new-password"
-                        className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                        style={{
-                          background: "var(--qa-active)",
-                          border: `1px solid ${errors.password ? "#FF6B6B" : "var(--qa-border)"}`,
-                          color: "var(--qa-text)",
-                        }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.password ? "#FF6B6B" : "var(--qa-border)")}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPw(v => !v)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-80"
-                        style={{ color: "var(--qa-text-faint)" }}
-                      >
-                        {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                    <div className="flex justify-center gap-2" onPaste={handlePaste}>
+                      {digits.map((d, i) => (
+                        <input
+                          key={i}
+                          ref={(el) => (inputsRef.current[i] = el)}
+                          value={d}
+                          onChange={(e) => handleDigitChange(i, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(i, e)}
+                          disabled={loading}
+                          inputMode="numeric"
+                          maxLength={1}
+                          className="h-12 w-9 rounded-xl text-center font-display text-xl font-bold outline-none transition disabled:opacity-50"
+                          style={{
+                            background: "var(--qa-active)",
+                            border: `1px solid ${errors.code ? "#FF6B6B" : "var(--qa-border)"}`,
+                            color: "var(--qa-text)",
+                          }}
+                          onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
+                          onBlur={(e) => (e.currentTarget.style.borderColor = errors.code ? "#FF6B6B" : "var(--qa-border)")}
+                        />
+                      ))}
                     </div>
+                    {errors.code && <p className="text-xs font-semibold mt-1.5 text-center" style={{ color: "#FF6B6B" }}>{errors.code}</p>}
+                    <button
+                      type="button"
+                      onClick={resend}
+                      disabled={resendCooldown > 0}
+                      className="mt-2 block w-full text-center text-xs font-bold hover:underline disabled:no-underline disabled:opacity-50"
+                      style={{ color: resendCooldown > 0 ? "var(--qa-text-faint)" : AMBER }}
+                    >
+                      {resendCooldown > 0 ? `Renvoyer le code (${resendCooldown}s)` : "Renvoyer le code"}
+                    </button>
+                  </div>
+
+                  {/* New password */}
+                  <div>
+                    <AuthInput
+                      icon={Lock}
+                      type={showPw ? "text" : "password"}
+                      label="Nouveau mot de passe"
+                      value={password}
+                      onChange={(v) => { setPassword(v); setErrors(o => ({ ...o, password: "" })); }}
+                      placeholder="Min. 8 caractères"
+                      autoComplete="new-password"
+                      hasError={!!errors.password}
+                      trailing={
+                        <button type="button" onClick={() => setShowPw(v => !v)} className="hover:opacity-80" style={{ color: "var(--qa-text-faint)" }} tabIndex={-1}>
+                          {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      }
+                    />
                     {password && (
                       <div className="mt-2">
                         <div className="flex gap-1 mb-1">
@@ -141,30 +229,17 @@ export default function ResetPassword() {
                   </div>
 
                   {/* Confirm */}
-                  <div>
-                    <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                      Confirmer
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                      <input
-                        type={showPw ? "text" : "password"}
-                        value={confirm}
-                        onChange={(e) => { setConfirm(e.target.value); setErrors(o => ({ ...o, confirm: "" })); }}
-                        placeholder="Répète ton mot de passe"
-                        autoComplete="new-password"
-                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                        style={{
-                          background: "var(--qa-active)",
-                          border: `1px solid ${errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)"}`,
-                          color: "var(--qa-text)",
-                        }}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)")}
-                      />
-                    </div>
-                    {errors.confirm && <p className="text-xs font-semibold mt-1.5" style={{ color: "#FF6B6B" }}>{errors.confirm}</p>}
-                  </div>
+                  <AuthInput
+                    icon={Lock}
+                    type={showPw ? "text" : "password"}
+                    label="Confirmer"
+                    value={confirm}
+                    onChange={(v) => { setConfirm(v); setErrors(o => ({ ...o, confirm: "" })); }}
+                    placeholder="Répète ton mot de passe"
+                    autoComplete="new-password"
+                    error={errors.confirm}
+                    trailing={confirm && confirm === password ? <Check className="w-4 h-4" style={{ color: "#5DD66E" }} /> : undefined}
+                  />
 
                   <button
                     type="submit"

@@ -1,12 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, BarChart2, Wallet, User, Crown } from "lucide-react";
+import { Home, Trophy, BarChart2, Wallet, Crown, Users } from "lucide-react";
+import { runWithDuelExitGuard } from "../lib/duelNavigation";
 
+// Le statut VIP est une destination à part entière, également sur mobile.
 const NAV = [
   { to: "/",            icon: Home,      label: "Accueil"    },
   { to: "/tournaments", icon: Trophy,    label: "Tournois"   },
   { to: "/leaderboard", icon: BarChart2, label: "Classement" },
   { to: "/wallet",      icon: Wallet,    label: "Wallet"     },
-  { to: "/profile",     icon: User,      label: "Profil"     },
   { to: "/vip",         icon: Crown,     label: "VIP"        },
 ];
 
@@ -33,7 +34,7 @@ export default function BottomNav() {
         return (
           <button
             key={item.to}
-            onClick={() => navigate(item.to)}
+            onClick={() => runWithDuelExitGuard(() => navigate(item.to), item.label)}
             className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition"
             style={{ color: active ? "var(--accent)" : "var(--text-faint)" }}
           >

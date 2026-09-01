@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import AuthLeft from "../../components/AuthLeft";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Check, Phone } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Check, Phone, BrainCircuit } from "lucide-react";
+import AuthInput from "../../components/AuthInput";
 
 const AMBER = "#E5A800";
 
@@ -23,6 +24,12 @@ const STRENGTH_COLOR = ["", "#FF6B6B", "#FDCB6E", AMBER, "#5DD66E"];
 export default function Register() {
   const { register } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Même correctif que Login.jsx : un lien de duel cliqué par quelqu'un
+  // sans compte doit encore ouvrir ce duel une fois l'inscription faite,
+  // pas renvoyer aveuglément vers "/".
+  const fromLocation = location.state?.from;
+  const from = fromLocation ? `${fromLocation.pathname}${fromLocation.search || ""}${fromLocation.hash || ""}` : "/";
 
   const [username, setUsername] = useState("");
   const [email, setEmail]       = useState("");
@@ -66,8 +73,15 @@ export default function Register() {
     setErrors({});
     setLoading(true);
     try {
-      await register(username.trim(), email.trim(), phone.replace(/\s+/g, ""), password);
-      navigate("/", { replace: true });
+      const created = await register(username.trim(), email.trim(), phone.replace(/\s+/g, ""), password);
+      // Compte créé, session déjà valide (le token est posé) : la
+      // vérification n'empêche jamais de jouer, elle s'intercale juste
+      // ici pour capter l'attention pendant que le code est encore frais.
+      if (created?.email && !created?.emailVerified) {
+        navigate("/verify-email", { replace: true, state: { from } });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (requestError) {
       setErrors((current) => ({ ...current, form: requestError.message || "Inscription impossible." }));
     } finally {
@@ -82,7 +96,7 @@ export default function Register() {
     >
       <AuthLeft />
 
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+      <div className="auth-form-panel flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -92,9 +106,9 @@ export default function Register() {
           {/* Mobile logo */}
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm"
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: AMBER, color: "#07070F" }}
-            >QA</div>
+            ><BrainCircuit className="w-4 h-4" /></div>
             <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
               Quiz<span style={{ color: AMBER }}>Arena</span>
             </span>
@@ -110,7 +124,7 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <AuthField
+            <AuthInput
               icon={User}
               type="text"
               label="Pseudo"
@@ -121,7 +135,7 @@ export default function Register() {
               error={errors.username}
             />
 
-            <AuthField
+            <AuthInput
               icon={Mail}
               type="email"
               label="Email"
@@ -132,10 +146,10 @@ export default function Register() {
               error={errors.email}
             />
 
-            <AuthField
+            <AuthInput
               icon={Phone}
               type="tel"
-              label="Téléphone Mobile Money"
+              label="Téléphone"
               value={phone}
               onChange={(v) => { setPhone(v); setErrors(o => ({ ...o, phone: "", form: "" })); }}
               placeholder="6XXXXXXXX"
@@ -145,35 +159,21 @@ export default function Register() {
 
             {/* Password */}
             <div>
-              <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                <input
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setErrors(o => ({ ...o, password: "" })); }}
-                  placeholder="Min. 8 caractères"
-                  autoComplete="new-password"
-                  className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                  style={{
-                    background: "var(--qa-active)",
-                    border: `1px solid ${errors.password ? "#FF6B6B" : "var(--qa-border)"}`,
-                    color: "var(--qa-text)",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = errors.password ? "#FF6B6B" : "var(--qa-border)")}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 transition hover:opacity-80"
-                  style={{ color: "var(--qa-text-faint)" }}
-                >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+              <AuthInput
+                icon={Lock}
+                type={showPw ? "text" : "password"}
+                label="Mot de passe"
+                value={password}
+                onChange={(v) => { setPassword(v); setErrors(o => ({ ...o, password: "" })); }}
+                placeholder="Min. 8 caractères"
+                autoComplete="new-password"
+                error={errors.password}
+                trailing={
+                  <button type="button" onClick={() => setShowPw(v => !v)} className="transition hover:opacity-80" style={{ color: "var(--qa-text-faint)" }} tabIndex={-1}>
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
+              />
               {password && (
                 <div className="mt-2">
                   <div className="flex gap-1 mb-1">
@@ -192,37 +192,22 @@ export default function Register() {
                   </div>
                 </div>
               )}
-              {errors.password && <FieldError msg={errors.password} />}
             </div>
 
             {/* Confirm */}
-            <div>
-              <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                Confirmer
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                <input
-                  type={showPw ? "text" : "password"}
-                  value={confirm}
-                  onChange={(e) => { setConfirm(e.target.value); setErrors(o => ({ ...o, confirm: "" })); }}
-                  placeholder="Répète ton mot de passe"
-                  autoComplete="new-password"
-                  className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                  style={{
-                    background: "var(--qa-active)",
-                    border: `1px solid ${errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)"}`,
-                    color: "var(--qa-text)",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = errors.confirm ? "#FF6B6B" : confirm && confirm === password ? "#5DD66E" : "var(--qa-border)")}
-                />
-                {confirm && confirm === password && (
-                  <Check className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#5DD66E" }} />
-                )}
-              </div>
-              {errors.confirm && <FieldError msg={errors.confirm} />}
-            </div>
+            <AuthInput
+              icon={Lock}
+              type={showPw ? "text" : "password"}
+              label="Confirmer"
+              value={confirm}
+              onChange={(v) => { setConfirm(v); setErrors(o => ({ ...o, confirm: "" })); }}
+              placeholder="Répète ton mot de passe"
+              autoComplete="new-password"
+              error={errors.confirm}
+              trailing={confirm && confirm === password
+                ? <Check className="w-4 h-4" style={{ color: "#5DD66E" }} />
+                : undefined}
+            />
 
             {/* Terms */}
             <div>
@@ -281,7 +266,7 @@ export default function Register() {
 
           <p className="text-center text-sm" style={{ color: "var(--qa-text-sub)" }}>
             Déjà un compte ?{" "}
-            <Link to="/login" className="font-bold hover:underline" style={{ color: AMBER }}>
+            <Link to="/login" state={fromLocation ? { from: fromLocation } : undefined} className="font-bold hover:underline" style={{ color: AMBER }}>
               Se connecter
             </Link>
           </p>
@@ -291,31 +276,6 @@ export default function Register() {
   );
 }
 
-function AuthField({ icon: Icon, label, error, onChange, ...props }) {
-  return (
-    <div>
-      <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-        {label}
-      </label>
-      <div className="relative">
-        <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-        <input
-          {...props}
-          onChange={(e) => onChange?.(e.target.value)}
-          className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-          style={{
-            background: "var(--qa-active)",
-            border: `1px solid ${error ? "#FF6B6B" : "var(--qa-border)"}`,
-            color: "var(--qa-text)",
-          }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = error ? "#FF6B6B" : "var(--qa-border)")}
-        />
-      </div>
-      {error && <FieldError msg={error} />}
-    </div>
-  );
-}
 
 function FieldError({ msg }) {
   return (

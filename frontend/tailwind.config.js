@@ -8,9 +8,13 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['Instrument Serif', 'ui-serif', 'Georgia', 'serif'],
+        // Source de vérité : les tokens --font-display/--font-body de
+        // index.css (décision du 30/08/2026, Space Grotesk + IBM Plex
+        // Sans). Cette config Tailwind pointait encore vers Inter en dur,
+        // indépendamment de ces tokens — la classe .font-display générée
+        // par Tailwind écrasait donc silencieusement le choix réel.
+        sans: ['IBM Plex Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Space Grotesk', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       fontSize: {

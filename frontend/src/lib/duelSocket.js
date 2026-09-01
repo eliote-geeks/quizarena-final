@@ -9,13 +9,21 @@ let reconnectAttempts = 0;
 let reconnectTimer = null;
 let snapshot = { phase: "idle" };
 
+const ACTIVE_DUEL_PHASES = new Set([
+  "matched", "waiting_ready", "countdown", "question", "reveal",
+  "resumed", "duel_paused", "duel_resumed", "presence_confirmed",
+  "opponent_disconnected", "opponent_reconnected",
+]);
+
 const SNAPSHOT_TYPES = new Set([
   "matched", "waiting_ready", "countdown", "question", "reveal", "duel_result",
   "duel_cancelled", "opponent_disconnected", "opponent_reconnected", "resumed",
+  "duel_paused", "duel_resumed", "presence_confirmed",
   "tournament_waiting",
 ]);
 
 export const getSnapshot = () => snapshot;
+export const hasActiveDuel = () => Boolean(snapshot.match) && ACTIVE_DUEL_PHASES.has(snapshot.phase);
 
 function emit(type, message) {
   if (SNAPSHOT_TYPES.has(type)) {
@@ -76,8 +84,19 @@ export function tournamentEnter(tournamentMatchId) { snapshot = { phase: "queued
 export function spectate(matchId) { send({ type: "spectate", matchId }); }
 export function leaveSpectate(matchId) { send({ type: "leave_spectate", ...(matchId ? { matchId } : {}) }); }
 export function ready() { send({ type: "ready" }); }
+export function confirmPresence() { send({ type: "resume_confirm" }); }
 export function answer(questionId, chosenIndex) { send({ type: "answer", questionId, chosenIndex }); }
-export function forfeit() { send({ type: "forfeit" }); }
+// Confirme au serveur que la question a fini de charger côté client (média
+// compris) — le serveur n'arme le chrono partagé qu'une fois les deux
+// joueurs prêts (§backend engine.ts prepareQuestion), pour qu'aucun des
+// deux ne perde du temps de réponse à cause d'un chargement plus lent.
+export function questionReady(questionId) { send({ type: "question_ready", questionId }); }
+export function forfeit() {
+  // Libère immédiatement les gardes de navigation locaux. Le serveur reste
+  // l'unique autorité et enregistre ensuite le forfait et le règlement.
+  snapshot = { ...snapshot, phase: "forfeiting" };
+  send({ type: "forfeit" });
+}
 export function disconnect() {
   manualClose = true;
   clearTimeout(reconnectTimer);

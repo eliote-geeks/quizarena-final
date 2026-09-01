@@ -21,7 +21,9 @@ const compressible = new Set([".html", ".js", ".css", ".json", ".svg", ".txt", "
 const gzipCache = new Map();
 
 function isBackendPath(url = "") {
-  return url.startsWith("/api/") || url.startsWith("/ws/") || url.startsWith("/ops-classic-3010-b92f2835255d");
+  // /webhook/ : chemin enregistré tel quel dans le dashboard SharePay
+  // (Applications → Webhooks), sans préfixe /api — §wallet/webhook.ts.
+  return url.startsWith("/api/") || url.startsWith("/ws/") || url.startsWith("/webhook/") || url.startsWith("/ops-classic-3010-b92f2835255d");
 }
 
 function proxyHttp(req, res) {

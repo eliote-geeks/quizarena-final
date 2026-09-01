@@ -5,10 +5,43 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { randomUUID } from "crypto";
+import { configuredTournamentCover, isTournamentCover, TOURNAMENT_COVER_IMAGES } from "../tournament/covers.js";
+import { loadSettings, saveSettings } from "../../lib/settings.js";
+import { credit, debit, InsufficientBalanceError } from "../wallet/ledger.js";
+import { resolveVipStatus, VIP_WIN_TARGET } from "../vip/service.js";
 
 const MUSIC_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../../../music.json");
 type MusicTrack = { id: string; title: string; url: string; type: "relaxing" | "action"; mood?: string; active: boolean; createdAt: string; builtin?: boolean };
 type MusicConfig = { version: number; initialized: boolean; tracks: MusicTrack[] };
+// Sources d'actualité explicitement autorisées. Les URLs utilisateur ne sont
+// jamais suivies hors de cette liste : c'est à la fois un garde-fou éditorial
+// et une protection contre les requêtes serveur vers des hôtes arbitraires.
+const CURRENT_SOURCE_HOSTS = new Set([
+  "bbc.com", "france24.com", "rfi.fr", "reuters.com", "apnews.com",
+  "cafonline.com", "fifa.com", "olympics.com", "who.int", "un.org", "nasa.gov",
+]);
+
+function isAllowedCurrentSource(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && [...CURRENT_SOURCE_HOSTS].some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
+  } catch { return false; }
+}
+
+function extractArticleText(html: string) {
+  // Suffisant pour fournir un contexte borné au modèle; ce n'est pas un
+  // extracteur de contenu publié ni un contournement des conditions du média.
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 14_000);
+}
 const BUILTIN_MUSIC: MusicTrack[] = [
   { id: "builtin-ambient-1", title: "Ambiment — Kevin MacLeod", url: "/audio/ambient-1.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
   { id: "builtin-ambient-2", title: "Airport Lounge — Kevin MacLeod", url: "/audio/ambient-2.mp3", type: "relaxing", mood: "Ambiance", active: true, builtin: true, createdAt: "2026-08-01T00:00:00.000Z" },
@@ -226,19 +259,35 @@ export async function adminRoutes(app: FastifyInstance) {
       },
       select: {
         id: true, username: true, phone: true, accountStatus: true, riskScore: true,
-        createdAt: true, lastLoginAt: true,
+        createdAt: true, lastLoginAt: true, isAdmin: true, vipGrantedAt: true,
       },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-    const balances = await prisma.transaction.groupBy({
-      by: ["userId"],
-      where: { userId: { in: users.map((u) => u.id) }, status: "COMPLETED" },
-      _sum: { amountCoins: true },
-    });
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+    const [balances, wins] = await Promise.all([
+      prisma.transaction.groupBy({
+        by: ["userId"],
+        where: { userId: { in: users.map((u) => u.id) }, status: "COMPLETED" },
+        _sum: { amountCoins: true, bonusAmountCoins: true },
+      }),
+      prisma.duelMatch.groupBy({
+        by: ["winnerId"],
+        where: { winnerId: { in: users.map((u) => u.id) }, status: "COMPLETED", completedAt: { gte: since30d } },
+        _count: { _all: true },
+      }),
+    ]);
     const balanceByUser = new Map(balances.map((b) => [b.userId, b._sum.amountCoins ?? 0]));
+    const bonusByUser = new Map(balances.map((b) => [b.userId, b._sum.bonusAmountCoins ?? 0]));
+    const winsByUser = new Map(wins.map((row) => [row.winnerId, row._count._all]));
     return reply.send({
-      users: users.map((u) => ({ ...u, balanceCoins: balanceByUser.get(u.id) ?? 0 })),
+      users: users.map((u) => {
+        const balanceCoins = balanceByUser.get(u.id) ?? 0;
+        const bonusCoins = Math.max(0, Math.min(balanceCoins, bonusByUser.get(u.id) ?? 0));
+        const vip = resolveVipStatus(u.vipGrantedAt, winsByUser.get(u.id) ?? 0, u.isAdmin);
+        return { ...u, balanceCoins, bonusCoins, withdrawableCoins: balanceCoins - bonusCoins, vip };
+      }),
+      vipWinTarget: VIP_WIN_TARGET,
     });
   });
 
@@ -247,6 +296,23 @@ export async function adminRoutes(app: FastifyInstance) {
     const body = statusSchema.parse(req.body);
     const user = await prisma.user.update({ where: { id }, data: { accountStatus: body.status } });
     return reply.send({ user: { id: user.id, username: user.username, accountStatus: user.accountStatus } });
+  });
+
+  const vipSchema = z.object({ enabled: z.boolean() });
+  app.post("/api/admin/users/:id/vip", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const { enabled } = vipSchema.parse(req.body);
+    const user = await prisma.user.update({
+      where: { id },
+      data: { vipGrantedAt: enabled ? new Date() : null },
+      select: { id: true, username: true, vipGrantedAt: true, isAdmin: true },
+    });
+    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60_000);
+    const wins = await prisma.duelMatch.count({
+      where: { winnerId: id, status: "COMPLETED", completedAt: { gte: since30d } },
+    });
+    req.log.info({ targetUserId: id, enabled, adminUserId: req.user.userId }, "VIP attribution updated");
+    return reply.send({ user, vip: resolveVipStatus(user.vipGrantedAt, wins, user.isAdmin) });
   });
 
   // ── Questions (relecture du contenu généré, §scripts/generate-questions.mjs) ──
@@ -283,6 +349,13 @@ export async function adminRoutes(app: FastifyInstance) {
         answerIndex: q.answerIndex,
         active: q.active,
         source: q.source,
+        subcategory: q.subcategory,
+        mediaUrl: q.mediaUrl,
+        mediaAlt: q.mediaAlt,
+        sourceUrl: q.sourceUrl,
+        verifiedAt: q.verifiedAt,
+        expiresAt: q.expiresAt,
+        tournamentEligible: q.tournamentEligible,
         createdAt: q.createdAt,
       })),
       total,
@@ -294,8 +367,61 @@ export async function adminRoutes(app: FastifyInstance) {
     });
   });
 
+  const editorialSchema = z.object({
+    subcategory: z.string().trim().min(2).max(80).nullable().optional(),
+    mediaUrl: z.string().url().max(1_500).nullable().optional(),
+    mediaAlt: z.string().trim().min(3).max(180).nullable().optional(),
+    sourceUrl: z.string().url().max(1_500).nullable().optional(),
+    expiresAt: z.coerce.date().nullable().optional(),
+    tournamentEligible: z.boolean().optional(),
+    verified: z.boolean().optional(),
+  });
+
+  // Métadonnées éditoriales : l'admin peut associer une image sous licence,
+  // une source et une échéance à une question sans toucher à la réponse.
+  app.patch("/api/admin/questions/:id/editorial", async (req, reply) => {
+    const body = editorialSchema.parse(req.body);
+    if (body.mediaUrl && !body.mediaAlt) return reply.badRequest("Un texte alternatif est obligatoire pour l'image");
+    const question = await prisma.question.update({
+      where: { id: (req.params as { id: string }).id },
+      data: {
+        ...(body.subcategory !== undefined ? { subcategory: body.subcategory || null } : {}),
+        ...(body.mediaUrl !== undefined ? { mediaUrl: body.mediaUrl } : {}),
+        ...(body.mediaAlt !== undefined ? { mediaAlt: body.mediaAlt } : {}),
+        ...(body.sourceUrl !== undefined ? { sourceUrl: body.sourceUrl } : {}),
+        ...(body.expiresAt !== undefined ? { expiresAt: body.expiresAt } : {}),
+        ...(body.tournamentEligible !== undefined ? { tournamentEligible: body.tournamentEligible } : {}),
+        ...(body.verified ? { verifiedAt: new Date() } : {}),
+      },
+    });
+    return reply.send({ question });
+  });
+
+  app.get("/api/admin/content-coverage", async (_req, reply) => {
+    const rows = await prisma.category.findMany({
+      select: { id: true, nameFr: true, _count: { select: { questions: { where: { active: true } } } } },
+      orderBy: { nameFr: "asc" },
+    });
+    const media = await prisma.question.groupBy({ by: ["categoryId"], where: { active: true, mediaUrl: { not: null } }, _count: { id: true } });
+    const mediaByCategory = new Map(media.map((row) => [row.categoryId, row._count.id]));
+    return reply.send({
+      targetTotal: 20_000,
+      targetImageShare: 0.30,
+      categories: rows.map((row) => ({
+        id: row.id, nameFr: row.nameFr, active: row._count.questions,
+        media: mediaByCategory.get(row.id) ?? 0,
+        imageShare: row._count.questions ? (mediaByCategory.get(row.id) ?? 0) / row._count.questions : 0,
+      })),
+    });
+  });
+
   app.post("/api/admin/questions/:id/activate", async (req, reply) => {
     const { id } = req.params as { id: string };
+    const candidate = await prisma.question.findUnique({ where: { id }, select: { source: true, sourceUrl: true, verifiedAt: true } });
+    if (!candidate) return reply.notFound("Question introuvable");
+    if ((candidate.source === "admin_ai" || candidate.source === "ai" || candidate.source === "wikimedia_commons") && (!candidate.sourceUrl || !candidate.verifiedAt)) {
+      return reply.badRequest("Cette question doit avoir une source et être vérifiée avant publication");
+    }
     const question = await prisma.question.update({ where: { id }, data: { active: true } });
     return reply.send({ question });
   });
@@ -364,21 +490,28 @@ export async function adminRoutes(app: FastifyInstance) {
   // Un mutex global empêche les générations parallèles (Ollama CPU-only
   // ne bénéficie pas de la parallélisation et ralentit au contraire).
   let _genLocked = false;
+  let generationJob: {
+    status: "idle" | "running" | "completed" | "failed";
+    categoryId?: string; topic?: string; requested: number; created: number; rejected: number; startedAt?: string; completedAt?: string;
+  } = { status: "idle", requested: 0, created: 0, rejected: 0 };
 
-  async function runOllamaGeneration(categoryId: string, count: number, categoryName: string) {
+  async function runOllamaGeneration(categoryId: string, count: number, categoryName: string, editorial: { topic?: string; sourceUrl?: string; expiresAt?: Date; sourceContext?: string }) {
     for (let i = 0; i < count; i++) {
-      const prompt = `Crée une question de quiz en français sur "${categoryName}".
+      const prompt = `Crée une question de quiz en français sur "${categoryName}"${editorial.topic ? `, sujet précis : "${editorial.topic}"` : ""}.
 Réponds UNIQUEMENT avec cet objet JSON (rien d'autre) :
 {"question":"La question ?","options":["A","B","C","D"],"answer":0}
 answer = index 0-3 de la bonne réponse. Le fait doit être largement connu et vérifiable.
 Évite les dates, mesures, records et formulations ambiguës. Une seule option doit être correcte.
-Ne donne jamais la réponse dans le texte de la question.`;
+Ne donne jamais la réponse dans le texte de la question.${editorial.sourceContext ? `\nTu travailles EXCLUSIVEMENT à partir de cet extrait de source vérifiée. Chaque fait de la question et la bonne réponse doivent apparaître clairement dans cet extrait. Si ce n'est pas possible, retourne exactement {}.\nSOURCE :\n${editorial.sourceContext}` : "\nN'invente jamais une information récente : si le sujet exige une information postérieure à ta base de connaissances, produis une question intemporelle liée au sujet."}`;
 
       try {
         const ollamaRes = await fetch("http://localhost:11434/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            // Le serveur est CPU-only : le 14B charge ~10 Go et ne convient
+            // pas à une file d'administration. Le 7B reste largement
+            // suffisant puisque chaque sortie est relue avant publication.
             model: "qwen2.5:7b-instruct",
             prompt,
             stream: false,
@@ -400,35 +533,45 @@ Ne donne jamais la réponse dans le texte de la question.`;
         const opts: string[] = Array.isArray(q.options) ? q.options.map(String) : [];
         const answerIndex = Number(q.answer ?? 0);
 
-        if (!textFr || textFr.length < 10) continue;
-        if (opts.length !== 4) continue;
-        if (opts.some((o: string) => !o || o.length < 2)) continue;
-        if (new Set(opts.map((o: string) => o.trim().toLocaleLowerCase("fr"))).size !== 4) continue;
-        if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) continue;
+        if (!textFr || textFr.length < 10) { generationJob.rejected++; continue; }
+        if (opts.length !== 4) { generationJob.rejected++; continue; }
+        if (opts.some((o: string) => !o || o.length < 2)) { generationJob.rejected++; continue; }
+        if (new Set(opts.map((o: string) => o.trim().toLocaleLowerCase("fr"))).size !== 4) { generationJob.rejected++; continue; }
+        if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) { generationJob.rejected++; continue; }
         const correctOption = opts[answerIndex];
-        if (!correctOption) continue;
+        if (!correctOption) { generationJob.rejected++; continue; }
         const correct = correctOption.trim().toLocaleLowerCase("fr");
-        if (correct.length > 3 && textFr.toLocaleLowerCase("fr").includes(correct)) continue;
-        if (/\b(19|20)\d{2}\b|\b\d+(?:[.,]\d+)?\s*(?:km|m|cm|kg|%|ans?)\b/i.test(`${textFr} ${correctOption}`)) continue;
+        if (correct.length > 3 && textFr.toLocaleLowerCase("fr").includes(correct)) { generationJob.rejected++; continue; }
+        if (/\b(19|20)\d{2}\b|\b\d+(?:[.,]\d+)?\s*(?:km|m|cm|kg|%|ans?)\b/i.test(`${textFr} ${correctOption}`)) { generationJob.rejected++; continue; }
 
         // Doublon ?
         const dupe = await prisma.question.findFirst({
           where: { categoryId, textFr: { equals: textFr, mode: "insensitive" } },
         });
-        if (dupe) continue;
+        if (dupe) { generationJob.rejected++; continue; }
 
         await prisma.question.create({
-          data: { categoryId, textFr, textEn: textFr, options: opts, answerIndex, active: false, source: "admin_ai" },
+          data: { categoryId, textFr, textEn: textFr, options: opts, answerIndex, active: false, source: "admin_ai", subcategory: editorial.topic || null, sourceUrl: editorial.sourceUrl || null, expiresAt: editorial.expiresAt || null },
         });
+        generationJob.created++;
       } catch {
+        generationJob.rejected++;
         // Timeout ou autre erreur : passer à la question suivante
       }
     }
     _genLocked = false;
+    generationJob.status = "completed";
+    generationJob.completedAt = new Date().toISOString();
   }
 
+  app.get("/api/admin/questions/generation-status", async (_req, reply) => reply.send(generationJob));
+
   app.post("/api/admin/questions/generate", async (req, reply) => {
-    const { categoryId, count = 5 } = req.body as { categoryId: string; count?: number };
+    const body = z.object({
+      categoryId: z.string().min(1), count: z.coerce.number().int().min(1).max(10).default(5),
+      topic: z.string().trim().min(2).max(100).optional(), sourceUrl: z.string().url().max(1_500).optional(), expiresAt: z.coerce.date().optional(),
+    }).parse(req.body);
+    const { categoryId, count = 5 } = body;
     const safeCount = Math.min(Math.max(1, count), 10);
 
     if (_genLocked) {
@@ -442,15 +585,123 @@ Ne donne jamais la réponse dans le texte de la question.`;
     if (!category) return reply.badRequest("Catégorie introuvable");
 
     _genLocked = true;
+    generationJob = { status: "running", categoryId, topic: body.topic, requested: safeCount, created: 0, rejected: 0, startedAt: new Date().toISOString() };
 
     // Lance la génération en arrière-plan — ne pas await
-    runOllamaGeneration(categoryId, safeCount, (category as any).nameFr).catch(() => { _genLocked = false; });
+    runOllamaGeneration(categoryId, safeCount, (category as any).nameFr, { topic: body.topic, sourceUrl: body.sourceUrl, expiresAt: body.expiresAt }).catch(() => { _genLocked = false; generationJob.status = "failed"; generationJob.completedAt = new Date().toISOString(); });
 
     return reply.code(202).send({
       status: "queued",
       count: safeCount,
       message: `Génération de ${safeCount} question(s) lancée en arrière-plan. Rafraîchissez la liste "En attente" dans quelques minutes (environ ${safeCount * 3} min sur ce serveur).`,
     });
+  });
+
+  // Actualité : une source approuvée est obligatoire et la sortie reste un
+  // brouillon. Une question expire rapidement puis doit être à nouveau
+  // vérifiée, ce qui évite qu'une information datée reste dans le jeu.
+  app.post("/api/admin/questions/generate-current", async (req, reply) => {
+    const body = z.object({
+      categoryId: z.string().min(1),
+      sourceUrl: z.string().url().max(1_500),
+      topic: z.string().trim().min(2).max(100).optional(),
+      count: z.coerce.number().int().min(1).max(5).default(3),
+    }).parse(req.body);
+    if (_genLocked) return reply.conflict("Une génération est déjà en cours");
+    if (!isAllowedCurrentSource(body.sourceUrl)) {
+      return reply.badRequest("Source non autorisée. Utilisez un lien HTTPS BBC, France 24, RFI, Reuters, AP, CAF, FIFA, CIO, OMS, ONU ou NASA.");
+    }
+    const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
+    if (!category) return reply.badRequest("Catégorie introuvable");
+
+    let article: string;
+    try {
+      const source = await fetch(body.sourceUrl, {
+        redirect: "manual",
+        headers: { "User-Agent": "QuizArenaEditorialBot/1.0 (+https://quizarena.example/editorial)" },
+        signal: AbortSignal.timeout(15_000),
+      });
+      const contentType = source.headers.get("content-type") ?? "";
+      if (!source.ok || !contentType.includes("text/html")) return reply.badRequest("La source doit répondre directement en HTML (sans redirection).");
+      article = extractArticleText(await source.text());
+    } catch {
+      return reply.badRequest("Impossible de lire cette source pour le moment.");
+    }
+    if (article.length < 500) return reply.badRequest("Le contenu lisible de cette source est insuffisant.");
+
+    const safeCount = Math.min(Math.max(1, body.count), 5);
+    _genLocked = true;
+    generationJob = { status: "running", categoryId: body.categoryId, topic: body.topic, requested: safeCount, created: 0, rejected: 0, startedAt: new Date().toISOString() };
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    runOllamaGeneration(body.categoryId, safeCount, (category as any).nameFr, {
+      topic: body.topic,
+      sourceUrl: body.sourceUrl,
+      expiresAt,
+      sourceContext: article,
+    }).catch(() => { _genLocked = false; generationJob.status = "failed"; generationJob.completedAt = new Date().toISOString(); });
+
+    return reply.code(202).send({ status: "queued", count: safeCount, expiresAt, message: "Brouillons d’actualité lancés : relisez puis activez chaque question avant publication." });
+  });
+
+  // ── Brouillons image : Wikidata + Wikimedia Commons ────────────────
+  // Les hôtes sont fixes (jamais une URL fournie par le client) : cela
+  // évite toute SSRF. Wikimedia donne ici l'image, sa page et sa licence;
+  // l'admin rédige ensuite la question et la valide comme tout brouillon.
+  async function findWikimediaImages(term: string, limit: number) {
+    const searchUrl = new URL("https://www.wikidata.org/w/api.php");
+    searchUrl.search = new URLSearchParams({ action: "wbsearchentities", search: term, language: "fr", format: "json", limit: String(limit), origin: "*" }).toString();
+    const searchRes = await fetch(searchUrl, { signal: AbortSignal.timeout(12_000) });
+    if (!searchRes.ok) throw new Error("Recherche Wikidata indisponible");
+    const searchData: any = await searchRes.json();
+    const ids = (searchData.search ?? []).map((item: any) => item.id).filter(Boolean);
+    if (!ids.length) return [];
+
+    const entityUrl = new URL("https://www.wikidata.org/w/api.php");
+    entityUrl.search = new URLSearchParams({ action: "wbgetentities", ids: ids.join("|"), props: "labels|descriptions|claims", languages: "fr", format: "json", origin: "*" }).toString();
+    const entityRes = await fetch(entityUrl, { signal: AbortSignal.timeout(12_000) });
+    if (!entityRes.ok) throw new Error("Détails Wikidata indisponibles");
+    const entityData: any = await entityRes.json();
+    const entities: Record<string, any> = entityData.entities ?? {};
+    const files = Object.entries(entities).flatMap(([id, entity]) => {
+      const name = entity.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+      return name ? [{ id, name, label: entity.labels?.fr?.value ?? id, description: entity.descriptions?.fr?.value ?? "" }] : [];
+    });
+    if (!files.length) return [];
+
+    const infoUrl = new URL("https://commons.wikimedia.org/w/api.php");
+    infoUrl.search = new URLSearchParams({ action: "query", prop: "imageinfo", iiprop: "url|extmetadata", iiurlwidth: "768", titles: files.map((file) => `File:${file.name}`).join("|"), format: "json", origin: "*" }).toString();
+    const infoRes = await fetch(infoUrl, { signal: AbortSignal.timeout(12_000) });
+    if (!infoRes.ok) throw new Error("Métadonnées Wikimedia indisponibles");
+    const infoData: any = await infoRes.json();
+    const pages = Object.values(infoData.query?.pages ?? {}) as any[];
+    const byFile = new Map(pages.map((page) => [String(page.title ?? "").replace(/^File:/, ""), page.imageinfo?.[0]]));
+    return files.flatMap((file) => {
+      const info = byFile.get(file.name);
+      if (!info?.thumburl || !info?.descriptionurl) return [];
+      return [{ ...file, mediaUrl: info.thumburl, sourceUrl: info.descriptionurl, license: info.extmetadata?.LicenseShortName?.value ?? "Licence à vérifier", author: String(info.extmetadata?.Artist?.value ?? "Auteur à créditer").replace(/<[^>]*>/g, "") }];
+    });
+  }
+
+  app.get("/api/admin/media/wikimedia", async (req, reply) => {
+    const { q, limit = "8" } = req.query as { q?: string; limit?: string };
+    if (!q?.trim() || q.trim().length < 2) return reply.badRequest("Saisissez au moins deux caractères");
+    const candidates = await findWikimediaImages(q.trim(), Math.min(Math.max(Number(limit) || 8, 1), 12));
+    return reply.send({ candidates });
+  });
+
+  const imageDraftSchema = z.object({
+    categoryId: z.string().min(1), textFr: z.string().trim().min(8).max(500),
+    options: z.array(z.string().trim().min(1).max(160)).length(4), answerIndex: z.number().int().min(0).max(3),
+    mediaUrl: z.string().url().max(1_500), mediaAlt: z.string().trim().min(3).max(180), sourceUrl: z.string().url().max(1_500),
+    subcategory: z.string().trim().max(100).optional(),
+  });
+  app.post("/api/admin/questions/image-drafts", async (req, reply) => {
+    const body = imageDraftSchema.parse(req.body);
+    if (new Set(body.options.map((option) => option.toLocaleLowerCase("fr"))).size !== 4) return reply.badRequest("Les quatre propositions doivent être différentes");
+    const duplicate = await prisma.question.findFirst({ where: { categoryId: body.categoryId, textFr: { equals: body.textFr, mode: "insensitive" } } });
+    if (duplicate) return reply.conflict("Cette question existe déjà dans cette catégorie");
+    const question = await prisma.question.create({ data: { ...body, textEn: body.textFr, active: false, source: "wikimedia_commons" } });
+    return reply.code(201).send({ question });
   });
 
   // ── Catégories ───────────────────────────────────────────────────
@@ -483,14 +734,11 @@ Ne donne jamais la réponse dans le texte de la question.`;
     const { id } = req.params as { id: string };
     const { amount, reason } = req.body as { amount: number; reason?: string };
     if (!amount || amount <= 0) return reply.badRequest("Montant invalide");
-    const tx = await prisma.transaction.create({
-      data: {
-        userId: id,
-        type: "BONUS",
-        amountCoins: Math.round(amount),
-        status: "COMPLETED",
-        metadata: { reason: reason ?? "admin_credit", by: (req as any).user?.userId },
-      },
+    const tx = await credit({
+      userId: id,
+      type: "BONUS",
+      amountCoins: Math.round(amount),
+      metadata: { reason: reason ?? "admin_credit", by: req.user.userId, withdrawable: false },
     });
     return reply.send({ transaction: tx });
   });
@@ -499,20 +747,18 @@ Ne donne jamais la réponse dans le texte de la question.`;
     const { id } = req.params as { id: string };
     const { amount, reason } = req.body as { amount: number; reason?: string };
     if (!amount || amount <= 0) return reply.badRequest("Montant invalide");
-    const bal = await prisma.transaction.aggregate({
-      where: { userId: id, status: "COMPLETED" },
-      _sum: { amountCoins: true },
-    });
-    if ((bal._sum.amountCoins ?? 0) < amount) return reply.badRequest("Solde insuffisant");
-    const tx = await prisma.transaction.create({
-      data: {
+    let tx;
+    try {
+      tx = await debit({
         userId: id,
         type: "BONUS",
-        amountCoins: -Math.round(amount),
-        status: "COMPLETED",
-        metadata: { reason: reason ?? "admin_debit", by: (req as any).user?.userId },
-      },
-    });
+        amountCoins: Math.round(amount),
+        metadata: { reason: reason ?? "admin_debit", by: req.user.userId },
+      });
+    } catch (error) {
+      if (error instanceof InsufficientBalanceError) return reply.badRequest(error.message);
+      throw error;
+    }
     return reply.send({ transaction: tx });
   });
 
@@ -566,27 +812,19 @@ Ne donne jamais la réponse dans le texte de la question.`;
   });
 
   // ── Paramètres plateforme (blocage dépôts/retraits) ──────────────
-  // Stockage simple en DB : on utilise un user fictif "settings" ou
-  // un champ metadata sur un enregistrement existant. Par simplicité,
-  // on stocke dans un fichier JSON sur le serveur (hors Prisma).
-  const SETTINGS_PATH = new URL("../../../../settings.json", import.meta.url).pathname;
-  const { readFileSync, writeFileSync, existsSync } = await import("fs");
-
-  function loadSettings() {
-    if (!existsSync(SETTINGS_PATH)) return { blockDeposits: false, blockWithdrawals: false };
-    try { return JSON.parse(readFileSync(SETTINGS_PATH, "utf8")); } catch { return { blockDeposits: false, blockWithdrawals: false }; }
-  }
-
+  // §lib/settings.ts — partagé avec wallet/routes.ts, qui applique
+  // réellement le blocage (avant le 31/08 ce toggle n'était vérifié nulle
+  // part : "activer/désactiver" ici ne faisait rien en pratique).
   app.get("/api/admin/settings", async (_req, reply) => {
     return reply.send(loadSettings());
   });
 
   app.patch("/api/admin/settings", async (req, reply) => {
-    const body = req.body as { blockDeposits?: boolean; blockWithdrawals?: boolean; maintenance?: boolean; maintenanceMessage?: string };
-    const current = loadSettings();
-    const next = { ...current, ...body };
-    writeFileSync(SETTINGS_PATH, JSON.stringify(next, null, 2));
-    return reply.send(next);
+    const body = req.body as { blockDeposits?: boolean; blockWithdrawals?: boolean; maintenance?: boolean; maintenanceMessage?: string; defaultTournamentCover?: string };
+    if (body.defaultTournamentCover !== undefined && !isTournamentCover(body.defaultTournamentCover)) {
+      return reply.badRequest("Couverture de tournoi inconnue");
+    }
+    return reply.send(saveSettings(body));
   });
 
   // ── Créer une catégorie ───────────────────────────────────────────
@@ -634,11 +872,13 @@ Ne donne jamais la réponse dans le texte de la question.`;
         entryCount: t.entries.length,
         categoryId: t.categoryId,
         createdAt: t.createdAt,
+        coverImage: isTournamentCover(t.coverImage) ? t.coverImage : configuredTournamentCover(),
         participants: (t.entries as any[]).map((e: any) => e.user?.username ?? "?"),
       })),
       total,
       page: parseInt(page),
       pages: Math.ceil(total / take),
+      coverImages: TOURNAMENT_COVER_IMAGES,
     });
   });
 

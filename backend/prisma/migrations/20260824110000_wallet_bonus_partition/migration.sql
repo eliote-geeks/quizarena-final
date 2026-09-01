@@ -1,0 +1,2 @@
+ALTER TABLE "Transaction"
+ADD COLUMN "bonusAmountCoins" INTEGER NOT NULL DEFAULT 0;

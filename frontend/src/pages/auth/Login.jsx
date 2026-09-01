@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useApp } from "../../context/AppContext";
 import AuthLeft from "../../components/AuthLeft";
-import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, Loader2, BrainCircuit } from "lucide-react";
+import AuthInput from "../../components/AuthInput";
 
 const AMBER = "#E5A800";
 
@@ -11,7 +12,13 @@ export default function Login() {
   const { login } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  // §invite links : ne garder que pathname perdait le "?invite=CODE" — un
+  // lien de duel cliqué sans être connecté redirigeait vers /login, puis
+  // après connexion vers "/duel" tout court, sans le code. Le lien
+  // n'ouvrait donc jamais rien (retour Paul du 30/08). pathname+search
+  // (+hash au cas où) reconstitue l'URL cible exacte.
+  const fromLocation = location.state?.from;
+  const from = fromLocation ? `${fromLocation.pathname}${fromLocation.search || ""}${fromLocation.hash || ""}` : "/";
 
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
@@ -49,7 +56,7 @@ export default function Login() {
     >
       <AuthLeft />
 
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+      <div className="auth-form-panel flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -59,9 +66,9 @@ export default function Login() {
           {/* Mobile logo */}
           <div className="flex items-center gap-2.5 mb-10 lg:hidden">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm"
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: AMBER, color: "#07070F" }}
-            >QA</div>
+            ><BrainCircuit className="w-4 h-4" /></div>
             <span className="font-display font-bold text-lg" style={{ color: "var(--qa-text)" }}>
               Quiz<span style={{ color: AMBER }}>Arena</span>
             </span>
@@ -88,37 +95,26 @@ export default function Login() {
               hasError={!!(error && !email)}
             />
 
-            <div>
-              <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-                <input
-                  type={showPw ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="w-full pl-11 pr-11 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-                  style={{
-                    background: "var(--qa-active)",
-                    border: "1px solid var(--qa-border)",
-                    color: "var(--qa-text)",
-                  }}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = "var(--qa-border)")}
-                />
+            <AuthInput
+              icon={Lock}
+              type={showPw ? "text" : "password"}
+              label="Mot de passe"
+              value={password}
+              onChange={(v) => { setPassword(v); setError(""); }}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              trailing={
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 transition hover:opacity-80"
+                  className="transition hover:opacity-80"
                   style={{ color: "var(--qa-text-faint)" }}
+                  tabIndex={-1}
                 >
                   {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
 
             <div className="flex items-center justify-between">
               <button
@@ -191,6 +187,7 @@ export default function Login() {
             Pas encore de compte ?{" "}
             <Link
               to="/register"
+              state={location.state?.from ? { from: location.state.from } : undefined}
               className="font-bold hover:underline"
               style={{ color: AMBER }}
             >
@@ -198,31 +195,6 @@ export default function Login() {
             </Link>
           </p>
         </motion.div>
-      </div>
-    </div>
-  );
-}
-
-function AuthInput({ icon: Icon, label, hasError, ...props }) {
-  return (
-    <div>
-      <label className="block text-xs font-bold mb-1.5" style={{ color: "var(--qa-text-sub)" }}>
-        {label}
-      </label>
-      <div className="relative">
-        <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: "var(--qa-text-faint)" }} />
-        <input
-          {...props}
-          onChange={(e) => props.onChange?.(e.target.value)}
-          className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm outline-none transition-colors"
-          style={{
-            background: "var(--qa-active)",
-            border: `1px solid ${hasError ? "#FF6B6B" : "var(--qa-border)"}`,
-            color: "var(--qa-text)",
-          }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = AMBER)}
-          onBlur={(e) => (e.currentTarget.style.borderColor = hasError ? "#FF6B6B" : "var(--qa-border)")}
-        />
       </div>
     </div>
   );

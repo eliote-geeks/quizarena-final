@@ -5,7 +5,7 @@ import { CATEGORY_COLORS } from "../data/mockData";
 const LINES = [14, 28, 42, 56, 70, 84];
 const _BUILD = "v2.1";
 
-export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr" }) {
+export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr", waitHint = false }) {
   const catColor = CATEGORY_COLORS[cat?.id] || "#E5A800";
   const CatIcon  = cat?.icon;
   const tags     = extractContext(question, cat?.id, lang);
@@ -20,16 +20,7 @@ export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr" 
       className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden select-none"
       style={{ background: "#05050A" }}
     >
-      {/* Radial glow burst on enter */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        initial={{ opacity: 0.7 }}
-        animate={{ opacity: 0 }}
-        transition={{ duration: 0.55, ease: "easeOut" }}
-        style={{
-          background: `radial-gradient(ellipse 75% 55% at 50% 50%, ${catColor}45 0%, transparent 70%)`,
-        }}
-      />
+      <motion.div className="absolute inset-0 pointer-events-none" initial={{ opacity: .5 }} animate={{ opacity: 0 }} transition={{ duration: .55, ease: "easeOut" }} style={{ background: `${catColor}22` }} />
 
       {/* Scan lines */}
       {LINES.map((top, i) => (
@@ -152,6 +143,24 @@ export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr" 
         >
           Prêt ?
         </motion.p>
+
+        {/* Duel uniquement (§DuelPlay.jsx waitHint) : le serveur attend la
+            confirmation de chargement des DEUX joueurs avant d'armer le
+            chrono (§engine.ts prepareQuestion) — cet écran peut donc durer
+            plus longtemps qu'en solo si l'adversaire charge lentement.
+            Retour Paul du 31/08 : dire clairement de patienter plutôt que
+            de laisser un écran silencieux. */}
+        {waitHint && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: .55 }}
+            transition={{ delay: 0.6 }}
+            className="mt-5 text-[10px] uppercase tracking-[0.14em]"
+            style={{ color: "rgba(248,250,252,.55)" }}
+          >
+            Ne recharge pas la page — la question se charge
+          </motion.p>
+        )}
       </div>
 
       {/* Bottom progress bar */}
@@ -160,7 +169,7 @@ export default function QuestionIntro({ qIdx, total, question, cat, lang = "fr" 
         initial={{ scaleX: 1, transformOrigin: "right" }}
         animate={{ scaleX: 0, transformOrigin: "right" }}
         transition={{ duration: 1.48, delay: 0.02, ease: "linear" }}
-        style={{ background: `linear-gradient(90deg, transparent, ${catColor}80, ${catColor})` }}
+        style={{ background: catColor }}
       />
     </motion.div>
   );

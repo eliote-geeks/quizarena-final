@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { listOpenInvites, listLiveMatches } from "./engine.js";
+import { listOpenInvites, listLiveMatches, getInviteInfo } from "./engine.js";
 
 /**
  * Duels ouverts — liste publique des invitations créées "visibles" (par
@@ -22,5 +22,15 @@ export async function duelRestRoutes(app: FastifyInstance) {
     const mine = all.find((inv) => inv.userId === userId);
     const open = all.filter((inv) => inv.userId !== userId).map(strip);
     return reply.send({ open, mine: mine ? strip(mine) : null });
+  });
+
+  // Consultation d'une invitation par code avant acceptation — la vraie
+  // mise doit être affichée à celui qui accepte, jamais un défaut de
+  // formulaire (§engine.ts getInviteInfo, bug réel du 31/08).
+  app.get("/api/duel/invite/:code", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { code } = req.params as { code: string };
+    const info = getInviteInfo(code);
+    if (!info) return reply.notFound("Invitation introuvable ou expirée");
+    return reply.send(info);
   });
 }

@@ -14,10 +14,9 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /**
- * Sélectionne N questions actives, en excluant si possible celles déjà
- * vues par ce joueur dans les 7 derniers jours (évite le par-cœur de
- * session en session). Si le stock restant est insuffisant, complète
- * avec le reste du pool.
+ * Sélectionne N questions actives jamais servies aux joueurs concernés.
+ * L'exposition est écrite dès le lancement, pas à la soumission : quitter
+ * une manche ne permet donc pas de forcer une répétition.
  *
  * `categoryId = null` => pool mélangé sur TOUTES les catégories — c'est
  * le mode des duels contre un vrai adversaire (le thème n'a plus de
@@ -25,17 +24,17 @@ function shuffle<T>(arr: T[]): T[] {
  * d'accord ; seul le mode solo et le mode "contre l'ordinateur" gardent
  * un choix de catégorie explicite).
  */
-export async function pickQuestions(categoryId: string | null, userId: string, count = QUESTIONS_PER_SESSION) {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-  const recentlySeen = await prisma.quizAnswer.findMany({
-    where: { session: { userId, ...(categoryId ? { categoryId } : {}), startedAt: { gte: sevenDaysAgo } } },
+export async function pickQuestions(categoryId: string | null, playerIds: string | string[], count = QUESTIONS_PER_SESSION) {
+  const userIds = [...new Set(Array.isArray(playerIds) ? playerIds : [playerIds])];
+  const exposures = await prisma.questionExposure.findMany({
+    where: { userId: { in: userIds }, ...(categoryId ? { question: { categoryId } } : {}) },
     select: { questionId: true },
-    distinct: ["questionId"],
   });
-  const seenIds = new Set(recentlySeen.map((r) => r.questionId));
+  const seenIds = new Set(exposures.map((r) => r.questionId));
 
-  const pool = await prisma.question.findMany({ where: { active: true, ...(categoryId ? { categoryId } : {}) } });
+  const pool = await prisma.question.findMany({
+    where: { active: true, ...(categoryId ? { categoryId } : {}), OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+  });
   if (pool.length < count) {
     // Une partie plus courte que prévu casserait le barème de paiement
     // (PAYOUT_MULT est indexé 0-10, pensé pour exactement
@@ -52,9 +51,27 @@ export async function pickQuestions(categoryId: string | null, userId: string, c
   }
 
   const fresh = pool.filter((q) => !seenIds.has(q.id));
-  const source = fresh.length >= count ? fresh : pool;
-
-  return shuffle(source).slice(0, Math.min(count, source.length));
+  if (fresh.length < count) {
+    throw new Error(categoryId
+      ? `Nouvelles questions insuffisantes pour la catégorie "${categoryId}" (${fresh.length}/${count})`
+      : `Nouvelles questions insuffisantes (${fresh.length}/${count})`);
+  }
+  // Un quiz de 10 manches doit contenir au moins trois questions illustrées
+  // quand la banque concernée le permet. La sélection reste aléatoire, mais
+  // évite les séries 100 % texte qui fatiguent et donnent une impression de
+  // répétition. Si une catégorie n'a pas encore assez de médias validés, le
+  // jeu reste jouable : la couverture est suivie par le dashboard éditorial.
+  const imageTarget = Math.ceil(count * 0.3);
+  const illustrated = shuffle(fresh.filter((question) => Boolean(question.mediaUrl)));
+  const selectedImages = illustrated.slice(0, Math.min(imageTarget, illustrated.length));
+  const imageIds = new Set(selectedImages.map((question) => question.id));
+  const remaining = shuffle(fresh.filter((question) => !imageIds.has(question.id))).slice(0, count - selectedImages.length);
+  const selected = shuffle([...selectedImages, ...remaining]);
+  await prisma.questionExposure.createMany({
+    data: userIds.flatMap((userId) => selected.map((question) => ({ userId, questionId: question.id }))),
+    skipDuplicates: true,
+  });
+  return selected;
 }
 
 /**

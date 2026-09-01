@@ -18,21 +18,49 @@
 //    un aléa réseau, pas un abandon de partie.
 
 import { prisma } from "../../lib/prisma.js";
-import { credit, debit, getBalance, InsufficientBalanceError } from "../wallet/ledger.js";
-import { pickQuestions, shuffledOptions, TIME_PER_QUESTION_MS } from "../quiz/questions.js";
+import { bonusAmountForPayout, credit, debit, getBalance, InsufficientBalanceError } from "../wallet/ledger.js";
+import { pickQuestions, shuffledOptions } from "../quiz/questions.js";
 import { DUEL_ROUND_SIZE, duelWinnerPayout, duelDrawPayout, duelResultOf } from "../quiz/payout.js";
 import { calcNewElo } from "../../lib/elo.js";
 import { BOT_PARAMS, getBotUserId, botUsername, botWinnerPayout, type BotDifficulty } from "./bot.js";
 import { notifyTournamentMatchDone, notifyClanWarMatchDone } from "./hooks.js";
+import { sendPush } from "../../lib/push.js";
+
+// Chrono spécifique au Duel — volontairement plus long qu'en Solo (8 s,
+// §quiz/questions.ts TIME_PER_QUESTION_MS) : face à un adversaire réel, le
+// temps de lecture de la question rivalise avec le temps de réponse, alors
+// qu'en Solo le joueur lit déjà pendant que le chrono défile sans pression
+// concurrentielle. Retour Paul du 31/08, insistant à plusieurs reprises :
+// "seul les duels solo [sic, Solo] sont à 8s le reste c'est 13s".
+const DUEL_TIME_PER_QUESTION_MS = 13_000;
 
 const QUEUE_TIMEOUT_MS = 45_000;
 const ROUND_GRACE_MS = 3_000; // temps d'affichage du "reveal" avant la question suivante — 3 s visibles côté client
+
+// Délai maximal accordé aux DEUX joueurs pour confirmer avoir fini de
+// charger une question (texte déjà en main, seul le média peut prendre du
+// temps) avant que le serveur ne démarre le chrono partagé de force.
+//
+// Correctif du 30/08/2026 (retour Paul, capture à l'appui) : 6 s coupait
+// court sur une connexion mobile lente — le round démarrait alors que
+// l'image était encore visiblement en train de charger, ce qui recréait
+// exactement le désavantage que ce mécanisme est censé éliminer. En solo
+// (QuizPlay.jsx, `mediaReady`) l'attente est SANS limite de temps ; ici on
+// garde un filet de sécurité (client réellement mort/bloqué), mais large
+// pour ne quasiment jamais se déclencher sur un vrai chargement, même lent
+// — même modèle qu'en solo en pratique. Une vraie déconnexion pendant
+// cette attente est de toute façon détectée indépendamment par le
+// heartbeat/pauseMatch (§pauseMatch : `pendingReady.cancel()`), pas par ce
+// timeout.
+const QUESTION_READY_TIMEOUT_MS = 25_000;
 const RECONNECT_GRACE_MS = 20_000;
+const PRESENCE_CONFIRM_MS = 30_000;
 const TAB_HIDDEN_GRACE_MS = 3_000; // anti-triche : 3 s pour revenir si onglet/app masqué(e) en cours de question
 export const TOURNAMENT_WALKOVER_MS = 3 * 60_000; // délai pour rejoindre son match de tournoi avant forfait
 
 // Timers actifs "onglet masqué" — un par userId, nettoyé à la fin du match.
 const tabHiddenTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const tabHiddenEvents = new Map<string, { count: number; totalMs: number; startedAt: number }>();
 
 type Send = (msg: object) => void;
 
@@ -55,9 +83,12 @@ type QueueEntry = {
 type MatchQuestion = {
   questionId: string;
   text: string;
+  mediaUrl: string | null;
+  mediaAlt: string | null;
   optionsText: string[]; // déjà mélangées, ordre partagé par les deux joueurs
   permutation: number[]; // permutation[position affichée] = index canonique
   answerIndex: number; // index canonique de la bonne réponse (jamais envoyé au client)
+  categoryId: string; // catégorie réelle de CETTE question (les duels mélangés piochent dans toutes les catégories, §pickQuestions) — affichée côté client comme en solo (§QuestionIntro), pas de risque anti-triche : jamais la réponse, juste le thème.
 };
 
 type MatchPlayer = {
@@ -85,6 +116,23 @@ type MatchPlayer = {
   ready: boolean;
 };
 
+type ResumablePhase = "waiting_ready" | "countdown" | "question" | "reveal";
+type PauseReason = "connection_lost" | "missing_answer" | "visibility_lost";
+type PauseResumeAction = "continue_phase" | "resolve_round" | "send_question" | "finalize";
+
+type MatchPause = {
+  from: ResumablePhase;
+  reason: PauseReason;
+  missingUserIds: Set<string>;
+  confirmedUserIds: Set<string>;
+  remainingMs: number;
+  startedAt: number;
+  expiresAt: number;
+  timeoutHandle: ReturnType<typeof setTimeout> | null;
+  resumeAction: PauseResumeAction;
+  nextQuestionIndex?: number;
+};
+
 type Match = {
   id: string;
   categoryId: string;
@@ -95,16 +143,22 @@ type Match = {
   // "Prêt !" avant que le countdown ne démarre — garantit qu'ils sont présents
   // et règle le problème audio mobile (le clic est un geste utilisateur qui
   // réveille l'AudioContext).
-  status: "debiting" | "waiting_ready" | "countdown" | "question" | "reveal" | "resolving" | "done";
+  status: "debiting" | "waiting_ready" | "countdown" | "question" | "reveal" | "paused" | "resolving" | "done";
   startedAnyQuestion: boolean;
   questionSentAt: number;
   countdownSentAt: number; // timestamp quand le countdown a été envoyé (pour recalculer le restant à la reconnexion)
   countdownSeconds: number; // durée totale du countdown envoyée aux clients
+  phaseDeadlineAt: number; // échéance serveur de la phase active, utilisée pour geler/reprendre sans perdre de temps
   roundTimer: ReturnType<typeof setTimeout> | null;
   readyTimer: ReturnType<typeof setTimeout> | null; // timer d'expiration si un joueur ne clique pas "Prêt" à temps
+  // Attente de préchargement AVANT le lancement réel d'une question — voir
+  // prepareQuestion(). null quand aucune question n'est en cours de
+  // préparation (pendant une reveal, un countdown, etc.).
+  pendingReady: { questionId: string; readyUserIds: Set<string>; notify: () => void; cancel: () => void } | null;
   players: [MatchPlayer, MatchPlayer];
   cancelled: boolean;
   awaitingReconnect: boolean;
+  pause: MatchPause | null;
   botDifficulty: BotDifficulty | null; // non-null => players[1] est l'ordinateur
   tournamentMatchId: string | null; // non-null => match de bracket, pas de paiement direct (§tournament/)
   clanWarMatchId?: string | null; // non-null => confrontation de clans, sans paiement ni ELO
@@ -118,7 +172,8 @@ const spectatorsByMatch = new Map<string, Map<string, Send>>();
 
 function spectatorState(match: Match) {
   const q = match.questions[match.index];
-  const reveal = match.status === "reveal" && q ? {
+  const effectiveStatus = match.status === "paused" ? match.pause?.from : match.status;
+  const reveal = effectiveStatus === "reveal" && q ? {
     correctPosition: q.permutation.indexOf(q.answerIndex),
     chosenA: match.players[0].chosenIndex ?? -1,
     chosenB: match.players[1].chosenIndex ?? -1,
@@ -127,6 +182,12 @@ function spectatorState(match: Match) {
     type: "spectator_state",
     matchId: match.id,
     status: match.status,
+    paused: match.pause ? {
+      reason: match.pause.reason,
+      pausedFrom: match.pause.from,
+      expiresAt: match.pause.expiresAt,
+      missingPlayers: match.players.filter((player) => match.pause!.missingUserIds.has(player.userId)).map((player) => player.username),
+    } : null,
     categoryId: match.categoryId,
     stakeCoins: match.stakeCoins,
     clanWarMatchId: match.clanWarMatchId ?? null,
@@ -135,12 +196,15 @@ function spectatorState(match: Match) {
     scoreB: match.players[1].score,
     players: match.players.map((player) => ({ username: player.username, connected: player.connected })),
     viewerCount: spectatorsByMatch.get(match.id)?.size ?? 0,
-    question: q && (match.status === "question" || match.status === "reveal") ? {
+    question: q && (effectiveStatus === "question" || effectiveStatus === "reveal") ? {
       index: match.index,
       total: match.questions.length,
       text: q.text,
+      mediaUrl: q.mediaUrl,
+      mediaAlt: q.mediaAlt,
+      categoryId: q.categoryId,
       options: q.optionsText,
-      deadline: match.questionSentAt + TIME_PER_QUESTION_MS,
+      deadline: match.status === "paused" ? null : match.phaseDeadlineAt,
     } : null,
     reveal,
   };
@@ -152,7 +216,7 @@ function emitToSpectators(match: Match, message: object = spectatorState(match))
 
 export function spectateMatch(userId: string, matchId: string, send: Send) {
   const match = matches.get(matchId);
-  if (!match || !["waiting_ready", "countdown", "question", "reveal"].includes(match.status)) {
+  if (!match || !["waiting_ready", "countdown", "question", "reveal", "paused"].includes(match.status)) {
     send({ type: "spectator_unavailable", matchId });
     return;
   }
@@ -177,7 +241,7 @@ export function leaveSpectate(userId: string, matchId?: string) {
  * réponse n'est exposé. Il sert aux cartes « en direct » de l'accueil. */
 export function listLiveMatches() {
   return [...matches.values()]
-    .filter((match) => ["waiting_ready", "countdown", "question", "reveal"].includes(match.status))
+    .filter((match) => ["waiting_ready", "countdown", "question", "reveal", "paused"].includes(match.status))
     .map((match) => ({
       id: match.id,
       status: match.status,
@@ -199,8 +263,17 @@ export function registerSend(userId: string, send: Send) {
   allSends.set(userId, send);
 }
 
-export function unregisterSend(userId: string) {
-  allSends.delete(userId);
+/** Une reconnexion peut ouvrir une nouvelle socket avant que l'ancienne ne
+ * reçoive son événement `close`. L'ancienne fermeture ne doit surtout pas
+ * supprimer la connexion plus récente du registre. */
+export function unregisterSend(userId: string, send: Send) {
+  if (allSends.get(userId) === send) allSends.delete(userId);
+}
+
+/** Empêche un ancien onglet/socket remplacé de continuer à envoyer des
+ * réponses ou des ordres sur le duel actif. */
+export function isCurrentSend(userId: string, send: Send) {
+  return allSends.get(userId) === send;
 }
 
 /** Notification métier ciblée réutilisée par les guerres de clans.
@@ -241,6 +314,215 @@ function otherPlayer(match: Match, userId: string): MatchPlayer {
 
 function playerOf(match: Match, userId: string): MatchPlayer {
   return match.players[0].userId === userId ? match.players[0] : match.players[1];
+}
+
+function pauseMessage(match: Match, viewerUserId: string) {
+  const pause = match.pause!;
+  return {
+    type: "duel_paused",
+    duelMatchId: match.id,
+    reason: pause.reason,
+    pausedFrom: pause.from,
+    expiresAt: pause.expiresAt,
+    missingPlayers: match.players
+      .filter((player) => pause.missingUserIds.has(player.userId))
+      .map((player) => ({ username: player.username, connected: player.connected })),
+    requiresYourConfirmation:
+      pause.missingUserIds.has(viewerUserId) && !pause.confirmedUserIds.has(viewerUserId),
+    confirmedUserIds: [...pause.confirmedUserIds],
+  };
+}
+
+function emitPauseState(match: Match) {
+  if (!match.pause) return;
+  for (const player of match.players) player.send?.(pauseMessage(match, player.userId));
+  emitToSpectators(match);
+}
+
+function defaultResumeAction(match: Match, from: ResumablePhase): Pick<MatchPause, "resumeAction" | "nextQuestionIndex"> {
+  if (from === "countdown") return { resumeAction: "send_question", nextQuestionIndex: 0 };
+  if (from === "reveal") {
+    const nextQuestionIndex = match.index + 1;
+    return nextQuestionIndex >= match.questions.length
+      ? { resumeAction: "finalize" }
+      : { resumeAction: "send_question", nextQuestionIndex };
+  }
+  return { resumeAction: "continue_phase" };
+}
+
+function remainingForPhase(match: Match, from: ResumablePhase) {
+  if (from === "question") {
+    return Math.max(0, (match.phaseDeadlineAt || match.questionSentAt + DUEL_TIME_PER_QUESTION_MS) - Date.now());
+  }
+  if (from === "countdown" || from === "reveal") {
+    return Math.max(0, match.phaseDeadlineAt - Date.now());
+  }
+  return 90_000;
+}
+
+/**
+ * Gèle réellement le duel côté serveur. Aucun chrono ni passage de manche
+ * ne continue pendant l'absence : les deux clients reçoivent le même état,
+ * et seul un retour confirmé peut relancer la phase exactement au temps
+ * restant. Les duels contre l'ordinateur gardent leur logique dédiée.
+ */
+function pauseMatch(
+  match: Match,
+  reason: PauseReason,
+  missingUserIds: string[],
+  options: {
+    from?: ResumablePhase;
+    remainingMs?: number;
+    resumeAction?: PauseResumeAction;
+    nextQuestionIndex?: number;
+  } = {},
+) {
+  if (match.botDifficulty || match.status === "done" || match.status === "resolving" || match.cancelled) return;
+
+  // Une déconnexion pendant l'attente de préchargement d'une question
+  // (§prepareQuestion) doit annuler cette attente proprement : sans ça, son
+  // timeout de secours démarrerait le round quelques secondes plus tard
+  // SOUS la pause qu'on est justement en train de poser.
+  if (match.pendingReady) match.pendingReady.cancel();
+
+  const now = Date.now();
+  const previous = match.pause;
+  const from = options.from ?? previous?.from ?? (match.status as ResumablePhase);
+  if (!["waiting_ready", "countdown", "question", "reveal"].includes(from)) return;
+
+  if (match.roundTimer) { clearTimeout(match.roundTimer); match.roundTimer = null; }
+  if (match.readyTimer) { clearTimeout(match.readyTimer); match.readyTimer = null; }
+  if (previous?.timeoutHandle) clearTimeout(previous.timeoutHandle);
+
+  const missing = previous?.missingUserIds ?? new Set<string>();
+  for (const userId of missingUserIds) missing.add(userId);
+  const confirmed = previous?.confirmedUserIds ?? new Set<string>();
+  for (const userId of missingUserIds) confirmed.delete(userId);
+  for (const player of match.players) {
+    if (player.connected && !missing.has(player.userId)) confirmed.add(player.userId);
+  }
+
+  const fallback = defaultResumeAction(match, from);
+  const pause: MatchPause = {
+    from,
+    reason,
+    missingUserIds: missing,
+    confirmedUserIds: confirmed,
+    remainingMs: options.remainingMs ?? previous?.remainingMs ?? remainingForPhase(match, from),
+    startedAt: previous?.startedAt ?? now,
+    expiresAt: now + PRESENCE_CONFIRM_MS,
+    timeoutHandle: null,
+    resumeAction: options.resumeAction ?? previous?.resumeAction ?? fallback.resumeAction,
+    nextQuestionIndex: options.nextQuestionIndex ?? previous?.nextQuestionIndex ?? fallback.nextQuestionIndex,
+  };
+
+  match.pause = pause;
+  match.status = "paused";
+  pause.timeoutHandle = setTimeout(() => void expirePresencePause(match, pause), PRESENCE_CONFIRM_MS);
+  emitPauseState(match);
+}
+
+async function expirePresencePause(match: Match, pause: MatchPause) {
+  if (match.pause !== pause || match.status !== "paused") return;
+  const absent = match.players.filter(
+    (player) => pause.missingUserIds.has(player.userId)
+      && (!player.connected || !pause.confirmedUserIds.has(player.userId)),
+  );
+  if (!absent.length) return resumePausedMatch(match);
+  if (!match.startedAnyQuestion) {
+    await refundAndCancel(match, "presence_non_confirmee_avant_depart");
+    return;
+  }
+  if (absent.length === 1) {
+    await finalizeMatch(match, absent[0]!.userId);
+    return;
+  }
+  await refundAndCancel(match, "absence_des_deux_joueurs");
+}
+
+function resumedQuestionPayload(match: Match, player: MatchPlayer) {
+  const q = match.questions[match.index];
+  if (!q) return {};
+  return {
+    index: match.index,
+    total: match.questions.length,
+    questionId: q.questionId,
+    text: q.text,
+    mediaUrl: q.mediaUrl,
+    mediaAlt: q.mediaAlt,
+    categoryId: q.categoryId,
+    options: q.optionsText,
+    deadline: match.phaseDeadlineAt,
+    alreadyAnswered: player.answered,
+    chosenIndex: player.chosenIndex,
+  };
+}
+
+function resumePausedMatch(match: Match) {
+  const pause = match.pause;
+  if (!pause || match.status !== "paused") return;
+  if (match.players.some((player) => !player.connected)) return;
+  if ([...pause.missingUserIds].some((userId) => !pause.confirmedUserIds.has(userId))) return;
+
+  if (pause.timeoutHandle) clearTimeout(pause.timeoutHandle);
+  match.pause = null;
+  const now = Date.now();
+
+  if (pause.resumeAction === "resolve_round") {
+    match.status = "question";
+    for (const player of match.players) player.send?.({ type: "duel_resumed", phase: "question", resolving: true });
+    void resolveRound(match);
+    return;
+  }
+  if (pause.resumeAction === "send_question") {
+    match.status = pause.from;
+    for (const player of match.players) player.send?.({ type: "duel_resumed", phase: pause.from });
+    prepareQuestion(match, pause.nextQuestionIndex ?? Math.max(0, match.index + 1));
+    return;
+  }
+  if (pause.resumeAction === "finalize") {
+    match.status = "reveal";
+    for (const player of match.players) player.send?.({ type: "duel_resumed", phase: "reveal" });
+    match.phaseDeadlineAt = now + Math.max(0, pause.remainingMs);
+    match.roundTimer = setTimeout(() => void finalizeMatch(match), Math.max(0, pause.remainingMs));
+    return;
+  }
+  if (pause.from === "waiting_ready") {
+    match.status = "waiting_ready";
+    for (const player of match.players) player.send?.({ type: "duel_resumed", phase: "waiting_ready" });
+    match.readyTimer = setTimeout(() => {
+      if (match.status === "waiting_ready") void refundAndCancel(match, "adversaire_pas_pret");
+    }, Math.max(1_000, pause.remainingMs));
+    return;
+  }
+  if (pause.from === "question") {
+    const remainingMs = Math.max(250, pause.remainingMs);
+    match.status = "question";
+    match.questionSentAt = now - (DUEL_TIME_PER_QUESTION_MS - remainingMs);
+    match.phaseDeadlineAt = now + remainingMs;
+    for (const player of match.players) {
+      player.send?.({ type: "duel_resumed", phase: "question", ...resumedQuestionPayload(match, player) });
+    }
+    match.roundTimer = setTimeout(() => void resolveRound(match), remainingMs);
+    if (match.botDifficulty) scheduleBotAnswer(match, match.questions[match.index]!);
+  }
+}
+
+export function handlePresenceConfirm(userId: string) {
+  const match = activeMatchByUser.get(userId);
+  const pause = match?.pause;
+  if (!match || !pause || match.status !== "paused") return;
+  const player = playerOf(match, userId);
+  if (!player.connected || !pause.missingUserIds.has(userId)) return;
+  pause.confirmedUserIds.add(userId);
+  for (const participant of match.players) {
+    participant.send?.({
+      type: "presence_confirmed",
+      username: player.username,
+      allReady: [...pause.missingUserIds].every((id) => pause.confirmedUserIds.has(id)),
+    });
+  }
+  resumePausedMatch(match);
 }
 
 // ── Entrée dans la file d'attente ──────────────────────────────────────
@@ -343,7 +625,7 @@ const INVITE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // sans 0/O/1/I/L, ambig
 
 type PendingInvite = MatchSeed & {
   code: string;
-  timeoutHandle: ReturnType<typeof setTimeout>;
+  timeoutHandle: ReturnType<typeof setTimeout> | null;
   disconnectGraceHandle: ReturnType<typeof setTimeout> | null;
   isPublic: boolean;
   createdAtMs: number;
@@ -367,7 +649,7 @@ export function cancelInvite(userId: string) {
   if (!code) return;
   const invite = invites.get(code);
   if (invite) {
-    clearTimeout(invite.timeoutHandle);
+    if (invite.timeoutHandle) clearTimeout(invite.timeoutHandle);
     if (invite.disconnectGraceHandle) clearTimeout(invite.disconnectGraceHandle);
     if (invite.targetUserId) allSends.get(invite.targetUserId)?.({ type: "duel_challenge_cancelled", code });
   }
@@ -385,6 +667,9 @@ function scheduleInviteCancelIfStillDisconnected(userId: string) {
   if (!code) return;
   const invite = invites.get(code);
   if (!invite) return;
+  // Un défi adressé à une personne reste affiché jusqu'à sa décision. Une
+  // déconnexion du challenger ne doit pas faire disparaître la demande.
+  if (invite.targetUserId) return;
   if (invite.disconnectGraceHandle) clearTimeout(invite.disconnectGraceHandle);
   invite.disconnectGraceHandle = setTimeout(() => {
     // attachSocket() aurait déjà nettoyé disconnectGraceHandle en cas de
@@ -449,21 +734,28 @@ export async function createInvite(entry: MatchSeed, isPublic = false, targetUse
 
   const code = generateInviteCode();
   const ttlMs = isPublic ? PUBLIC_INVITE_TTL_MS : INVITE_TTL_MS;
-  const timeoutHandle = setTimeout(() => {
+  const timeoutHandle = target ? null : setTimeout(() => {
     if (invites.has(code)) {
       invites.delete(code);
       pendingInviteByUser.delete(entry.userId);
       entry.send({ type: "invite_expired" });
-      if (target) allSends.get(target.id)?.({ type: "duel_challenge_expired", code });
     }
   }, ttlMs);
 
   invites.set(code, { ...entry, code, timeoutHandle, disconnectGraceHandle: null, isPublic, createdAtMs: Date.now(), targetUserId: target?.id, targetUsername: target?.username });
   pendingInviteByUser.set(entry.userId, code);
-  entry.send({ type: "invite_created", code, expiresInMs: ttlMs, isPublic, direct: Boolean(target), targetUsername: target?.username });
+  entry.send({ type: "invite_created", code, expiresInMs: target ? null : ttlMs, isPublic, direct: Boolean(target), targetUsername: target?.username, persistent: Boolean(target) });
 
   if (target) {
-    allSends.get(target.id)?.({ type: "duel_challenge", code, username: entry.username, stakeCoins: entry.stakeCoins, expiresInMs: ttlMs });
+    allSends.get(target.id)?.({ type: "duel_challenge", code, username: entry.username, stakeCoins: entry.stakeCoins, createdAtMs: Date.now(), persistent: true });
+    // Push : le défi reste affiché tant qu'il n'est pas traité (§ci-dessus),
+    // mais encore faut-il que le joueur visé ait l'app ouverte pour le voir.
+    void sendPush(target.id, {
+      title: "Nouveau défi",
+      body: `${entry.username} te défie pour ${entry.stakeCoins.toLocaleString("fr-FR")} F`,
+      url: `/duel?invite=${code}`,
+      tag: `duel-challenge-${code}`,
+    });
   }
 
   // Signaler à tous les joueurs connectés qu'un nouveau duel ouvert est disponible
@@ -495,6 +787,25 @@ export function listOpenInvites() {
     .sort((a, b) => b.createdAtMs - a.createdAtMs);
 }
 
+/** Consultation d'une invitation par son code (§GET /api/duel/invite/:code)
+ * — bug réel du 31/08 : l'écran d'acceptation d'un lien privé affichait la
+ * mise par défaut du formulaire (500 F) au lieu de la vraie mise fixée par
+ * le créateur (ex. 100 F), car rien ne renvoyait jamais cette information
+ * avant l'acceptation. Le débit réel restait correct (le serveur utilise
+ * toujours `invite.stakeCoins`), mais le joueur validait "à l'aveugle" un
+ * montant affiché faux — inacceptable sur une appli d'argent réel. */
+export function getInviteInfo(code: string) {
+  const invite = invites.get(code.trim().toUpperCase());
+  if (!invite) return null;
+  return {
+    code: invite.code,
+    hostUsername: invite.username,
+    stakeCoins: invite.stakeCoins,
+    isPublic: invite.isPublic,
+    direct: Boolean(invite.targetUserId),
+  };
+}
+
 export async function joinInvite(
   entry: { userId: string; username: string; eloRating: number; send: Send },
   rawCode: string
@@ -520,47 +831,76 @@ export async function joinInvite(
   if (activeMatchByUser.has(invite.userId) || reserving.has(invite.userId)) {
     // L'hôte s'est engagé ailleurs entre-temps (queue publique, autre
     // invitation acceptée en double onglet…) — l'invitation est caduque.
-    clearTimeout(invite.timeoutHandle);
+    if (invite.timeoutHandle) clearTimeout(invite.timeoutHandle);
     invites.delete(code);
     pendingInviteByUser.delete(invite.userId);
     entry.send({ type: "error", message: "Invitation invalide ou expirée" });
     return;
   }
 
+  if (invite.targetUserId && !allSends.has(invite.userId)) {
+    entry.send({ type: "error", message: `${invite.username} est temporairement hors ligne. Le défi reste disponible.` });
+    return;
+  }
+
+  // Verrou pris avant toute lecture de solde : deux invitations acceptées
+  // dans le même tick ne peuvent ni former deux matchs ni débiter deux fois.
+  reserving.add(entry.userId);
+  reserving.add(invite.userId);
+
   // Seconde garde au moment de l'acceptation : un solde peut changer entre
   // l'envoi du défi et le clic « Accepter ». L'invitation publique reste
   // disponible si seul ce candidat n'a pas assez d'argent.
-  const [hostBalance, guestBalance] = await Promise.all([
-    getBalance(invite.userId),
-    getBalance(entry.userId),
-  ]);
-  if (guestBalance < invite.stakeCoins) {
-    entry.send({ type: "error", message: `Il te faut ${invite.stakeCoins.toLocaleString("fr-FR")} F pour accepter ce duel` });
-    return;
-  }
-  if (hostBalance < invite.stakeCoins) {
-    clearTimeout(invite.timeoutHandle);
+  try {
+    const [hostBalance, guestBalance] = await Promise.all([
+      getBalance(invite.userId),
+      getBalance(entry.userId),
+    ]);
+    if (guestBalance < invite.stakeCoins) {
+      entry.send({ type: "error", message: `Il te faut ${invite.stakeCoins.toLocaleString("fr-FR")} F pour accepter ce duel` });
+      return;
+    }
+    if (hostBalance < invite.stakeCoins) {
+      if (invite.timeoutHandle) clearTimeout(invite.timeoutHandle);
+      if (invite.disconnectGraceHandle) clearTimeout(invite.disconnectGraceHandle);
+      invites.delete(code);
+      pendingInviteByUser.delete(invite.userId);
+      entry.send({ type: "error", message: "Ce duel n'est plus disponible : son créateur n'a plus assez de solde" });
+      invite.send({ type: "duel_cancelled", reason: "solde_insuffisant" });
+      return;
+    }
+
+    // Accepter ce défi refuse automatiquement toutes les autres demandes
+    // encore adressées au même joueur, côté destinataire et challenger.
+    for (const [otherCode, otherInvite] of [...invites]) {
+      if (otherCode === code || otherInvite.targetUserId !== entry.userId) continue;
+      if (otherInvite.timeoutHandle) clearTimeout(otherInvite.timeoutHandle);
+      if (otherInvite.disconnectGraceHandle) clearTimeout(otherInvite.disconnectGraceHandle);
+      invites.delete(otherCode);
+      pendingInviteByUser.delete(otherInvite.userId);
+      otherInvite.send({ type: "invite_declined", username: otherInvite.targetUsername, reason: "accepted_other" });
+      allSends.get(entry.userId)?.({ type: "duel_challenge_cancelled", code: otherCode, reason: "accepted_other" });
+    }
+
+    if (invite.timeoutHandle) clearTimeout(invite.timeoutHandle);
     if (invite.disconnectGraceHandle) clearTimeout(invite.disconnectGraceHandle);
     invites.delete(code);
     pendingInviteByUser.delete(invite.userId);
-    entry.send({ type: "error", message: "Ce duel n'est plus disponible : son créateur n'a plus assez de solde" });
-    invite.send({ type: "duel_cancelled", reason: "solde_insuffisant" });
-    return;
+    allSends.get(entry.userId)?.({ type: "duel_challenge_accepted", code });
+
+    entry.send({ type: "queued" });
+    await createMatch(invite, entry);
+  } finally {
+    reserving.delete(entry.userId);
+    reserving.delete(invite.userId);
   }
-
-  clearTimeout(invite.timeoutHandle);
-  invites.delete(code);
-  pendingInviteByUser.delete(invite.userId);
-
-  entry.send({ type: "queued" });
-  await createMatch(invite, entry);
 }
 
 export function declineInvite(userId: string, rawCode: string) {
   const code = rawCode.trim().toUpperCase();
   const invite = invites.get(code);
   if (!invite || invite.targetUserId !== userId) return;
-  clearTimeout(invite.timeoutHandle);
+  if (invite.timeoutHandle) clearTimeout(invite.timeoutHandle);
   if (invite.disconnectGraceHandle) clearTimeout(invite.disconnectGraceHandle);
   invites.delete(code);
   pendingInviteByUser.delete(invite.userId);
@@ -618,10 +958,13 @@ export async function startBotDuel(entry: {
     questionSentAt: 0,
     countdownSentAt: 0,
     countdownSeconds: 0,
+    phaseDeadlineAt: 0,
     roundTimer: null,
     readyTimer: null,
+    pendingReady: null,
     cancelled: false,
     awaitingReconnect: false,
+    pause: null,
     botDifficulty: entry.difficulty,
     tournamentMatchId: null,
     players: [
@@ -661,7 +1004,7 @@ export async function startBotDuel(entry: {
     if (!rawQuestions || rawQuestions.length === 0) throw new Error("Aucune question disponible");
     match.questions = rawQuestions.map((q) => {
       const { text, permutation } = shuffledOptions(q.options);
-      return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
+      return { questionId: q.id, text: q.textFr, mediaUrl: q.mediaUrl, mediaAlt: q.mediaAlt, optionsText: text, permutation, answerIndex: q.answerIndex, categoryId: q.categoryId };
     });
     await prisma.duelMatch.update({
       where: { id: match.id },
@@ -692,9 +1035,10 @@ export async function startBotDuel(entry: {
   match.status = "countdown";
   match.countdownSentAt = Date.now();
   match.countdownSeconds = 3;
+  match.phaseDeadlineAt = match.countdownSentAt + 3_200;
   entry.send({ type: "countdown", seconds: 3 });
-  setTimeout(() => {
-    if (!match.cancelled) sendQuestion(match, 0);
+  match.roundTimer = setTimeout(() => {
+    if (!match.cancelled) prepareQuestion(match, 0);
   }, 3_200);
 }
 
@@ -724,10 +1068,13 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "stakeCoins">) {
     questionSentAt: 0,
     countdownSentAt: 0,
     countdownSeconds: 0,
+    phaseDeadlineAt: 0,
     roundTimer: null,
     readyTimer: null,
+    pendingReady: null,
     cancelled: false,
     awaitingReconnect: false,
+    pause: null,
     botDifficulty: null,
     tournamentMatchId: null,
     players: [
@@ -769,11 +1116,11 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "stakeCoins">) {
   // Toute erreur ici (DB, questions indisponibles…) est attrapée pour garantir
   // que les clients ne restent jamais bloqués sur le Loader/countdown indéfiniment.
   try {
-    const rawQuestions = await pickQuestions(null, a.userId, DUEL_ROUND_SIZE);
+    const rawQuestions = await pickQuestions(null, [a.userId, b.userId], DUEL_ROUND_SIZE);
     if (!rawQuestions || rawQuestions.length === 0) throw new Error("Aucune question disponible");
     match.questions = rawQuestions.map((q) => {
       const { text, permutation } = shuffledOptions(q.options);
-      return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
+      return { questionId: q.id, text: q.textFr, mediaUrl: q.mediaUrl, mediaAlt: q.mediaAlt, optionsText: text, permutation, answerIndex: q.answerIndex, categoryId: q.categoryId };
     });
     await prisma.duelMatch.update({
       where: { id: match.id },
@@ -802,10 +1149,11 @@ async function createMatch(a: MatchSeed, b: Omit<MatchSeed, "stakeCoins">) {
   // et doivent cliquer "Prêt !" avant que le countdown ne démarre. Ce clic
   // est un geste utilisateur garanti → AudioContext se réveille → son joué.
   // Timeout de 90 s : si l'un des deux ne répond pas, on annule et rembourse.
+  const READY_TIMEOUT_MS = 90_000;
   match.status = "waiting_ready";
+  match.phaseDeadlineAt = Date.now() + READY_TIMEOUT_MS;
   match.players[0].send?.({ type: "waiting_ready" });
   match.players[1].send?.({ type: "waiting_ready" });
-  const READY_TIMEOUT_MS = 90_000;
   match.readyTimer = setTimeout(() => {
     if (match.status === "waiting_ready") void refundAndCancel(match, "adversaire_pas_pret");
   }, READY_TIMEOUT_MS);
@@ -934,10 +1282,13 @@ async function createTournamentMatch(tournamentMatchId: string, categoryIdOrNull
     questionSentAt: 0,
     countdownSentAt: 0,
     countdownSeconds: 0,
+    phaseDeadlineAt: 0,
     roundTimer: null,
     readyTimer: null,
+    pendingReady: null,
     cancelled: false,
     awaitingReconnect: false,
+    pause: null,
     botDifficulty: null,
     tournamentMatchId,
     players: [
@@ -953,11 +1304,11 @@ async function createTournamentMatch(tournamentMatchId: string, categoryIdOrNull
   match.players[1].send?.({ type: "matched", duelMatchId: match.id, categoryId, stakeCoins: 0, opponent: { username: a.username, eloRating: a.eloRating } });
 
   try {
-    const rawQuestions = await pickQuestions(categoryIdOrNull, a.userId, DUEL_ROUND_SIZE);
+    const rawQuestions = await pickQuestions(categoryIdOrNull, [a.userId, b.userId], DUEL_ROUND_SIZE);
     if (!rawQuestions || rawQuestions.length === 0) throw new Error("Aucune question disponible");
     match.questions = rawQuestions.map((q) => {
       const { text, permutation } = shuffledOptions(q.options);
-      return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex };
+      return { questionId: q.id, text: q.textFr, mediaUrl: q.mediaUrl, mediaAlt: q.mediaAlt, optionsText: text, permutation, answerIndex: q.answerIndex, categoryId: q.categoryId };
     });
     await prisma.duelMatch.update({
       where: { id: match.id },
@@ -974,10 +1325,11 @@ async function createTournamentMatch(tournamentMatchId: string, categoryIdOrNull
   const TOURNEY_PREP = 10;
   match.countdownSentAt = Date.now();
   match.countdownSeconds = TOURNEY_PREP;
+  match.phaseDeadlineAt = match.countdownSentAt + TOURNEY_PREP * 1000 + 500;
   match.players[0].send?.({ type: "countdown", seconds: TOURNEY_PREP });
   match.players[1].send?.({ type: "countdown", seconds: TOURNEY_PREP });
-  setTimeout(() => {
-    if (!match.cancelled) sendQuestion(match, 0);
+  match.roundTimer = setTimeout(() => {
+    if (!match.cancelled) prepareQuestion(match, 0);
   }, TOURNEY_PREP * 1000 + 500);
 }
 
@@ -1020,8 +1372,9 @@ async function createClanWarDuel(clanWarMatchId: string, clanWarId: string, a: T
   await prisma.clanWarMatch.update({ where: { id: clanWarMatchId }, data: { status: "IN_PROGRESS", duelMatchId: dbRow.id } });
   const match: Match = {
     id: dbRow.id, categoryId, stakeCoins: 0, questions: [], index: -1, status: "countdown",
-    startedAnyQuestion: false, questionSentAt: 0, countdownSentAt: 0, countdownSeconds: 0,
-    roundTimer: null, readyTimer: null, cancelled: false, awaitingReconnect: false,
+    startedAnyQuestion: false, questionSentAt: 0, countdownSentAt: 0, countdownSeconds: 0, phaseDeadlineAt: 0,
+    roundTimer: null, readyTimer: null,
+    pendingReady: null, cancelled: false, awaitingReconnect: false, pause: null,
     botDifficulty: null, tournamentMatchId: null, clanWarMatchId, clanWarId,
     players: [
       { userId: a.userId, username: a.username, eloRating: a.eloRating, send: a.send, connected: true, disconnectTimer: null, score: 0, answered: false, chosenIndex: null, answeredAt: null, totalResponseMs: 0, disconnectCount: 0, ready: false },
@@ -1030,8 +1383,8 @@ async function createClanWarDuel(clanWarMatchId: string, clanWarId: string, a: T
   };
   matches.set(match.id, match); activeMatchByUser.set(a.userId, match); activeMatchByUser.set(b.userId, match);
   try {
-    const rawQuestions = await pickQuestions(null, a.userId, DUEL_ROUND_SIZE);
-    match.questions = rawQuestions.map((q) => { const { text, permutation } = shuffledOptions(q.options); return { questionId: q.id, text: q.textFr, optionsText: text, permutation, answerIndex: q.answerIndex }; });
+    const rawQuestions = await pickQuestions(null, [a.userId, b.userId], DUEL_ROUND_SIZE);
+    match.questions = rawQuestions.map((q) => { const { text, permutation } = shuffledOptions(q.options); return { questionId: q.id, text: q.textFr, mediaUrl: q.mediaUrl, mediaAlt: q.mediaAlt, optionsText: text, permutation, answerIndex: q.answerIndex, categoryId: q.categoryId }; });
     await prisma.duelMatch.update({ where: { id: match.id }, data: { status: "IN_PROGRESS", questionIds: match.questions.map((q) => q.questionId) } });
   } catch (err) {
     console.error("[createClanWarDuel] préparation impossible", err); cleanupMatch(match);
@@ -1039,18 +1392,106 @@ async function createClanWarDuel(clanWarMatchId: string, clanWarId: string, a: T
   }
   match.players[0].send?.({ type: "matched", duelMatchId: match.id, categoryId, stakeCoins: 0, clanWarMatchId, clanWarId, opponent: { username: b.username, eloRating: b.eloRating } });
   match.players[1].send?.({ type: "matched", duelMatchId: match.id, categoryId, stakeCoins: 0, clanWarMatchId, clanWarId, opponent: { username: a.username, eloRating: a.eloRating } });
-  const prepSeconds = 10; match.countdownSentAt = Date.now(); match.countdownSeconds = prepSeconds;
+  const prepSeconds = 10; match.countdownSentAt = Date.now(); match.countdownSeconds = prepSeconds; match.phaseDeadlineAt = match.countdownSentAt + prepSeconds * 1000 + 500;
   match.players[0].send?.({ type: "countdown", seconds: prepSeconds }); match.players[1].send?.({ type: "countdown", seconds: prepSeconds });
-  setTimeout(() => { if (!match.cancelled) sendQuestion(match, 0); }, prepSeconds * 1000 + 500);
+  match.roundTimer = setTimeout(() => { if (!match.cancelled) prepareQuestion(match, 0); }, prepSeconds * 1000 + 500);
 }
 
 // ── Déroulé question par question ──────────────────────────────────────
 
+/**
+ * Point d'entrée UNIQUE pour lancer une question — remplace tous les
+ * appels directs à `sendQuestion(match, index)` (30/08/2026).
+ *
+ * Avant, le serveur envoyait la question ET démarrait le chrono partagé
+ * dans le même geste : si l'image d'un joueur mettait plus longtemps à
+ * charger que celle de son adversaire (réseau plus lent, cache froid…),
+ * ce joueur perdait réellement des secondes de réponse pendant que son
+ * écran affichait encore un chargement — sur un duel avec de l'argent
+ * réel, c'est un vrai désavantage, pas juste un défaut visuel.
+ *
+ * Ici, la question (texte, options, média) est envoyée sans chrono. Les
+ * DEUX joueurs doivent confirmer ("question_ready") avoir fini de
+ * charger avant que `sendQuestion` — INCHANGÉ — ne soit appelé pour de
+ * bon et n'arme le chrono partagé. Un joueur qui répond à un bot n'a
+ * jamais besoin d'attendre : le bot n'affiche rien, il est toujours
+ * "prêt" immédiatement. `QUESTION_READY_TIMEOUT_MS` est le filet de
+ * sécurité : au-delà, le round démarre quoi qu'il arrive — un client
+ * bloqué ou déconnecté pendant cette fenêtre est alors détecté et mis
+ * en pause par les garde-fous déjà existants dans `sendQuestion` lui-même
+ * (vérification `disconnected.length` en tout début de fonction),
+ * inchangés eux aussi.
+ */
+function prepareQuestion(match: Match, index: number) {
+  if (match.cancelled) return;
+  const q = match.questions[index];
+  if (!q) return;
+
+  const waitingForUserIds = match.botDifficulty
+    ? [match.players[0].userId] // seul le joueur humain charge quoi que ce soit face à un bot
+    : match.players.map((p) => p.userId);
+
+  for (const p of match.players) {
+    p.send?.({ type: "question_preload", questionId: q.questionId, mediaUrl: q.mediaUrl, categoryId: q.categoryId, index, total: match.questions.length });
+  }
+
+  const readyUserIds = new Set<string>();
+  // Un seul indicateur ferme les trois portes à la fois : le timeout de
+  // secours, un `notify()` tardif (message reçu juste après coup) et un
+  // `cancel()` externe (§pauseMatch — une déconnexion pendant l'attente ne
+  // doit JAMAIS laisser ce timeout démarrer le round sous une pause active).
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timeoutHandle);
+    match.pendingReady = null;
+    sendQuestion(match, index);
+  };
+  const timeoutHandle = setTimeout(finish, QUESTION_READY_TIMEOUT_MS);
+  match.pendingReady = {
+    questionId: q.questionId,
+    readyUserIds,
+    notify: () => {
+      if (waitingForUserIds.every((uid) => readyUserIds.has(uid))) finish();
+    },
+    cancel: () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutHandle);
+      match.pendingReady = null;
+    },
+  };
+}
+
+/** Reçoit la confirmation de préchargement d'un joueur pour la question en
+ * attente de démarrage. Ignore silencieusement tout message hors contexte
+ * (mauvais questionId, pas de préparation en cours) : un message tardif ou
+ * dupliqué ne doit jamais faire planter le duel. */
+export function handleQuestionReady(userId: string, questionId: string) {
+  const match = activeMatchByUser.get(userId);
+  if (!match?.pendingReady || match.pendingReady.questionId !== questionId) return;
+  match.pendingReady.readyUserIds.add(userId);
+  match.pendingReady.notify();
+}
+
 function sendQuestion(match: Match, index: number) {
+  const disconnected = match.botDifficulty ? [] : match.players.filter((player) => !player.connected);
+  if (disconnected.length) {
+    pauseMatch(match, "connection_lost", disconnected.map((player) => player.userId), {
+      from: match.index >= 0 ? "reveal" : "countdown",
+      remainingMs: 0,
+      resumeAction: "send_question",
+      nextQuestionIndex: index,
+    });
+    return;
+  }
+  if (match.roundTimer) { clearTimeout(match.roundTimer); match.roundTimer = null; }
   match.index = index;
   match.status = "question";
   match.startedAnyQuestion = true;
   match.questionSentAt = Date.now();
+  match.phaseDeadlineAt = match.questionSentAt + DUEL_TIME_PER_QUESTION_MS;
   for (const p of match.players) {
     p.answered = false;
     p.chosenIndex = null;
@@ -1064,14 +1505,17 @@ function sendQuestion(match: Match, index: number) {
     total: match.questions.length,
     questionId: q.questionId,
     text: q.text,
+    mediaUrl: q.mediaUrl,
+    mediaAlt: q.mediaAlt,
+    categoryId: q.categoryId,
     options: q.optionsText,
-    deadline: match.questionSentAt + TIME_PER_QUESTION_MS,
+    deadline: match.phaseDeadlineAt,
   };
   match.players[0].send?.(payload);
   match.players[1].send?.(payload);
   emitToSpectators(match);
 
-  match.roundTimer = setTimeout(() => resolveRound(match), TIME_PER_QUESTION_MS);
+  match.roundTimer = setTimeout(() => resolveRound(match), DUEL_TIME_PER_QUESTION_MS);
 
   if (match.botDifficulty) scheduleBotAnswer(match, q);
 }
@@ -1120,7 +1564,7 @@ function scheduleBotAnswer(match: Match, q: MatchQuestion) {
   // Le temps de réflexion de l'IA augmente avec la complexité de la question
   const thinkBase = params.minMs + Math.random() * (params.maxMs - params.minMs);
   const complexityBonus = complexity * (params.maxMs - params.minMs) * 0.4;
-  const thinkMs = Math.min(thinkBase + complexityBonus, TIME_PER_QUESTION_MS - 300);
+  const thinkMs = Math.min(thinkBase + complexityBonus, DUEL_TIME_PER_QUESTION_MS - 300);
 
   const acc = dynamicAccuracy(params.accuracy, complexity);
 
@@ -1156,10 +1600,11 @@ export function handleReady(userId: string) {
     const PREP_SECONDS = 5; // court — les joueurs ont déjà eu le temps de se préparer
     match.countdownSentAt = Date.now();
     match.countdownSeconds = PREP_SECONDS;
+    match.phaseDeadlineAt = match.countdownSentAt + PREP_SECONDS * 1000 + 500;
     match.players[0].send?.({ type: "countdown", seconds: PREP_SECONDS });
     match.players[1].send?.({ type: "countdown", seconds: PREP_SECONDS });
-    setTimeout(() => {
-      if (!match.cancelled) sendQuestion(match, 0);
+    match.roundTimer = setTimeout(() => {
+      if (!match.cancelled) prepareQuestion(match, 0);
     }, PREP_SECONDS * 1000 + 500);
   }
 }
@@ -1178,10 +1623,10 @@ export function handleAnswer(userId: string, questionId: string, chosenIndex: nu
   if (!match || match.status !== "question") return;
   const q = match.questions[match.index];
   if (!q || q.questionId !== questionId) return;
-  // La fenêtre visible dure exactement TIME_PER_QUESTION_MS. La marge
+  // La fenêtre visible dure exactement DUEL_TIME_PER_QUESTION_MS. La marge
   // réseau sert à résoudre les paquets en vol, pas à accepter un nouveau
   // clic effectué après la fin du chronomètre.
-  if (Date.now() > match.questionSentAt + TIME_PER_QUESTION_MS) return;
+  if (Date.now() > match.phaseDeadlineAt) return;
 
   const player = playerOf(match, userId);
   recordAnswer(match, player, chosenIndex);
@@ -1202,6 +1647,27 @@ function recordAnswer(match: Match, player: MatchPlayer, chosenIndex: number) {
 
 async function resolveRound(match: Match) {
   if (match.status !== "question") return; // déjà résolu (course timer/réponse simultanée)
+  if (match.roundTimer) { clearTimeout(match.roundTimer); match.roundTimer = null; }
+
+  // Une seule absence de réponse dans un duel humain déclenche une vraie
+  // vérification de présence. La réponse de la manche reste nulle (le chrono
+  // est terminé), mais la partie n'avance pas tant que le joueur n'a pas
+  // confirmé son retour. Deux non-réponses simultanées restent une manche
+  // blanche afin d'éviter qu'un joueur puisse retenir l'autre indéfiniment.
+  const unanswered = match.botDifficulty ? [] : match.players.filter((player) => !player.answered);
+  if (unanswered.length === 1) {
+    const absent = unanswered[0]!;
+    absent.answered = true;
+    absent.chosenIndex = -1;
+    absent.answeredAt = match.phaseDeadlineAt;
+    pauseMatch(match, "missing_answer", [absent.userId], {
+      from: "question",
+      remainingMs: 0,
+      resumeAction: "resolve_round",
+    });
+    return;
+  }
+
   match.status = "reveal";
   const q = match.questions[match.index]!;
 
@@ -1210,7 +1676,7 @@ async function resolveRound(match: Match) {
     const chosen = p.answered ? p.chosenIndex! : -1;
     const canonical = chosen >= 0 ? q.permutation[chosen] : -1;
     const correct = canonical === q.answerIndex;
-    const responseMs = p.answered ? Math.max(0, p.answeredAt! - match.questionSentAt) : TIME_PER_QUESTION_MS;
+    const responseMs = p.answered ? Math.max(0, p.answeredAt! - match.questionSentAt) : DUEL_TIME_PER_QUESTION_MS;
     if (correct) p.score += 1;
     p.totalResponseMs += responseMs;
     results[p.userId] = { correct, chosenIndex: chosen, responseMs };
@@ -1248,18 +1714,20 @@ async function resolveRound(match: Match) {
     });
   }
   emitToSpectators(match);
-  if (isLast) {
-    setTimeout(() => void finalizeMatch(match), ROUND_GRACE_MS);
-  } else if (match.players.some((p) => !p.connected)) {
-    // Un joueur est déconnecté : pas la peine de lui envoyer (et de faire
-    // expirer) des questions pendant qu'il n'y a personne pour y répondre.
-    // On reste en "reveal" et c'est attachSocket() qui relance la suite
-    // s'il revient dans le délai de grâce ; sinon le timer de forfait
-    // (détaché dans detachSocket) finira la partie tout seul.
-    match.awaitingReconnect = true;
+  match.phaseDeadlineAt = Date.now() + ROUND_GRACE_MS;
+  const disconnected = match.botDifficulty ? [] : match.players.filter((player) => !player.connected);
+  if (disconnected.length) {
+    pauseMatch(match, "connection_lost", disconnected.map((player) => player.userId), {
+      from: "reveal",
+      remainingMs: ROUND_GRACE_MS,
+      resumeAction: isLast ? "finalize" : "send_question",
+      nextQuestionIndex: isLast ? undefined : match.index + 1,
+    });
+  } else if (isLast) {
+    match.roundTimer = setTimeout(() => void finalizeMatch(match), ROUND_GRACE_MS);
   } else {
-    setTimeout(() => {
-      if (!match.cancelled) sendQuestion(match, match.index + 1);
+    match.roundTimer = setTimeout(() => {
+      if (!match.cancelled) prepareQuestion(match, match.index + 1);
     }, ROUND_GRACE_MS);
   }
 }
@@ -1273,20 +1741,28 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
 
   const [pa, pb] = match.players;
   let resultA: "win" | "draw" | "loss";
+  // Signalé au client (§duel_result ci-dessous) pour que l'écran de
+  // résultat explique le "1-1 → VICTOIRE" au lieu de ressembler à un bug
+  // (retour Paul du 31/08 : score identique affiché à côté de "VICTOIRE",
+  // incompréhensible sans ce contexte).
+  let decidedBySpeed = false;
   if (forfeitedBy) {
     resultA = forfeitedBy === pa.userId ? "loss" : "win";
   } else {
     resultA = duelResultOf(pa.score, pb.score);
-    // "Celui qui répond en premier gagne aussi" — mais SEULEMENT en
-    // multijoueur (file d'attente, invitation entre amis, tournoi) :
-    // contre l'ordinateur un score à égalité reste un vrai nul (remboursé
-    // à 95%, voir la branche botDifficulty plus bas et le texte affiché
-    // dans DuelSetup.jsx — ne pas le rendre mensonger). Départage par
-    // temps de réponse total : plus rapide gagne, convention classique de
-    // quiz compétitif. Ce n'est plus un simple choix d'avancement de
-    // bracket (comme avant le 19/08) : le résultat devient réellement
-    // décisif — vrai ELO, vrai paiement de victoire/défaite.
-    if (resultA === "draw" && !match.botDifficulty) {
+    // Retour Paul du 31/08 : "en cas d'égalité il y a égalité" — un score
+    // identique en duel normal (file d'attente, invitation entre amis,
+    // duel ouvert) est désormais un vrai nul, mise remboursée aux deux
+    // (§duelDrawPayout), exactement comme contre l'ordinateur.
+    //
+    // Le départage par rapidité de réponse reste nécessaire UNIQUEMENT
+    // pour un match de tournoi ou de guerre de clans : la structure d'un
+    // bracket ne supporte pas "les deux avancent" ni "match nul" — un
+    // winnerId null y bloquait littéralement le tournoi (bug du 19/08,
+    // cf. plus bas "impossible par construction"). Ça reste donc un
+    // départage technique de bracket, pas une règle de duel normal.
+    if (resultA === "draw" && !match.botDifficulty && (match.tournamentMatchId || match.clanWarMatchId)) {
+      decidedBySpeed = true;
       if (pa.totalResponseMs !== pb.totalResponseMs) {
         resultA = pa.totalResponseMs < pb.totalResponseMs ? "win" : "loss";
       } else {
@@ -1349,15 +1825,16 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
   } else if (resultA === "win") payoutA = duelWinnerPayout(match.stakeCoins);
   else if (resultB === "win") payoutB = duelWinnerPayout(match.stakeCoins);
   else {
-    // Filet de sécurité seulement : un vrai nul (resultA === "draw") ne
-    // peut plus arriver ici depuis le départage par rapidité ci-dessus —
-    // tout match qui arrive à ce point est soit un tournoi soit un PvP,
-    // jamais botDifficulty, donc toujours départagé en win/loss.
+    // Vrai nul en duel normal (§ci-dessus, retour Paul du 31/08) : mise
+    // remboursée aux deux, comme contre l'ordinateur. Un match de
+    // tournoi/guerre de clans n'arrive jamais ici — toujours départagé
+    // en win/loss avant, winnerId nul y étant structurellement impossible.
     payoutA = duelDrawPayout(match.stakeCoins);
     payoutB = duelDrawPayout(match.stakeCoins);
   }
-  if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy, botDifficulty: match.botDifficulty, botMultiplier: match.botDifficulty ? BOT_PARAMS[match.botDifficulty].payoutMultiplier : undefined } });
-  if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
+  const bonusPayout = (amount: number) => bonusAmountForPayout(amount, { duelMatchId: match.id });
+  if (payoutA > 0) await credit({ userId: pa.userId, type: "PAYOUT", amountCoins: payoutA, bonusAmountCoins: await bonusPayout(payoutA), duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy, botDifficulty: match.botDifficulty, botMultiplier: match.botDifficulty ? BOT_PARAMS[match.botDifficulty].payoutMultiplier : undefined } });
+  if (payoutB > 0 && !match.botDifficulty) await credit({ userId: pb.userId, type: "PAYOUT", amountCoins: payoutB, bonusAmountCoins: await bonusPayout(payoutB), duelMatchId: match.id, metadata: { forfeit: !!forfeitedBy } });
 
   if (match.tournamentMatchId) await notifyTournamentMatchDone(match.tournamentMatchId, winnerId);
   if (match.clanWarMatchId) await notifyClanWarMatchDone(match.clanWarMatchId, winnerId);
@@ -1367,13 +1844,24 @@ async function finalizeMatch(match: Match, forfeitedBy?: string) {
   pa.send?.({
     type: "duel_result", result: resultA, forfeit: forfeitedBy === pb.userId ? "opponent" : forfeitedBy === pa.userId ? "you" : null,
     scoreYou: pa.score, scoreOpponent: pb.score, payoutCoins: payoutA, eloDelta: deltaA, eloRating: newEloA, balanceCoins: balanceA,
-    clanWarMatchId: match.clanWarMatchId ?? null, clanWarId: match.clanWarId ?? null,
+    decidedBySpeed, clanWarMatchId: match.clanWarMatchId ?? null, clanWarId: match.clanWarId ?? null,
   });
   pb.send?.({
     type: "duel_result", result: resultB, forfeit: forfeitedBy === pa.userId ? "opponent" : forfeitedBy === pb.userId ? "you" : null,
     scoreYou: pb.score, scoreOpponent: pa.score, payoutCoins: payoutB, eloDelta: deltaB, eloRating: newEloB, balanceCoins: balanceB,
-    clanWarMatchId: match.clanWarMatchId ?? null, clanWarId: match.clanWarId ?? null,
+    decidedBySpeed, clanWarMatchId: match.clanWarMatchId ?? null, clanWarId: match.clanWarId ?? null,
   });
+
+  // Push : utile surtout à celui qui n'a plus l'app au premier plan (WS
+  // déjà reçu ci-dessus sinon) — jamais à un bot, qui n'a pas d'abonnement.
+  void sendPush(pa.userId, resultA === "win"
+    ? { title: "Duel gagné !", body: `+${payoutA.toLocaleString("fr-FR")} F contre ${pb.username}`, url: "/duel", tag: `duel-result-${match.id}` }
+    : { title: "Duel terminé", body: `Défaite contre ${pb.username}`, url: "/duel", tag: `duel-result-${match.id}` });
+  if (!match.botDifficulty) {
+    void sendPush(pb.userId, resultB === "win"
+      ? { title: "Duel gagné !", body: `+${payoutB.toLocaleString("fr-FR")} F contre ${pa.username}`, url: "/duel", tag: `duel-result-${match.id}` }
+      : { title: "Duel terminé", body: `Défaite contre ${pa.username}`, url: "/duel", tag: `duel-result-${match.id}` });
+  }
 
   emitToSpectators(match, {
     type: "spectator_result", matchId: match.id,
@@ -1392,6 +1880,13 @@ function cleanupMatch(match: Match) {
   activeMatchByUser.delete(match.players[1].userId);
   if (match.roundTimer) clearTimeout(match.roundTimer);
   if (match.readyTimer) clearTimeout(match.readyTimer);
+  if (match.pause?.timeoutHandle) clearTimeout(match.pause.timeoutHandle);
+  for (const player of match.players) {
+    const hiddenTimer = tabHiddenTimers.get(player.userId);
+    if (hiddenTimer) clearTimeout(hiddenTimer);
+    tabHiddenTimers.delete(player.userId);
+    tabHiddenEvents.delete(player.userId);
+  }
   for (const p of match.players) if (p.disconnectTimer) clearTimeout(p.disconnectTimer);
 }
 
@@ -1416,6 +1911,21 @@ export function attachSocket(userId: string, send: Send): { resumed: boolean } {
     }
   }
 
+  // Les défis ciblés reçus sont restaurés après un rafraîchissement, une
+  // reconnexion mobile ou un changement de page. Ils ne dépendent donc pas
+  // de l'instant exact où la première notification WebSocket a été reçue.
+  for (const invite of invites.values()) {
+    if (invite.targetUserId !== userId) continue;
+    send({
+      type: "duel_challenge",
+      code: invite.code,
+      username: invite.username,
+      stakeCoins: invite.stakeCoins,
+      createdAtMs: invite.createdAtMs,
+      persistent: true,
+    });
+  }
+
   const match = activeMatchByUser.get(userId);
   if (!match) return { resumed: false };
 
@@ -1432,9 +1942,10 @@ export function attachSocket(userId: string, send: Send): { resumed: boolean } {
   // Secondes restantes du countdown — calculées ici pour que le client
   // puisse reprendre au bon endroit plutôt que de repartir de zéro ou
   // d'afficher un Loader indéfiniment après un rafraîchissement de page.
+  const effectivePhase = match.status === "paused" ? match.pause?.from : match.status;
   const countdownRemainingSeconds =
-    match.status === "countdown" && match.countdownSentAt > 0
-      ? Math.max(1, Math.ceil((match.countdownSentAt + match.countdownSeconds * 1000 - Date.now()) / 1000))
+    effectivePhase === "countdown" && match.countdownSentAt > 0
+      ? Math.max(1, Math.ceil(((match.status === "paused" ? match.pause?.remainingMs : match.phaseDeadlineAt - Date.now()) ?? 0) / 1000))
       : undefined;
 
   send({
@@ -1448,21 +1959,19 @@ export function attachSocket(userId: string, send: Send): { resumed: boolean } {
     scoreYou: player.score,
     scoreOpponent: opp.score,
     phase: match.status,
+    pausedFrom: match.pause?.from,
     // "waiting_ready" → client sait s'il avait déjà cliqué avant la coupure
-    ...(match.status === "waiting_ready" ? { alreadyReady: player.ready, opponentAlreadyReady: opp.ready } : {}),
-    ...(match.status === "countdown" ? { countdownRemainingSeconds } : {}),
-    ...(match.status === "question" || match.status === "reveal"
-      ? {
-          index: match.index,
-          total: match.questions.length,
-          questionId: match.questions[match.index]!.questionId,
-          text: match.questions[match.index]!.text,
-          options: match.questions[match.index]!.optionsText,
-          deadline: match.questionSentAt + TIME_PER_QUESTION_MS,
-          alreadyAnswered: player.answered,
-        }
-      : {}),
+    ...(effectivePhase === "waiting_ready" ? { alreadyReady: player.ready, opponentAlreadyReady: opp.ready } : {}),
+    ...(effectivePhase === "countdown" ? { countdownRemainingSeconds } : {}),
+    ...(effectivePhase === "question" || effectivePhase === "reveal" ? resumedQuestionPayload(match, player) : {}),
   });
+
+  if (match.pause) {
+    // Une seule diffusion suffit : elle contient une version personnalisée
+    // pour chacun des deux joueurs. Envoyer d'abord directement au joueur
+    // reconnecté doublait l'événement et faisait clignoter la modale.
+    emitPauseState(match);
+  }
 
   // Reconnexion pendant la phase "Prêt" : remettre en route le timer global
   // qui avait été mis en pause lors de la déconnexion (§detachSocket
@@ -1474,64 +1983,40 @@ export function attachSocket(userId: string, send: Send): { resumed: boolean } {
     }, 90_000);
   }
 
-  // La partie était en pause (§resolveRound) en attendant ce retour : on
-  // relance la question suivante maintenant que tout le monde est là.
-  if (match.awaitingReconnect && match.status === "reveal" && match.players.every((p) => p.connected)) {
-    match.awaitingReconnect = false;
-    setTimeout(() => {
-      if (!match.cancelled && match.status === "reveal") sendQuestion(match, match.index + 1);
-    }, ROUND_GRACE_MS);
-  }
-
   return { resumed: true };
 }
 
-export function detachSocket(userId: string) {
+export function detachSocket(userId: string, closingSend?: Send) {
   cancelQueue(userId);
   scheduleInviteCancelIfStillDisconnected(userId);
 
   const match = activeMatchByUser.get(userId);
   if (!match) return;
   const player = playerOf(match, userId);
+  // Une socket plus récente a déjà repris ce joueur. La fermeture tardive
+  // de l'ancienne connexion ne doit ni geler le match ni lancer un forfait.
+  if (closingSend && player.send && player.send !== closingSend) return;
   player.connected = false;
   player.send = null;
 
-  if (!match.startedAnyQuestion && !match.tournamentMatchId) {
-    if (match.status === "debiting") {
-      // Coupure pendant le débit bancaire : annulation immédiate, createMatch
-      // détecte match.cancelled et rembourse de son côté.
-      match.cancelled = true;
-      return;
-    }
-    if (match.status === "waiting_ready") {
-      // Déconnexion pendant l'écran "Prêt ?" — peut être un rafraîchissement
-      // de page ou une coupure réseau courte (l'écran vient juste d'apparaître).
-      // 30 s de grâce : l'adversaire voit "adversaire déconnecté", le timer
-      // readyTimer global est suspendu pour ne pas expirer dans son dos.
-      const READY_GRACE_MS = 30_000;
-      const opp = otherPlayer(match, userId);
-      opp.send?.({ type: "opponent_disconnected", graceMs: READY_GRACE_MS });
-      if (match.readyTimer) { clearTimeout(match.readyTimer); match.readyTimer = null; }
-      player.disconnectTimer = setTimeout(() => {
-        if (!match.cancelled) void refundAndCancel(match, "adversaire_deconnecte");
-      }, READY_GRACE_MS);
-      return;
-    }
-    if (match.status === "countdown") {
-      // Coupure réseau pendant le countdown (5 s de préparation) — peut être
-      // un simple tunnel mobile, pas forcément un abandon. On donne 15 s de
-      // grâce, exactement comme en cours de partie, avant de rembourser.
-      // L'adversaire est averti pour qu'il ne reste pas bloqué indéfiniment.
-      const COUNTDOWN_GRACE_MS = 15_000;
-      const opp = otherPlayer(match, userId);
-      opp.send?.({ type: "opponent_disconnected", graceMs: COUNTDOWN_GRACE_MS });
-      player.disconnectTimer = setTimeout(() => {
-        if (!match.cancelled) void refundAndCancel(match, "adversaire_deconnecte");
-      }, COUNTDOWN_GRACE_MS);
-      return;
-    }
-    // Phase inconnue avant la 1ère question → annulation sûre
+  if (match.status === "debiting") {
+    // Coupure pendant le débit bancaire : createMatch rembourse une fois le
+    // débit transactionnel terminé.
     match.cancelled = true;
+    return;
+  }
+
+  // Le solo ne bloque pas un second humain. Il conserve une fenêtre de
+  // reconnexion, puis devient un abandon enregistré si le joueur ne revient
+  // pas. Le verrou de pause ci-dessous est réservé aux confrontations humaines.
+  if (match.botDifficulty) {
+    player.disconnectCount += 1;
+    if (match.status === "question" && !player.answered) {
+      player.answered = true;
+      player.chosenIndex = -1;
+      player.answeredAt = Date.now();
+    }
+    player.disconnectTimer = setTimeout(() => void finalizeMatch(match, userId), RECONNECT_GRACE_MS);
     return;
   }
 
@@ -1545,27 +2030,9 @@ export function detachSocket(userId: string) {
     return;
   }
 
-  // Si la déconnexion survient pendant une question active, on enregistre
-  // immédiatement une réponse nulle pour ce joueur — il ne peut pas se
-  // "déconnecter pour googler" et revenir répondre juste. Pas d'envoi de
-  // "opponent_answered" : l'adversaire reçoit "opponent_disconnected" juste
-  // après, ce qui est déjà suffisant comme signal.
-  if (match.status === "question" && !player.answered) {
-    player.answered = true;
-    player.chosenIndex = -1; // absent → toujours incorrect dans resolveRound
-    player.answeredAt = Date.now();
-    if (match.players[0].answered && match.players[1].answered) {
-      if (match.roundTimer) clearTimeout(match.roundTimer);
-      void resolveRound(match);
-    }
-  }
-
   const opp = otherPlayer(match, userId);
-  opp.send?.({ type: "opponent_disconnected", graceMs: RECONNECT_GRACE_MS });
-
-  player.disconnectTimer = setTimeout(() => {
-    void finalizeMatch(match, userId);
-  }, RECONNECT_GRACE_MS);
+  opp.send?.({ type: "opponent_disconnected", graceMs: PRESENCE_CONFIRM_MS });
+  pauseMatch(match, "connection_lost", [userId]);
 }
 
 async function refundAndCancel(match: Match, reason: string) {
@@ -1607,6 +2074,8 @@ export function handleTabHidden(userId: string) {
   if (!match || match.status !== "question") return;
   const player = playerOf(match, userId);
   if (player.answered) return; // déjà répondu, rien à protéger
+  const activity = tabHiddenEvents.get(userId) ?? { count: 0, totalMs: 0, startedAt: Date.now() };
+  activity.count += 1; activity.startedAt = Date.now(); tabHiddenEvents.set(userId, activity);
 
   const timer = setTimeout(() => {
     tabHiddenTimers.delete(userId);
@@ -1614,11 +2083,21 @@ export function handleTabHidden(userId: string) {
     if (!m || m.status !== "question") return;
     const p = playerOf(m, userId);
     if (p.answered) return;
-    // Force réponse nulle — même logique que la déconnexion réseau
+    // La proposition est annulée après la grâce anti-triche. Dans un duel
+    // humain, le chrono est ensuite gelé et le joueur doit confirmer sa
+    // présence avant que son adversaire ne soit autorisé à continuer.
     p.answered = true;
     p.chosenIndex = -1;
     p.answeredAt = Date.now();
-    if (m.players[0].answered && m.players[1].answered) {
+    const ev = tabHiddenEvents.get(userId);
+    if (ev && ev.count >= 2) void prisma.flag.create({ data: { userId, rule: "TAB_HIDDEN_LOOKUP", detail: { matchId: m.id, count: ev.count, durationMs: Date.now() - ev.startedAt } } });
+    if (!m.botDifficulty) {
+      pauseMatch(m, "visibility_lost", [userId], {
+        from: "question",
+        remainingMs: Math.max(0, m.phaseDeadlineAt - Date.now()),
+        resumeAction: "continue_phase",
+      });
+    } else if (m.players[0].answered && m.players[1].answered) {
       if (m.roundTimer) clearTimeout(m.roundTimer);
       void resolveRound(m);
     }
@@ -1628,6 +2107,8 @@ export function handleTabHidden(userId: string) {
 }
 
 export function handleTabVisible(userId: string) {
+  const ev = tabHiddenEvents.get(userId);
+  if (ev) ev.totalMs += Date.now() - ev.startedAt;
   const timer = tabHiddenTimers.get(userId);
   if (timer) {
     clearTimeout(timer);

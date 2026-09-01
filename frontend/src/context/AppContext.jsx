@@ -77,13 +77,17 @@ export function AppProvider({ children }) {
 
   const login = useCallback(async (identifier, password) => {
     const result = await api.loginAccount({ identifier, password });
-    api.setToken(result.token); cacheUser(result.user); await refreshWallet(); return result.user;
-  }, [cacheUser, refreshWallet]);
+    api.setToken(result.token); cacheUser(result.user); localStorage.setItem("qa_classic_onboarding_seen", "1"); setOnboardingSeen(true);
+    await Promise.all([refreshWallet(), refreshSession()]);
+    return result.user;
+  }, [cacheUser, refreshWallet, refreshSession]);
 
   const register = useCallback(async (username, email, phone, password) => {
     const result = await api.registerAccount({ username, email, phone, password });
-    api.setToken(result.token); cacheUser(result.user); await refreshWallet(); return result.user;
-  }, [cacheUser, refreshWallet]);
+    api.setToken(result.token); cacheUser(result.user); localStorage.setItem("qa_classic_onboarding_seen", "1"); setOnboardingSeen(true);
+    await Promise.all([refreshWallet(), refreshSession()]);
+    return result.user;
+  }, [cacheUser, refreshWallet, refreshSession]);
 
   const logout = useCallback(() => {
     api.setToken(null); cacheUser(null); setStats(null); setCoins(0);
@@ -106,9 +110,12 @@ export function AppProvider({ children }) {
     localStorage.removeItem("qa_classic_onboarding_seen"); setOnboardingSeen(false);
   }, []);
 
-  // Aucune progression financière ou VIP ne doit être forgée côté client.
-  const wins = 0;
-  const isVip = false;
+  // Victoires en duel sur les 30 derniers jours — renvoyées par /api/auth/me
+  // (calculées sur le serveur, jamais modifiables côté client).
+  const wins = stats?.duelsWon30d ?? 0;
+  const isVip = Boolean(user?.isVip || wins >= 30);
+  const vipSource = user?.vipSource || (wins >= 30 ? "PERFORMANCE" : null);
+  const canCreateTournament = Boolean(user?.canCreateTournament || user?.isAdmin || isVip);
   const value = useMemo(() => ({
     lang, setLang, toggleLang: () => setLang((value) => value === "fr" ? "en" : "fr"), t: translations[lang],
     coins, setCoins, addCoins: refreshWallet, refreshWallet,
@@ -116,9 +123,9 @@ export function AppProvider({ children }) {
     currency, setCurrency, theme, toggleTheme,
     user, stats, sessionLoading, login, register, logout, refreshSession,
     wins, addWin: refreshSession, referrals: 0, addReferral: refreshSession,
-    isVip, vipTargets: { wins: 30 }, onboardingSeen, markOnboardingSeen, resetOnboarding,
+    isVip, vipSource, canCreateTournament, vipTargets: { wins: 30 }, onboardingSeen, markOnboardingSeen, resetOnboarding,
   }), [lang, coins, refreshWallet, elo, dailyDone, currency, setCurrency, theme, toggleTheme,
-    user, stats, sessionLoading, login, register, logout, refreshSession, wins, isVip,
+    user, stats, sessionLoading, login, register, logout, refreshSession, wins, isVip, vipSource, canCreateTournament,
     onboardingSeen, markOnboardingSeen, resetOnboarding]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

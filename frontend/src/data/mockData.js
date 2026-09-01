@@ -13,6 +13,7 @@ import {
   Sparkles,
   Swords,
   Drama,
+  Puzzle,
 } from "lucide-react";
 import { QUESTIONS_BANK } from "./questions";
 
@@ -146,6 +147,15 @@ export const CATEGORIES = [
     accent: AMBER,
     questions: QUESTIONS_BANK.culture.length,
     description: { fr: "Fêtes, danses, traditions", en: "Feasts, dances, traditions" },
+  },
+  {
+    id: "logique",
+    name: { fr: "Logique", en: "Logic" },
+    icon: Puzzle,
+    style: { fr: "Énigmes & Déduction", en: "Riddles & Deduction" },
+    accent: AMBER,
+    questions: QUESTIONS_BANK.logique.length,
+    description: { fr: "Suites, énigmes, déduction, probabilités", en: "Sequences, riddles, deduction, probability" },
   },
 ];
 
@@ -402,6 +412,7 @@ export const CATEGORY_COLORS = {
   celebrites:  "#ec4899",
   anime:       "#f43f5e",
   culture:     "#eab308",
+  logique:     "#6366f1",
 };
 
 export const ONLINE_PLAYERS = [

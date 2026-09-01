@@ -24,25 +24,11 @@ export default function PixelScene({ category, idx = 0, boss = false, hitFlash =
   };
 
   return (
-    <div className="relative w-full h-[180px] sm:h-[220px] rounded-xl overflow-hidden border border-white/10 bg-[#0B0B14]">
+    <div className="relative w-full h-[150px] sm:h-[175px] overflow-hidden border-b border-white/10 bg-[#0B0B14]">
       {/* CRT scanlines overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-30 scanlines z-20" />
-      {/* Grid floor */}
-      <div
-        className="absolute inset-0 opacity-25 pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(to right, ${AMBER}33 1px, transparent 1px), linear-gradient(to bottom, ${AMBER}33 1px, transparent 1px)`,
-          backgroundSize: "24px 24px",
-        }}
-      />
       <div className="absolute inset-0 pointer-events-none" style={{ boxShadow: "inset 0 0 60px rgba(0,0,0,0.7)" }} />
-      <div className="relative w-full h-full">{scenes[category] || <KnightVsCastle />}</div>
-      <div className="absolute top-2 left-3 z-30 font-arcade text-base tracking-widest" style={{ color: AMBER }}>
-        &gt;_ {boss ? "BOSS.STAGE" : "SCENE.LOAD"}
-      </div>
-      <div className="absolute top-2 right-3 z-30 font-arcade text-base text-white/40">
-        STAGE {String(idx + 1).padStart(2, "0")}{boss ? " ⚠" : ""}
-      </div>
+      <div className="relative w-full h-full">{scenes[category] || <SecondaryScene category={category} />}</div>
       {/* Hit flash overlay */}
       {hitFlash > 0 && (
         <div
@@ -56,6 +42,23 @@ export default function PixelScene({ category, idx = 0, boss = false, hitFlash =
       )}
     </div>
   );
+}
+
+/* The remaining themes deliberately use their own motion language instead of
+   recycling the castle: circuits, leaves, steam, pages, flashes and speed lines. */
+function SecondaryScene({ category }) {
+  const name = category || "culture";
+  return <svg viewBox="0 0 320 180" className="absolute inset-0 h-full w-full pixel-block" preserveAspectRatio="xMidYMid slice">
+    <rect width="320" height="180" fill={SHADOW} />
+    {name === "technologie" && <><path d="M24 38H116V76H210V126H296" fill="none" stroke={AMBER} strokeWidth="2" /><path d="M24 142H82V102H174V54H296" fill="none" stroke={BONE} strokeWidth="2" opacity=".75" /><motion.rect x="110" y="67" width="18" height="18" fill={AMBER} animate={{ x: [0, 82, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} /><motion.circle cx="296" cy="126" r="6" fill={AMBER} animate={{ opacity: [.2, 1, .2] }} transition={{ duration: 1.2, repeat: Infinity }} /></>}
+    {name === "afrique" && <><circle cx="160" cy="82" r="45" fill="none" stroke={AMBER} strokeWidth="2" /><path d="M145 42L177 55L184 91L165 124L136 108L127 72Z" fill={AMBER} opacity=".75" /><motion.circle cx="89" cy="40" r="5" fill={BONE} animate={{ y: [0, 72, 0], opacity: [.2, 1, .2] }} transition={{ duration: 2.1, repeat: Infinity }} /><motion.circle cx="231" cy="132" r="5" fill={BONE} animate={{ y: [0, -72, 0], opacity: [.2, 1, .2] }} transition={{ duration: 2.1, repeat: Infinity, delay: .45 }} /></>}
+    {name === "nature" && <><rect y="132" width="320" height="48" fill={AMBER_DIM} opacity=".32" />{[72, 136, 201, 258].map((x, i) => <motion.g key={x} animate={{ rotate: [-4, 4, -4] }} transition={{ duration: 2.4 + i * .2, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: `${x}px 132px` }}><rect x={x} y="70" width="4" height="64" fill={BONE} /><ellipse cx={x - 12} cy="88" rx="15" ry="7" fill={AMBER} /><ellipse cx={x + 13} cy="105" rx="16" ry="7" fill={AMBER} /></motion.g>)}</>}
+    {name === "gastronomie" && <><ellipse cx="160" cy="121" rx="78" ry="23" fill={BONE} /><ellipse cx="160" cy="118" rx="66" ry="15" fill={SHADOW} /><motion.path d="M125 92C112 78 138 70 125 50M160 92C147 76 174 65 160 42M194 92C181 74 207 63 195 49" fill="none" stroke={AMBER} strokeWidth="4" animate={{ y: [0, -12, 0], opacity: [.25, 1, .25] }} transition={{ duration: 1.7, repeat: Infinity }} /></>}
+    {name === "litterature" && <><motion.g animate={{ rotateY: [0, 16, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }} style={{ transformOrigin: "160px 94px" }}><path d="M74 47H157V140H74Z" fill={BONE} /><path d="M163 47H246V140H163Z" fill={BONE} /><path d="M160 47V140" stroke={AMBER} strokeWidth="4" />{[72, 88, 104].map((y) => <path key={y} d={`M92 ${y}H142M178 ${y}H228`} stroke={SHADOW} strokeWidth="3" opacity=".7" />)}</motion.g></>}
+    {name === "celebrites" && <><motion.g animate={{ scale: [.75, 1.2, .75], opacity: [.25, 1, .25] }} transition={{ duration: 1.6, repeat: Infinity }} style={{ transformOrigin: "160px 88px" }}><polygon points="160,28 172,70 216,70 180,96 194,140 160,114 126,140 140,96 104,70 148,70" fill={AMBER} /></motion.g>{[48, 275].map((x, i) => <motion.rect key={x} x={x} y="20" width="5" height="130" fill={BONE} animate={{ opacity: [.1, .8, .1] }} transition={{ duration: 1.1, repeat: Infinity, delay: i * .35 }} />)}</>}
+    {name === "anime" && <><motion.g animate={{ x: [-38, 38] }} transition={{ duration: 1.15, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}>{[35, 67, 100, 133, 166, 199, 232].map((y, i) => <path key={y} d={`M25 ${y}H${205 + i * 10}`} stroke={i % 2 ? BONE : AMBER} strokeWidth="4" />)}</motion.g><motion.path d="M246 40L285 90L246 140" fill="none" stroke={AMBER} strokeWidth="8" animate={{ scale: [.8, 1.1, .8] }} transition={{ duration: 1.15, repeat: Infinity }} style={{ transformOrigin: "265px 90px" }} /></>}
+    {!["technologie", "afrique", "nature", "gastronomie", "litterature", "celebrites", "anime"].includes(name) && <><circle cx="160" cy="90" r="38" fill="none" stroke={AMBER} strokeWidth="5" />{[0, 60, 120, 180, 240, 300].map((angle) => <motion.rect key={angle} x="156" y="20" width="8" height="30" fill={BONE} animate={{ rotate: [angle, angle + 360] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }} style={{ transformOrigin: "160px 90px" }} />)}<motion.circle cx="160" cy="90" r="9" fill={AMBER} animate={{ scale: [.75, 1.15, .75] }} transition={{ duration: 1.3, repeat: Infinity }} /></>}
+  </svg>;
 }
 
 /* ============================================================

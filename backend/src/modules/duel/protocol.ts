@@ -47,11 +47,19 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     questionId: z.string().min(1),
     chosenIndex: z.number().int().min(0).max(3),
   }),
+  // Confirme que la question a fini de charger côté client (média compris)
+  // — le serveur n'arme le chrono partagé qu'une fois les DEUX joueurs
+  // prêts, pour qu'aucun des deux ne perde du temps de réponse à cause
+  // d'un chargement plus lent que l'autre (§engine.ts prepareQuestion).
+  z.object({ type: z.literal("question_ready"), questionId: z.string().min(1) }),
   // Départ volontaire en cours de duel : défaite immédiate, pas d'attente
   // du délai de grâce réservé aux coupures réseau accidentelles.
   z.object({ type: z.literal("forfeit") }),
   // Phase "Prêt" : les deux joueurs confirment leur présence avant le countdown.
   z.object({ type: z.literal("ready") }),
+  // Reprise après une coupure ou une absence de réponse. Le serveur ne
+  // redémarre la phase gelée qu'après cette confirmation explicite.
+  z.object({ type: z.literal("resume_confirm") }),
   z.object({ type: z.literal("tab_hidden") }),  // anti-triche : onglet mis en arrière-plan
   z.object({ type: z.literal("tab_visible") }), // retour dans les 3 s → grâce annulée
   z.object({ type: z.literal("ping") }),

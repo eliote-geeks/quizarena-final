@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { prisma } from "../../lib/prisma.js";
-import { credit, debit, getBalance, InsufficientBalanceError } from "../wallet/ledger.js";
+import { bonusAmountForPayout, credit, debit, getBalance, InsufficientBalanceError } from "../wallet/ledger.js";
 import { pickQuestions, shuffledOptions, QUESTIONS_PER_SESSION, TIME_PER_QUESTION_MS } from "./questions.js";
 import { scoreSession, applyHistoricalSignals, actionForScore } from "./anticheat.js";
 import { updatePlayerStats } from "./stats.js";
@@ -32,6 +32,7 @@ const submitSchema = z.object({
   tabSwitches: z.number().int().min(0).max(1000).default(0),
   totalDurationMs: z.number().int().min(0),
 });
+const abandonSchema = z.object({ sessionId: z.string().uuid() });
 
 type SessionQuestion = { questionId: string; permutation: number[] };
 
@@ -74,17 +75,27 @@ export async function quizRoutes(app: FastifyInstance) {
       if (stakeCoins > cap) return reply.forbidden(`Mise plafonnée à ${cap} F pour ce compte`);
     }
 
-    const questions = await pickQuestions(body.categoryId, user.id);
+    // "random" est le solo officiel : le serveur pioche dans toute la banque.
+    const questions = await pickQuestions(body.categoryId === "random" ? null : body.categoryId, user.id);
     if (questions.length === 0) return reply.badRequest("Catégorie vide");
 
     const sessionQuestions: SessionQuestion[] = [];
     const clientQuestions = questions.map((q) => {
       const { text, permutation } = shuffledOptions(q.options);
       sessionQuestions.push({ questionId: q.id, permutation });
-      return { id: q.id, text: q.textFr, options: text };
+      return { id: q.id, categoryId: q.categoryId, text: q.textFr, options: text, mediaUrl: q.mediaUrl, mediaAlt: q.mediaAlt };
     });
 
-    const expiresAt = new Date(Date.now() + questions.length * TIME_PER_QUESTION_MS * 2 + 30_000);
+    // Marge de sécurité contre les sessions abandonnées, PAS un chrono de
+    // triche (le score/timing réel est de toute façon revérifié côté
+    // serveur à /submit, indépendamment de cette fenêtre). Un x2 + 30s
+    // s'est révélé trop juste en usage réel (30/08, retour Paul : une
+    // victoire solo perdue avec un 410 "session expirée") — chaque
+    // question attend en plus son média (image) avant même de démarrer
+    // son propre chrono de 8s, un temps non compté ici, qui s'accumule
+    // vite sur une connexion mobile lente. x4 + 90s laisse une vraie
+    // marge sans ouvrir la porte à des sessions rejouées bien plus tard.
+    const expiresAt = new Date(Date.now() + questions.length * TIME_PER_QUESTION_MS * 4 + 90_000);
 
     // La mise est débitée à l'ouverture de la session, pas à la soumission :
     // ça évite qu'un joueur ouvre 10 sessions Challenge en parallèle avec
@@ -102,7 +113,9 @@ export async function quizRoutes(app: FastifyInstance) {
     const session = await prisma.quizSession.create({
       data: {
         userId: user.id,
-        categoryId: body.categoryId,
+        // Une session mélangée garde une catégorie réelle en base pour la
+        // relation SQL, tandis que ses questions viennent de toute la banque.
+        categoryId: body.categoryId === "random" ? questions[0]!.categoryId : body.categoryId,
         mode: body.mode,
         stakeCoins,
         daily: false, // bonus quotidien supprimé (créait de l'argent sans mise) — colonne gardée dormante
@@ -121,6 +134,14 @@ export async function quizRoutes(app: FastifyInstance) {
       timePerQuestionMs: TIME_PER_QUESTION_MS,
       questions: clientQuestions,
     });
+  });
+
+  app.post("/api/quiz/abandon", { preHandler: [app.authenticate] }, async (req, reply) => {
+    const { sessionId } = abandonSchema.parse(req.body);
+    const session = await prisma.quizSession.findFirst({ where: { id: sessionId, userId: req.user.userId, status: "STARTED" } });
+    if (!session) return reply.notFound("Partie introuvable ou déjà terminée");
+    await prisma.quizSession.update({ where: { id: sessionId }, data: { status: "EXPIRED", submittedAt: new Date() } });
+    return reply.send({ abandoned: true });
   });
 
   // ── Révélation per-question ──────────────────────────────────────
@@ -290,6 +311,7 @@ export async function quizRoutes(app: FastifyInstance) {
         amountCoins: payoutCoins,
         status: action === "credit" ? "COMPLETED" : "QUARANTINED",
         quizSessionId: session.id,
+        bonusAmountCoins: await bonusAmountForPayout(payoutCoins, { quizSessionId: session.id }),
         metadata: { suspicionScore, flags },
       });
     }
